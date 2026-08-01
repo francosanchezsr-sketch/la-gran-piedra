@@ -480,19 +480,19 @@ export default function HomeConfigurator() {
 
       <div data-nofx="1" style={{position: "fixed", top: "0", left: "0", right: "0", zIndex: "60", display: "flex", alignItems: "stretch", background: "linear-gradient(178deg,#FFFFFF 0 54%,#F5F2EE 54% 80%,#E7E3DE 80%)", boxShadow: "0 8px 30px rgba(8,14,30,0.13)", pointerEvents: "auto"}}>
 
-        <a href="#index" style={{display: "flex", alignItems: "center", gap: "13px", padding: "11px 22px"}}>
+        <a href="#index" className="lgp-header-logo" style={{display: "flex", alignItems: "center", gap: "13px", padding: "11px 22px"}}>
           <img src="/logo-full.svg" alt="La Gran Piedra" style={{height: "38px", width: "auto", display: "block"}} />
-          <img src="/logo-wordmark.svg" alt="La Gran Piedra" style={{height: "11px", width: "auto", display: "block"}} />
+          <img src="/logo-wordmark.svg" alt="La Gran Piedra" className="lgp-header-wordmark" style={{height: "11px", width: "auto", display: "block"}} />
         </a>
 
         <div style={{flex: "1"}}></div>
 
-        <div style={{display: "flex", alignItems: "center", gap: "14px", padding: "0 20px"}}>
+        <div className="lgp-header-social" style={{display: "flex", alignItems: "center", gap: "14px", padding: "0 20px"}}>
           <a href="https://instagram.com" title="Instagram" style={{display: "flex", alignItems: "center"}}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#505759" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4.2"></circle><circle cx="17.4" cy="6.6" r="1.15" fill="#505759" stroke="none"></circle></svg></a>
           <a href="https://tiktok.com" title="TikTok" style={{display: "flex", alignItems: "center"}}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#505759" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.2 3v11.4a3.9 3.9 0 1 1-3.2-3.84"></path><path d="M14.2 3c.3 2.6 1.9 4.2 4.5 4.5"></path></svg></a>
         </div>
 
-        <a href="#contacto" className="lgp-hover-zoom" style={{display: "flex", alignItems: "center", padding: "0 24px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", whiteSpace: "nowrap"}}>Agenda una cita</a>
+        <a href="#contacto" className="lgp-hover-zoom lgp-header-cta" style={{display: "flex", alignItems: "center", padding: "0 24px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", whiteSpace: "nowrap"}}>Agenda una cita</a>
       </div>
 
       <section id="index" data-screen-label="Inicio" style={{position: "relative", minHeight: "calc(100vh - 90px)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "110px 22px 24px", overflow: "hidden"}}>
@@ -571,7 +571,7 @@ export default function HomeConfigurator() {
 
             <div>
               <p style={{margin: "0 0 24px", maxWidth: "560px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Empieza por el terreno. Gira el selector hasta el lote que te interese — solo los disponibles se pueden elegir.</p>
-              <div style={{display: "grid", gridTemplateColumns: "minmax(230px,300px) 1fr", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
+              <div className="lgp-picker-grid" style={{display: "grid", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
 
                 <div style={{position: "relative", background: "#fff", padding: "0", overflow: "hidden"}}>
                   <div onWheel={onDrumWheel} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
@@ -819,7 +819,7 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
 
-              <div style={{display: "grid", gridTemplateColumns: "minmax(230px,300px) 1fr", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
+              <div className="lgp-picker-grid" style={{display: "grid", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
 
                 <div style={{position: "relative", background: "#fff", padding: "0", overflow: "hidden"}}>
                   <div onWheel={onModuloDrumWheel} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
@@ -961,7 +961,7 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
 
-          <div style={{display: "flex", alignItems: "center", gap: "10px", marginTop: "40px", paddingTop: "22px", borderTop: "1px solid #F0EDE9"}}>
+          <div className="lgp-step-actions" style={{display: "flex", alignItems: "center", gap: "10px", marginTop: "40px", paddingTop: "22px", borderTop: "1px solid #F0EDE9"}}>
             <button onClick={atras} className="lgp-hover-zoom" style={{padding: "11px 17px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>← Atrás</button>
             <button onClick={siguiente} className="lgp-hover-zoom" style={{padding: "11px 17px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Siguiente →</button>
             <span style={{marginLeft: "auto", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>{pasoHint}</span>
@@ -1063,7 +1063,7 @@ export default function HomeConfigurator() {
       </section>
 
       <div data-nofx="1" style={{position: "fixed", bottom: "0", left: "0", right: "0", zIndex: "60", display: "flex", justifyContent: "center", padding: "14px 22px 18px", pointerEvents: "none"}}>
-        <div style={{display: "flex", gap: "20px", padding: "11px 20px", background: "#FBFBFA", boxShadow: "0 1px 0 rgba(28,30,31,0.06) inset, 0 6px 22px rgba(28,30,31,0.14)", pointerEvents: "auto"}}>
+        <div className="lgp-bottom-nav" style={{display: "flex", gap: "20px", padding: "11px 20px", background: "#FBFBFA", boxShadow: "0 1px 0 rgba(28,30,31,0.06) inset, 0 6px 22px rgba(28,30,31,0.14)", pointerEvents: "auto"}}>
           {nav.map((n, _i) => (
     <Fragment key={_i}>
 
