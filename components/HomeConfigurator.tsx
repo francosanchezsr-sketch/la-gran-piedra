@@ -14,6 +14,7 @@ import {
   PASO_HINTS,
 } from '@/lib/data';
 import VideoHero from '@/components/VideoHero';
+import { ModuloIcon, FachadaIcon } from '@/components/ConfigIcons';
 
 type Lote = (typeof LOTES)[number];
 type PlanKey = keyof typeof PLANES;
@@ -368,7 +369,7 @@ export default function HomeConfigurator() {
     const m = MODULOS.find((x) => x.key === sg.key)!;
     const on = modulos.indexOf(m.key) >= 0;
     return {
-      nombre: m.nombre, rango: m.rango, area: m.area, prop: m.prop, razon: sg.razon,
+      iconKey: m.key, nombre: m.corto, rango: m.rango, area: m.area, prop: m.prop, razon: sg.razon,
       box: on ? '#F2004B' : '#fff',
       cardStyle: cardStyle(on),
       onToggle: () => setModulos((prev) => (prev.indexOf(m.key) >= 0 ? prev.filter((k) => k !== m.key) : prev.concat([m.key]))),
@@ -612,7 +613,7 @@ export default function HomeConfigurator() {
               <p style={{margin: "0 0 26px", maxWidth: "600px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Estas son las variantes que nuestros arquitectos curaron para <strong style={{fontWeight: "600"}}>{loteId}</strong>, ordenadas según la orientación de su fachada.</p>
               <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: "22px"}}>
 
-                <button onClick={selPlanA} style={planAStyle}>
+                <button onClick={selPlanA} style={planAStyle} className="lgp-hover-zoom">
                   <svg viewBox="0 0 300 190" style={{width: "100%", height: "auto", display: "block"}}>
                     <g fill="none" stroke="#505759" strokeWidth="1.6">
                       <rect x="14" y="14" width="272" height="162"></rect>
@@ -636,7 +637,7 @@ export default function HomeConfigurator() {
     ) : null}
                 </button>
 
-                <button onClick={selPlanB} style={planBStyle}>
+                <button onClick={selPlanB} style={planBStyle} className="lgp-hover-zoom">
                   <svg viewBox="0 0 300 190" style={{width: "100%", height: "auto", display: "block"}}>
                     <g fill="none" stroke="#505759" strokeWidth="1.6">
                       <rect x="14" y="14" width="272" height="162"></rect>
@@ -662,7 +663,7 @@ export default function HomeConfigurator() {
     ) : null}
                 </button>
 
-                <button onClick={selPlanC} style={planCStyle}>
+                <button onClick={selPlanC} style={planCStyle} className="lgp-hover-zoom">
                   <svg viewBox="0 0 300 190" style={{width: "100%", height: "auto", display: "block"}}>
                     <g fill="none" stroke="#505759" strokeWidth="1.6">
                       <rect x="14" y="14" width="180" height="162"></rect>
@@ -700,9 +701,9 @@ export default function HomeConfigurator() {
                 {fachadas.map((f, _i) => (
     <Fragment key={_i}>
 
-                  <button onClick={f.onSelect} style={f.cardStyle}>
-                    <span style={{display: "block", aspectRatio: "4/3", background: "repeating-linear-gradient(135deg,#F3F1EE 0 6px,#FCFBFA 6px 12px)", position: "relative"}}>
-                      <span style={{position: "absolute", left: "10px", bottom: "9px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>{f.slot}</span>
+                  <button onClick={f.onSelect} style={f.cardStyle} className="lgp-hover-zoom">
+                    <span style={{display: "flex", alignItems: "center", justifyContent: "center", height: "92px", background: "#F7F5F2"}}>
+                      <FachadaIcon styleKey={f.key} size={38} />
                     </span>
                     <span style={{display: "block", marginTop: "14px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>{f.nombre}</span>
                     <span style={{display: "block", marginTop: "7px", fontSize: "13px", lineHeight: "1.5", color: "#8A8F91"}}>{f.desc}</span>
@@ -730,7 +731,7 @@ export default function HomeConfigurator() {
                 {interiores.map((i, _i) => (
     <Fragment key={_i}>
 
-                  <button onClick={i.onSelect} style={i.cardStyle}>
+                  <button onClick={i.onSelect} style={i.cardStyle} className="lgp-hover-zoom">
                     <span style={{display: "flex", height: "64px"}}>
                       <span style={{flex: "1", background: i.c1}}></span><span style={{flex: "1", background: i.c2}}></span><span style={{flex: "1", background: i.c3}}></span>
                     </span>
@@ -787,12 +788,17 @@ export default function HomeConfigurator() {
                 {mods.map((m, _i) => (
     <Fragment key={_i}>
 
-                  <button onClick={m.onToggle} style={m.cardStyle}>
-                    <span style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "10px"}}>
-                      <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: "1.5"}}>{m.nombre}</span>
+                  <button onClick={m.onToggle} style={m.cardStyle} className="lgp-hover-zoom">
+                    <span style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px"}}>
+                      <span style={{display: "flex", alignItems: "center", gap: "12px"}}>
+                        <span style={{width: "36px", height: "36px", flex: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F5F2", borderRadius: "7px"}}>
+                          <ModuloIcon moduleKey={m.iconKey} size={20} />
+                        </span>
+                        <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: "1.3"}}>{m.nombre}</span>
+                      </span>
                       <span style={{width: "16px", height: "16px", flex: "none", display: "block", border: "1px solid #C9CBCC", background: m.box}}></span>
                     </span>
-                    <span style={{display: "block", marginTop: "11px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>{m.rango} · {m.area} ft² · {m.prop}</span>
+                    <span style={{display: "block", marginTop: "13px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>{m.rango} · {m.area} ft² · {m.prop}</span>
                     {m.razon ? (
     <Fragment>
 

@@ -51,6 +51,18 @@ textarea {
   }
 }
 
+.lgp-hover-zoom {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  will-change: transform;
+}
+
+.lgp-hover-zoom:hover {
+  transform: scale(1.03);
+  box-shadow: 0 14px 30px rgba(28, 30, 31, 0.12);
+  position: relative;
+  z-index: 3;
+}
+
 @keyframes lgpIn {
   from {
     opacity: 0;

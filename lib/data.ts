@@ -38,16 +38,16 @@ export const INTERIORES = [
 ];
 
 export const MODULOS = [
-  { key: 'patio', nombre: 'Patio central techado con árbol', rango: '12×12 – 16×16', area: '144–256', prop: '1:1', min: 144, nota: 'Norte-sur ideal para ventilación cruzada' },
-  { key: 'cocinaext', nombre: 'Cocina exterior cubierta', rango: '10×12 – 14×16', area: '120–224', prop: '5:6', min: 120, nota: 'Profundidad mínima 10 ft' },
-  { key: 'primary', nombre: 'Primary suite', rango: 'rec 14×16 · closet 8×10 · baño 10×12', area: '300–450', prop: '7:8', min: 300, nota: '' },
-  { key: 'dual', nombre: 'Dual primary / casita anexa', rango: 'mínimo 380 ft²', area: '400–600', prop: '—', min: 380, nota: '' },
-  { key: 'office', nombre: 'Home office junto a la entrada', rango: '10×12 – 12×14', area: '120–168', prop: '5:6', min: 120, nota: '' },
-  { key: 'bonus', nombre: 'Bonus / game room', rango: '14×16 – 16×20', area: '224–320', prop: '4:5', min: 224, nota: '' },
-  { key: 'scullery', nombre: 'Scullery oculta', rango: '8×10 – 10×12', area: '80–120', prop: '4:5', min: 80, nota: '' },
-  { key: 'mudroom', nombre: 'Mudroom desde el garage', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: '' },
-  { key: 'cocinaexh', nombre: 'Cocina de exhibición con tragaluz', rango: '12×16 – 16×20', area: '192–320', prop: '3:4', min: 192, nota: 'Norte o este; evitar poniente' },
-  { key: 'rec2', nombre: 'Recámara secundaria', rango: '11×12 – 12×14', area: '132–168', prop: '11:12', min: 132, nota: '' },
+  { key: 'patio', nombre: 'Patio central techado con árbol', corto: 'Patio central', rango: '12×12 – 16×16', area: '144–256', prop: '1:1', min: 144, nota: 'Norte-sur ideal para ventilación cruzada' },
+  { key: 'cocinaext', nombre: 'Cocina exterior cubierta', corto: 'Cocina exterior', rango: '10×12 – 14×16', area: '120–224', prop: '5:6', min: 120, nota: 'Profundidad mínima 10 ft' },
+  { key: 'primary', nombre: 'Primary suite', corto: 'Primary suite', rango: 'rec 14×16 · closet 8×10 · baño 10×12', area: '300–450', prop: '7:8', min: 300, nota: '' },
+  { key: 'dual', nombre: 'Dual primary / casita anexa', corto: 'Dual primary', rango: 'mínimo 380 ft²', area: '400–600', prop: '—', min: 380, nota: '' },
+  { key: 'office', nombre: 'Home office junto a la entrada', corto: 'Home office', rango: '10×12 – 12×14', area: '120–168', prop: '5:6', min: 120, nota: '' },
+  { key: 'bonus', nombre: 'Bonus / game room', corto: 'Bonus room', rango: '14×16 – 16×20', area: '224–320', prop: '4:5', min: 224, nota: '' },
+  { key: 'scullery', nombre: 'Scullery oculta', corto: 'Scullery', rango: '8×10 – 10×12', area: '80–120', prop: '4:5', min: 80, nota: '' },
+  { key: 'mudroom', nombre: 'Mudroom desde el garage', corto: 'Mudroom', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: '' },
+  { key: 'cocinaexh', nombre: 'Cocina de exhibición con tragaluz', corto: 'Cocina exhibición', rango: '12×16 – 16×20', area: '192–320', prop: '3:4', min: 192, nota: 'Norte o este; evitar poniente' },
+  { key: 'rec2', nombre: 'Recámara secundaria', corto: 'Recámara 2', rango: '11×12 – 12×14', area: '132–168', prop: '11:12', min: 132, nota: '' },
 ];
 
 export const FAQS = [
