@@ -58,8 +58,6 @@ export default function HomeConfigurator() {
   const [enviado, setEnviado] = useState(false);
   const [drumIdx, setDrumIdx] = useState(1);
 
-  const glow = 1;
-
   // hexagon particle background (canvas), ported from the prototype
   useEffect(() => {
     const host = bgRef.current;
@@ -461,22 +459,20 @@ export default function HomeConfigurator() {
         <a href="#contacto" style={{display: "flex", alignItems: "center", padding: "0 24px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", whiteSpace: "nowrap"}}>Agenda una cita</a>
       </div>
 
-      <section id="index" data-screen-label="Inicio" style={{position: "relative", minHeight: "calc(100vh - 90px)", display: "flex", flexDirection: "column", justifyContent: "center", padding: "110px 22px 24px"}}>
-        <div style={{maxWidth: "1240px", margin: "0 auto", width: "100%", display: "grid", gridTemplateColumns: "minmax(280px,460px) 1fr", gap: "32px", alignItems: "center"}}>
+      <section id="index" data-screen-label="Inicio" style={{position: "relative", minHeight: "calc(100vh - 90px)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "110px 22px 24px", overflow: "hidden"}}>
+        <VideoHero src="/hero-video.mp4" poster="/hero-house.jpg" alt="Casa custom de La Gran Piedra, Edinburg TX" style={{position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 0}} />
+        <div style={{position: "absolute", inset: 0, background: "linear-gradient(100deg, rgba(18,19,20,0.85) 0%, rgba(18,19,20,0.55) 40%, rgba(18,19,20,0.15) 68%, rgba(18,19,20,0.05) 100%)", zIndex: 1}}></div>
+        <div style={{position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(18,19,20,0) 0%, rgba(18,19,20,0.5) 100%)", zIndex: 1}}></div>
 
-          <div data-nofx="1" style={{position: "relative", zIndex: "2", animation: "lgpUp .9s ease both"}}>
+        <div style={{position: "relative", zIndex: 2, maxWidth: "1240px", margin: "0 auto", width: "100%"}}>
+          <div data-nofx="1" style={{maxWidth: "540px", animation: "lgpUp .9s ease both"}}>
             <p style={{margin: "0 0 16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "10px", letterSpacing: "0.2em", color: "#F2004B", textTransform: "uppercase"}}>Casas custom · Rio Grande Valley</p>
-            <p style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "clamp(30px,3.6vw,46px)", lineHeight: "1.1", letterSpacing: "-0.03em", textTransform: "uppercase", textWrap: "balance"}}>Aquí el cliente firma el plano</p>
-            <p style={{margin: "18px 0 0", maxWidth: "42ch", fontSize: "16px", lineHeight: "1.6", color: "#505759", textWrap: "pretty"}}>Nadie más en el Valle te deja decidir cada módulo antes de mover un solo ladrillo.</p>
+            <p style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "clamp(30px,3.6vw,46px)", lineHeight: "1.1", letterSpacing: "-0.03em", textTransform: "uppercase", textWrap: "balance", color: "#fff"}}>Aquí el cliente firma el plano</p>
+            <p style={{margin: "18px 0 0", maxWidth: "42ch", fontSize: "16px", lineHeight: "1.6", color: "rgba(255,255,255,0.82)", textWrap: "pretty"}}>Nadie más en el Valle te deja decidir cada módulo antes de mover un solo ladrillo.</p>
             <div style={{display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "34px"}}>
               <a href="#personaliza" style={{padding: "13px 20px", background: "#F2004B", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Personaliza tu casa</a>
-              <a href="#lugares" style={{padding: "13px 20px", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Ver lotes disponibles</a>
+              <a href="#lugares" style={{padding: "13px 20px", border: "1px solid rgba(255,255,255,0.45)", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Ver lotes disponibles</a>
             </div>
-          </div>
-
-          <div style={{position: "relative"}}>
-            <VideoHero src="/hero-video.mp4" poster="/hero-house.jpg" alt="Casa custom de La Gran Piedra, Edinburg TX" />
-            <div style={{position: "absolute", inset: "0", background: "radial-gradient(62% 74% at 50% 100%, rgba(242,0,75,0.16) 0%, rgba(246,117,153,0.06) 46%, transparent 78%)", opacity: glow, pointerEvents: "none"}}></div>
           </div>
         </div>
 
