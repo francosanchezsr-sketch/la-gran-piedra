@@ -495,7 +495,7 @@ export default function HomeConfigurator() {
         <a href="#contacto" className="lgp-hover-zoom lgp-header-cta" style={{display: "flex", alignItems: "center", padding: "0 24px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", whiteSpace: "nowrap"}}>Agenda una cita</a>
       </div>
 
-      <section id="index" data-screen-label="Inicio" style={{position: "relative", minHeight: "calc(100vh - 90px)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "110px 22px 24px", overflow: "hidden"}}>
+      <section id="index" data-screen-label="Inicio" className="lgp-hero-height" style={{position: "relative", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "110px 22px 24px", overflow: "hidden"}}>
         <VideoHero src="/hero-video.mp4" poster="/hero-house.jpg" alt="Casa custom de La Gran Piedra, Edinburg TX" style={{position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 0}} />
         <div style={{position: "absolute", inset: 0, background: "linear-gradient(100deg, rgba(18,19,20,0.85) 0%, rgba(18,19,20,0.55) 40%, rgba(18,19,20,0.15) 68%, rgba(18,19,20,0.05) 100%)", zIndex: 1}}></div>
         <div style={{position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(18,19,20,0) 0%, rgba(18,19,20,0.5) 100%)", zIndex: 1}}></div>
@@ -1062,7 +1062,7 @@ export default function HomeConfigurator() {
         </div>
       </section>
 
-      <div data-nofx="1" style={{position: "fixed", bottom: "0", left: "0", right: "0", zIndex: "60", display: "flex", justifyContent: "center", padding: "14px 22px 18px", pointerEvents: "none"}}>
+      <div data-nofx="1" style={{position: "fixed", bottom: "0", left: "0", right: "0", zIndex: "60", display: "flex", justifyContent: "center", padding: "14px 22px calc(18px + env(safe-area-inset-bottom))", pointerEvents: "none"}}>
         <div className="lgp-bottom-nav" style={{display: "flex", gap: "20px", padding: "11px 20px", background: "#FBFBFA", boxShadow: "0 1px 0 rgba(28,30,31,0.06) inset, 0 6px 22px rgba(28,30,31,0.14)", pointerEvents: "auto"}}>
           {nav.map((n, _i) => (
     <Fragment key={_i}>
@@ -1079,7 +1079,7 @@ export default function HomeConfigurator() {
       {modalAbierto ? (
     <Fragment>
 
-        <div data-nofx="1" style={{position: "fixed", inset: "0", zIndex: "90", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "18px", padding: "26px", background: "rgba(251,251,250,0.76)", backdropFilter: "blur(3px)", animation: "lgpIn .22s ease both"}}>
+        <div data-nofx="1" style={{position: "fixed", inset: "0", zIndex: "90", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "18px", padding: "26px", background: "rgba(251,251,250,0.76)", backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)", animation: "lgpIn .22s ease both"}}>
           <div style={{width: "min(680px,100%)", background: "#fff", border: "1px solid #EAE7E3", boxShadow: "0 24px 70px rgba(28,30,31,0.10)"}}>
             <div style={{position: "relative", height: "250px", overflow: "hidden", background: "#FCFBFA", borderBottom: "1px solid #F0EDE9"}}>
               <img src="/finished-house.jpg" alt="" style={{position: "absolute", left: "50%", top: "18px", width: "280px", height: "180px", objectFit: "cover", transform: "translateX(-58%) rotate(-3.5deg)", boxShadow: "0 12px 34px rgba(28,30,31,0.14)"}} />

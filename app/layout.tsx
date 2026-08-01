@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Archivo, IBM_Plex_Mono, Work_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -17,6 +17,13 @@ const workSans = Work_Sans({
   variable: "--font-work-sans",
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#FBFBFA",
+};
 
 export const metadata: Metadata = {
   title: "La Gran Piedra | Casas Custom · Rio Grande Valley",

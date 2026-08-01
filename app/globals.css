@@ -14,6 +14,13 @@ body {
   color: #1c1e1f;
   font-family: var(--font-work-sans), Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+.lgp-hero-height {
+  min-height: calc(100vh - 90px);
+  min-height: calc(100dvh - 90px);
 }
 
 a {
