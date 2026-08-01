@@ -52,15 +52,18 @@ textarea {
 }
 
 .lgp-hover-zoom {
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-  will-change: transform;
+  position: relative;
+  z-index: 1;
+  transform: translateZ(0) scale(1);
+  backface-visibility: hidden;
+  transition: transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.35s ease;
 }
 
-.lgp-hover-zoom:hover {
-  transform: scale(1.03);
-  box-shadow: 0 14px 30px rgba(28, 30, 31, 0.12);
-  position: relative;
-  z-index: 3;
+.lgp-hover-zoom:hover,
+.lgp-hover-zoom:focus-visible {
+  transform: translateZ(0) scale(1.018);
+  box-shadow: 0 10px 22px rgba(28, 30, 31, 0.10);
+  z-index: 2;
 }
 
 @keyframes lgpIn {

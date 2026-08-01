@@ -457,7 +457,7 @@ export default function HomeConfigurator() {
           <a href="https://tiktok.com" title="TikTok" style={{display: "flex", alignItems: "center"}}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#505759" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.2 3v11.4a3.9 3.9 0 1 1-3.2-3.84"></path><path d="M14.2 3c.3 2.6 1.9 4.2 4.5 4.5"></path></svg></a>
         </div>
 
-        <a href="#contacto" style={{display: "flex", alignItems: "center", padding: "0 24px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", whiteSpace: "nowrap"}}>Agenda una cita</a>
+        <a href="#contacto" className="lgp-hover-zoom" style={{display: "flex", alignItems: "center", padding: "0 24px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", whiteSpace: "nowrap"}}>Agenda una cita</a>
       </div>
 
       <section id="index" data-screen-label="Inicio" style={{position: "relative", minHeight: "calc(100vh - 90px)", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "110px 22px 24px", overflow: "hidden"}}>
@@ -471,8 +471,8 @@ export default function HomeConfigurator() {
             <p style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "clamp(30px,3.6vw,46px)", lineHeight: "1.1", letterSpacing: "-0.03em", textTransform: "uppercase", textWrap: "balance", color: "#fff"}}>Aquí el cliente firma el plano</p>
             <p style={{margin: "18px 0 0", maxWidth: "42ch", fontSize: "16px", lineHeight: "1.6", color: "rgba(255,255,255,0.82)", textWrap: "pretty"}}>Nadie más en el Valle te deja decidir cada módulo antes de mover un solo ladrillo.</p>
             <div style={{display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "34px"}}>
-              <a href="#personaliza" style={{padding: "13px 20px", background: "#F2004B", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Personaliza tu casa</a>
-              <a href="#lugares" style={{padding: "13px 20px", border: "1px solid rgba(255,255,255,0.45)", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Ver lotes disponibles</a>
+              <a href="#personaliza" className="lgp-hover-zoom" style={{padding: "13px 20px", background: "#F2004B", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Personaliza tu casa</a>
+              <a href="#lugares" className="lgp-hover-zoom" style={{padding: "13px 20px", border: "1px solid rgba(255,255,255,0.45)", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Ver lotes disponibles</a>
             </div>
           </div>
         </div>
@@ -525,7 +525,7 @@ export default function HomeConfigurator() {
             {pasos.map((p, _i) => (
     <Fragment key={_i}>
 
-              <button onClick={p.onClick} style={p.style}>{p.n}</button>
+              <button onClick={p.onClick} style={p.style} className="lgp-hover-zoom">{p.n}</button>
             
     </Fragment>
     ))}
@@ -560,8 +560,8 @@ export default function HomeConfigurator() {
                     </div>
                   </div>
                   <div style={{display: "flex", borderTop: "1px solid #F0EDE9"}}>
-                    <button onClick={drumUp} style={{flex: "1", padding: "9px 0", border: "0", borderRight: "1px solid #F0EDE9", background: "transparent", color: "#8A8F91", fontSize: "13px", cursor: "pointer"}}>▲</button>
-                    <button onClick={drumDown} style={{flex: "1", padding: "9px 0", border: "0", background: "transparent", color: "#8A8F91", fontSize: "13px", cursor: "pointer"}}>▼</button>
+                    <button onClick={drumUp} className="lgp-hover-zoom" style={{flex: "1", padding: "9px 0", border: "0", borderRight: "1px solid #F0EDE9", background: "transparent", color: "#8A8F91", fontSize: "13px", cursor: "pointer"}}>▲</button>
+                    <button onClick={drumDown} className="lgp-hover-zoom" style={{flex: "1", padding: "9px 0", border: "0", background: "transparent", color: "#8A8F91", fontSize: "13px", cursor: "pointer"}}>▼</button>
                   </div>
                 </div>
 
@@ -773,7 +773,7 @@ export default function HomeConfigurator() {
             <div>
               <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "18px", flexWrap: "wrap", marginBottom: "22px"}}>
                 <p style={{margin: "0", maxWidth: "600px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Cruzamos tu brief con la orientación de <strong style={{fontWeight: "600"}}>{loteId}</strong> y los <strong style={{fontWeight: "600"}}>{ft2Rest} ft²</strong> que te quedan dentro del límite del lote. Solo módulos que sí caben.</p>
-                <button onClick={runAI} style={{padding: "11px 17px", background: "#1C1E1F", color: "#FBFBFA", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>{aiLabel}</button>
+                <button onClick={runAI} className="lgp-hover-zoom" style={{padding: "11px 17px", background: "#1C1E1F", color: "#FBFBFA", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>{aiLabel}</button>
               </div>
 
               {aiError ? (
@@ -876,7 +876,7 @@ export default function HomeConfigurator() {
                   </div>
                   <div>
                     <p style={{margin: "0 0 14px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Al enviar, el arquitecto recibe este resumen completo y arrancamos el seguimiento para agendar tu cita presencial en el lote.</p>
-                    <button onClick={enviar} style={{padding: "14px 20px", background: "#F2004B", color: "#fff", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Enviar al arquitecto →</button>
+                    <button onClick={enviar} className="lgp-hover-zoom" style={{padding: "14px 20px", background: "#F2004B", color: "#fff", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Enviar al arquitecto →</button>
                     <p style={{margin: "14px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>Prototipo — no se envía correo real</p>
                   </div>
                 </div>
@@ -889,8 +889,8 @@ export default function HomeConfigurator() {
     ) : null}
 
           <div style={{display: "flex", alignItems: "center", gap: "10px", marginTop: "40px", paddingTop: "22px", borderTop: "1px solid #F0EDE9"}}>
-            <button onClick={atras} style={{padding: "11px 17px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>← Atrás</button>
-            <button onClick={siguiente} style={{padding: "11px 17px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Siguiente →</button>
+            <button onClick={atras} className="lgp-hover-zoom" style={{padding: "11px 17px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>← Atrás</button>
+            <button onClick={siguiente} className="lgp-hover-zoom" style={{padding: "11px 17px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Siguiente →</button>
             <span style={{marginLeft: "auto", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>{pasoHint}</span>
           </div>
         </div>
@@ -952,7 +952,7 @@ export default function HomeConfigurator() {
     <Fragment key={_i}>
 
               <div style={{borderBottom: "1px solid #EFECE8"}}>
-                <button onClick={f.onToggle} style={{display: "flex", alignItems: "center", gap: "14px", width: "100%", padding: "17px 4px", background: "transparent", border: "0", textAlign: "left", cursor: "pointer"}}>
+                <button onClick={f.onToggle} className="lgp-hover-zoom" style={{display: "flex", alignItems: "center", gap: "14px", width: "100%", padding: "17px 4px", background: "transparent", border: "0", textAlign: "left", cursor: "pointer"}}>
                   <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "13px", color: "#F2004B", flex: "none", width: "12px"}}>{f.icon}</span>
                   <span style={{fontSize: "15px", lineHeight: "1.5", color: "#1C1E1F"}}>{f.q}</span>
                 </button>
@@ -975,7 +975,7 @@ export default function HomeConfigurator() {
         <div data-nofx="1" style={{maxWidth: "660px", margin: "0 auto", textAlign: "center"}}>
           <p style={{margin: "0 0 26px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", letterSpacing: "0.16em", color: "#A9ADAF", textTransform: "uppercase"}}>Contacto</p>
           <p style={{margin: "0 0 40px", fontSize: "clamp(20px,2.5vw,30px)", lineHeight: "1.34", letterSpacing: "-0.014em", textWrap: "pretty"}}>Trae tu idea a medio cocinar. La terminamos juntos en el lote.</p>
-          <a href="#personaliza" style={{display: "inline-flex", alignItems: "center", justifyContent: "center", width: "88px", height: "88px", background: "#1C1E1F", color: "#FBFBFA", fontSize: "24px"}}>→</a>
+          <a href="#personaliza" className="lgp-hover-zoom" style={{display: "inline-flex", alignItems: "center", justifyContent: "center", width: "88px", height: "88px", background: "#1C1E1F", color: "#FBFBFA", fontSize: "24px"}}>→</a>
           <div style={{display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "26px", marginTop: "46px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", letterSpacing: "0.08em", color: "#8A8F91"}}>
             <a href="tel:+19560000000">(956) 000 0000</a>
             <a href="mailto:hola@lagranpiedra.com">HOLA@LAGRANPIEDRA.COM</a>
@@ -994,7 +994,7 @@ export default function HomeConfigurator() {
           {nav.map((n, _i) => (
     <Fragment key={_i}>
 
-            <a href={n.href} style={{display: "flex", alignItems: "center", gap: "6px", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "600", letterSpacing: "0.14em", textTransform: "uppercase", color: n.color}}>
+            <a href={n.href} className="lgp-hover-zoom" style={{display: "flex", alignItems: "center", gap: "6px", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "600", letterSpacing: "0.14em", textTransform: "uppercase", color: n.color}}>
               <span style={{width: "5px", height: "5px", display: "block", background: n.dot}}></span>{n.label}
             </a>
           
@@ -1033,13 +1033,13 @@ export default function HomeConfigurator() {
               {modalDisponible ? (
     <Fragment>
 
-                <button onClick={modalElegir} style={{marginTop: "20px", padding: "12px 18px", background: "#F2004B", border: "0", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Construir en este lote →</button>
+                <button onClick={modalElegir} className="lgp-hover-zoom" style={{marginTop: "20px", padding: "12px 18px", background: "#F2004B", border: "0", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Construir en este lote →</button>
               
     </Fragment>
     ) : null}
             </div>
           </div>
-          <button onClick={cerrarModal} style={{padding: "10px 16px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Cerrar ✕</button>
+          <button onClick={cerrarModal} className="lgp-hover-zoom" style={{padding: "10px 16px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Cerrar ✕</button>
         </div>
       
     </Fragment>
