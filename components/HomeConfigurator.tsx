@@ -42,6 +42,7 @@ function cardStyle(on: boolean, extra?: Record<string, any>): Record<string, any
 export default function HomeConfigurator() {
   const bgRef = useRef<HTMLDivElement | null>(null);
   const wheelAtRef = useRef(0);
+  const moduloWheelAtRef = useRef(0);
 
   const [lotModal, setLotModal] = useState<Lote | null>(null);
   const [paso, setPaso] = useState(1);
@@ -58,6 +59,7 @@ export default function HomeConfigurator() {
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [enviado, setEnviado] = useState(false);
   const [drumIdx, setDrumIdx] = useState(1);
+  const [moduloIdx, setModuloIdx] = useState(0);
 
   // hexagon particle background (canvas), ported from the prototype
   useEffect(() => {
@@ -370,11 +372,44 @@ export default function HomeConfigurator() {
     const on = modulos.indexOf(m.key) >= 0;
     return {
       iconKey: m.key, nombre: m.corto, rango: m.rango, area: m.area, prop: m.prop, razon: sg.razon,
+      on,
       box: on ? '#F2004B' : '#fff',
       cardStyle: cardStyle(on),
       onToggle: () => setModulos((prev) => (prev.indexOf(m.key) >= 0 ? prev.filter((k) => k !== m.key) : prev.concat([m.key]))),
     };
   });
+
+  const moduloDrumIdx = Math.max(0, Math.min(mods.length - 1, moduloIdx));
+  const moduloDrum = mods.map((m, i) => {
+    const a = (i - moduloDrumIdx) * STEP;
+    const far = Math.abs(a) > 76;
+    return {
+      iconKey: m.iconKey, nombre: m.nombre,
+      dot: m.on ? '#F2004B' : '#D5D7D8',
+      onClick: () => setModuloIdx(i),
+      style: {
+        position: 'absolute', left: '20px', right: '20px', top: '50%', height: '42px', marginTop: '-21px',
+        display: far ? 'none' : 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: '12px', padding: '0 8px', border: 0, background: 'transparent',
+        font: 'inherit', color: i === moduloDrumIdx ? '#1C1E1F' : '#505759',
+        opacity: Math.max(0, 1 - Math.abs(a) / 88),
+        transform: 'rotateX(' + -a + 'deg) translateZ(' + R + 'px)',
+        transformOrigin: '50% 50%', backfaceVisibility: 'hidden',
+        cursor: 'pointer', transition: 'transform .28s cubic-bezier(.22,.61,.36,1), opacity .28s ease, color .2s ease',
+      } as Record<string, any>,
+    };
+  });
+  const focoModulo = mods[moduloDrumIdx] || null;
+  const moduloDrumUp = () => setModuloIdx((i) => Math.max(0, i - 1));
+  const moduloDrumDown = () => setModuloIdx((i) => Math.min(mods.length - 1, i + 1));
+  const onModuloDrumWheel = (e: WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const now = Date.now();
+    if (moduloWheelAtRef.current && now - moduloWheelAtRef.current < 140) return;
+    moduloWheelAtRef.current = now;
+    setModuloIdx((i) => Math.max(0, Math.min(mods.length - 1, i + (e.deltaY > 0 ? 1 : -1))));
+  };
+  const modulosAgregados = mods.filter((m) => m.on).map((m) => m.nombre).join(', ') || 'Ninguno aún';
   const aiError_ = aiError;
   const aiLabel = aiLoading ? 'Analizando…' : sugeridos ? 'Volver a analizar' : 'Analizar mi brief';
 
@@ -784,34 +819,72 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
 
-              <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(250px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3"}}>
-                {mods.map((m, _i) => (
+              <div style={{display: "grid", gridTemplateColumns: "minmax(230px,300px) 1fr", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
+
+                <div style={{position: "relative", background: "#fff", padding: "0", overflow: "hidden"}}>
+                  <div onWheel={onModuloDrumWheel} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
+                    <div style={{position: "absolute", left: "0", right: "0", top: "50%", height: "44px", marginTop: "-22px", borderTop: "1px solid #F2004B", borderBottom: "1px solid #F2004B", pointerEvents: "none", zIndex: "2"}}></div>
+                    <div style={{position: "absolute", left: "0", right: "0", top: "0", height: "74px", background: "linear-gradient(#fff 12%, rgba(255,255,255,0))", pointerEvents: "none", zIndex: "3"}}></div>
+                    <div style={{position: "absolute", left: "0", right: "0", bottom: "0", height: "74px", background: "linear-gradient(rgba(255,255,255,0), #fff 88%)", pointerEvents: "none", zIndex: "3"}}></div>
+                    <div style={{position: "absolute", inset: "0", transformStyle: "preserve-3d"}}>
+                      {moduloDrum.map((m, _i) => (
     <Fragment key={_i}>
 
-                  <button onClick={m.onToggle} style={m.cardStyle} className="lgp-hover-zoom">
-                    <span style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px"}}>
-                      <span style={{display: "flex", alignItems: "center", gap: "12px"}}>
-                        <span style={{width: "36px", height: "36px", flex: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F5F2", borderRadius: "7px"}}>
-                          <ModuloIcon moduleKey={m.iconKey} size={20} />
-                        </span>
-                        <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase", lineHeight: "1.3"}}>{m.nombre}</span>
-                      </span>
-                      <span style={{width: "16px", height: "16px", flex: "none", display: "block", border: "1px solid #C9CBCC", background: m.box}}></span>
-                    </span>
-                    <span style={{display: "block", marginTop: "13px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>{m.rango} · {m.area} ft² · {m.prop}</span>
-                    {m.razon ? (
-    <Fragment>
+                        <button onClick={m.onClick} style={m.style} className="lgp-hover-zoom">
+                          <span style={{display: "flex", alignItems: "center", gap: "10px"}}>
+                            <span style={{width: "7px", height: "7px", display: "block", flex: "none", background: m.dot}}></span>
+                            <ModuloIcon moduleKey={m.iconKey} size={16} />
+                            <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.03em", textTransform: "uppercase"}}>{m.nombre}</span>
+                          </span>
+                        </button>
 
-                      <span style={{display: "block", marginTop: "12px", paddingTop: "11px", borderTop: "1px solid #F0EDE9", fontSize: "13px", lineHeight: "1.55", color: "#505759"}}>{m.razon}</span>
-                    
-    </Fragment>
-    ) : null}
-                  </button>
-                
     </Fragment>
     ))}
+                    </div>
+                  </div>
+                  <div style={{display: "flex", borderTop: "1px solid #F0EDE9"}}>
+                    <button onClick={moduloDrumUp} className="lgp-hover-zoom" style={{flex: "1", padding: "9px 0", border: "0", borderRight: "1px solid #F0EDE9", background: "transparent", color: "#8A8F91", fontSize: "13px", cursor: "pointer"}}>▲</button>
+                    <button onClick={moduloDrumDown} className="lgp-hover-zoom" style={{flex: "1", padding: "9px 0", border: "0", background: "transparent", color: "#8A8F91", fontSize: "13px", cursor: "pointer"}}>▼</button>
+                  </div>
+                </div>
+
+                {focoModulo ? (
+    <Fragment>
+                <div style={{background: "#fff", padding: "24px 24px 26px", display: "flex", flexDirection: "column"}}>
+                  <div style={{display: "flex", alignItems: "center", gap: "14px"}}>
+                    <span style={{width: "44px", height: "44px", flex: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F5F2", borderRadius: "9px"}}>
+                      <ModuloIcon moduleKey={focoModulo.iconKey} size={24} />
+                    </span>
+                    <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "15px", letterSpacing: "0.03em", textTransform: "uppercase"}}>{focoModulo.nombre}</span>
+                  </div>
+                  <div style={{marginTop: "16px", borderTop: "1px solid #F0EDE9"}}>
+                    {[{ k: 'Rango', v: focoModulo.rango }, { k: 'Área', v: focoModulo.area + ' ft²' }, { k: 'Proporción', v: focoModulo.prop }].map((d, _i) => (
+    <Fragment key={_i}>
+
+                      <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "10px 0", borderBottom: "1px solid #F4F1ED"}}>
+                        <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>{d.k}</span>
+                        <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "700", fontSize: "14px"}}>{d.v}</span>
+                      </div>
+
+    </Fragment>
+    ))}
+                  </div>
+                  {focoModulo.razon ? (
+    <Fragment>
+
+                    <p style={{margin: "12px 0 0", fontSize: "13px", lineHeight: "1.55", color: "#505759"}}>{focoModulo.razon}</p>
+
+    </Fragment>
+    ) : null}
+                  <div style={{marginTop: "auto", paddingTop: "20px"}}>
+                    <button onClick={focoModulo.onToggle} className="lgp-hover-zoom" style={focoModulo.on ? {padding: "11px 17px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"} : {padding: "11px 17px", background: "#F2004B", border: "0", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>{focoModulo.on ? '✓ Agregado — quitar' : '+ Agregar módulo'}</button>
+                  </div>
+                </div>
+    </Fragment>
+    ) : null}
               </div>
-              <p style={{margin: "16px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>La IA interpreta intención y filtra el catálogo. No mueve muros ni genera planos.</p>
+              <p style={{margin: "14px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>Agregados: {modulosAgregados}</p>
+              <p style={{margin: "8px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>La IA interpreta intención y filtra el catálogo. No mueve muros ni genera planos.</p>
             </div>
           
     </Fragment>
