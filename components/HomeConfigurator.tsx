@@ -16,7 +16,7 @@ import {
 import HeroLoopVideo from '@/components/HeroLoopVideo';
 import { ModuloIcon, FachadaIcon } from '@/components/ConfigIcons';
 import MoodboardPreview from '@/components/MoodboardPreview';
-import FloorplanDiagram from '@/components/FloorplanDiagram';
+import MoodboardCollage from '@/components/MoodboardCollage';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
 
 type Lote = (typeof LOTES)[number];
@@ -865,40 +865,9 @@ export default function HomeConfigurator() {
     ) : null}
               </div>
 
-              <div style={{position: "relative", marginTop: "34px", padding: "30px 22px", background: "repeating-linear-gradient(135deg,#F3F1EE 0 6px,#FCFBFA 6px 12px)", border: "1px solid #EAE7E3"}}>
-                <button onClick={() => setPreviewOpen(true)} className="lgp-hover-zoom" style={{position: "absolute", top: "14px", right: "14px", padding: "8px 13px", background: "#fff", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Pantalla completa ↗</button>
-                <div style={{display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center"}}>
-                  <div style={{width: "84px", flex: "none", background: "#fff", padding: "8px", boxShadow: "0 10px 20px rgba(28,30,31,0.12)", transform: "rotate(-2deg)"}}>
-                    <FloorplanDiagram planKey={plan ?? 'A'} />
-                  </div>
-                  {interiorSeleccionado ? [interiorSeleccionado.c1, interiorSeleccionado.c2, interiorSeleccionado.c3].map((c, _i) => (
-    <Fragment key={_i}>
-                    <span style={{width: "34px", height: "34px", flex: "none", background: c, boxShadow: "0 8px 16px rgba(28,30,31,0.14)", transform: `rotate(${_i % 2 === 0 ? -4 : 3}deg)`, display: "block"}}></span>
-    </Fragment>
-    )) : null}
-                  {modulosSeleccionados.map((m, _i) => (
-    <Fragment key={_i}>
-                    <div style={{width: "58px", height: "58px", flex: "none", background: "#fff", padding: "4px", boxShadow: "0 10px 20px rgba(28,30,31,0.14)", transform: `rotate(${_i % 2 === 0 ? 3 : -3}deg)`}}>
-                      <div style={{width: "100%", height: "100%", overflow: "hidden", background: "#F7F5F2", display: "flex", alignItems: "center", justifyContent: "center"}}>
-                        {PHOTO_BY_MODULE[m.iconKey] ? (
-    <Fragment>
-    <img src={PHOTO_BY_MODULE[m.iconKey]} alt={m.nombre} style={{width: "100%", height: "100%", objectFit: "cover", display: "block"}} />
-    </Fragment>
-    ) : (
-    <Fragment>
-    <ModuloIcon moduleKey={m.iconKey} size={22} />
-    </Fragment>
-    )}
-                      </div>
-                    </div>
-    </Fragment>
-    ))}
-                  {!interiorSeleccionado && !modulosSeleccionados.length ? (
-    <Fragment>
-                    <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>Tu escritorio — aquí van cayendo tus ideas</span>
-    </Fragment>
-    ) : null}
-                </div>
+              <div style={{position: "relative", marginTop: "34px", padding: "26px 20px", background: "repeating-linear-gradient(135deg,#F3F1EE 0 6px,#FCFBFA 6px 12px)", border: "1px solid #EAE7E3"}}>
+                <button onClick={() => setPreviewOpen(true)} className="lgp-hover-zoom" style={{position: "absolute", top: "14px", right: "14px", padding: "8px 13px", background: "#fff", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", zIndex: 2}}>Pantalla completa ↗</button>
+                <MoodboardCollage planKey={plan} planNombre={planNombreSel} interior={interiorSeleccionado} modulosSeleccionados={modulosSeleccionados} compact />
               </div>
             </div>
 
