@@ -13,7 +13,7 @@ import {
   PASO_NOMBRES,
   PASO_HINTS,
 } from '@/lib/data';
-import VideoHero from '@/components/VideoHero';
+import HeroLoopVideo from '@/components/HeroLoopVideo';
 import { ModuloIcon, FachadaIcon } from '@/components/ConfigIcons';
 
 type Lote = (typeof LOTES)[number];
@@ -496,7 +496,9 @@ export default function HomeConfigurator() {
       </div>
 
       <section id="index" data-screen-label="Inicio" className="lgp-hero-height" style={{position: "relative", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "110px 22px 24px", overflow: "hidden"}}>
-        <VideoHero src="/hero-video.mp4" poster="/hero-house.jpg" alt="Casa custom de La Gran Piedra, Edinburg TX" style={{position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 0}} />
+        <div style={{position: "absolute", inset: 0, width: "100%", height: "100%", zIndex: 0}}>
+          <HeroLoopVideo src="/video/casa-4701-dron-hero.mp4" poster="/hero-house.jpg" crossfadeDuration={1} />
+        </div>
         <div style={{position: "absolute", inset: 0, background: "linear-gradient(100deg, rgba(18,19,20,0.85) 0%, rgba(18,19,20,0.55) 40%, rgba(18,19,20,0.15) 68%, rgba(18,19,20,0.05) 100%)", zIndex: 1}}></div>
         <div style={{position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(18,19,20,0) 0%, rgba(18,19,20,0.5) 100%)", zIndex: 1}}></div>
 
