@@ -15,6 +15,8 @@ import {
 } from '@/lib/data';
 import HeroLoopVideo from '@/components/HeroLoopVideo';
 import { ModuloIcon, FachadaIcon } from '@/components/ConfigIcons';
+import MoodboardPreview from '@/components/MoodboardPreview';
+import FloorplanDiagram from '@/components/FloorplanDiagram';
 
 type Lote = (typeof LOTES)[number];
 type PlanKey = keyof typeof PLANES;
@@ -60,6 +62,7 @@ export default function HomeConfigurator() {
   const [enviado, setEnviado] = useState(false);
   const [drumIdx, setDrumIdx] = useState(1);
   const [moduloIdx, setModuloIdx] = useState(0);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // hexagon particle background (canvas), ported from the prototype
   useEffect(() => {
@@ -339,9 +342,9 @@ export default function HomeConfigurator() {
     } as Record<string, any>,
   }));
   const esPaso1 = paso === 1, esPaso2 = paso === 2, esPaso3 = paso === 3, esPaso4 = paso === 4;
-  const esPaso5 = paso === 5, esPaso6 = paso === 6, esPaso7 = paso === 7, esPaso8 = paso === 8;
+  const esPaso5 = paso === 5, esPaso6 = paso === 6, esPaso7 = paso === 7;
   const atras = () => setPaso((p) => Math.max(1, p - 1));
-  const siguiente = () => setPaso((p) => Math.min(8, p + 1));
+  const siguiente = () => setPaso((p) => Math.min(PASO_NOMBRES.length, p + 1));
 
   const loteId = lote ? lote.id : 'tu lote';
   const planAOn = plan === 'A', planBOn = plan === 'B', planCOn = plan === 'C';
@@ -429,6 +432,10 @@ export default function HomeConfigurator() {
     { k: 'Contacto', v: (lead.nombre || '—') + (lead.correo ? ' · ' + lead.correo : '') + (lead.tel ? ' · ' + lead.tel : '') },
     { k: 'ft² libres', v: ft2Rest + ' ft² dentro del límite' },
   ];
+
+  const interiorSeleccionado = interior ? INTERIORES.find((i) => i.key === interior) ?? null : null;
+  const modulosSeleccionados = mods.filter((m) => m.on).map((m) => ({ iconKey: m.iconKey, nombre: m.nombre, razon: m.razon }));
+  const planNombreSel = plan ? PLANES[plan].nombre : 'Sin floorplan elegido';
 
   const noEnviado = !enviado;
   const enviar = () => setEnviado(true);
@@ -555,7 +562,7 @@ export default function HomeConfigurator() {
         <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
           <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "20px", flexWrap: "wrap", marginBottom: "12px"}}>
             <h2 style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Personaliza tu casa</h2>
-            <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Paso {pasoNum} de 8 — {pasoNombre}</span>
+            <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Paso {pasoNum} de {PASO_NOMBRES.length} — {pasoNombre}</span>
           </div>
 
           <div style={{display: "flex", gap: "1px", background: "#EAE7E3", marginBottom: "34px"}}>
@@ -762,6 +769,21 @@ export default function HomeConfigurator() {
           {esPaso4 ? (
     <Fragment>
 
+            <div style={{maxWidth: "660px"}}>
+              <p style={{margin: "0 0 8px", fontSize: "clamp(19px,2.2vw,25px)", lineHeight: "1.35", letterSpacing: "-0.01em", textWrap: "pretty"}}>Cuéntanos, en tus palabras, cómo se siente vivir ahí.</p>
+              <p style={{margin: "0 0 22px", fontSize: "15px", lineHeight: "1.6", color: "#8A8F91"}}>Sin tecnicismos. Escribe como le contarías a un amigo: cuántos son, qué hacen en casa, qué odiaron de la casa anterior.</p>
+              <textarea value={brief} onChange={onBrief} placeholder="Somos cuatro, trabajo desde casa y necesito silencio real. Cocinamos mucho y odiamos que se vea el desorden de la cocina desde la sala. Queremos sombra al mediodía…" rows={9} style={{width: "100%", padding: "18px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "15px", lineHeight: "1.65", color: "#1C1E1F", outline: "none"}}></textarea>
+              <div style={{display: "flex", justifyContent: "space-between", marginTop: "10px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>
+                <span>Opcional, pero cambia todo</span><span>{briefLen} caracteres</span>
+              </div>
+            </div>
+
+    </Fragment>
+    ) : null}
+
+          {esPaso5 ? (
+    <Fragment>
+
             <div>
               <p style={{margin: "0 0 26px", maxWidth: "560px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Paletas de interiorismo vigentes en 2026. Puedes cambiarla más adelante sin costo.</p>
               <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3"}}>
@@ -780,36 +802,14 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
                   </button>
-                
+
     </Fragment>
     ))}
               </div>
-            </div>
-          
-    </Fragment>
-    ) : null}
 
-          {esPaso5 ? (
-    <Fragment>
-
-            <div style={{maxWidth: "660px"}}>
-              <p style={{margin: "0 0 8px", fontSize: "clamp(19px,2.2vw,25px)", lineHeight: "1.35", letterSpacing: "-0.01em", textWrap: "pretty"}}>Cuéntanos, en tus palabras, cómo se siente vivir ahí.</p>
-              <p style={{margin: "0 0 22px", fontSize: "15px", lineHeight: "1.6", color: "#8A8F91"}}>Sin tecnicismos. Escribe como le contarías a un amigo: cuántos son, qué hacen en casa, qué odiaron de la casa anterior.</p>
-              <textarea value={brief} onChange={onBrief} placeholder="Somos cuatro, trabajo desde casa y necesito silencio real. Cocinamos mucho y odiamos que se vea el desorden de la cocina desde la sala. Queremos sombra al mediodía…" rows={9} style={{width: "100%", padding: "18px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "15px", lineHeight: "1.65", color: "#1C1E1F", outline: "none"}}></textarea>
-              <div style={{display: "flex", justifyContent: "space-between", marginTop: "10px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>
-                <span>Opcional, pero cambia todo</span><span>{briefLen} caracteres</span>
-              </div>
-            </div>
-          
-    </Fragment>
-    ) : null}
-
-          {esPaso6 ? (
-    <Fragment>
-
-            <div>
+              <p style={{margin: "40px 0 26px", maxWidth: "600px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Ahora arma tus zonas. Cruzamos tu brief con la orientación de <strong style={{fontWeight: "600"}}>{loteId}</strong> y los <strong style={{fontWeight: "600"}}>{ft2Rest} ft²</strong> que te quedan dentro del límite del lote.</p>
               <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "18px", flexWrap: "wrap", marginBottom: "22px"}}>
-                <p style={{margin: "0", maxWidth: "600px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Cruzamos tu brief con la orientación de <strong style={{fontWeight: "600"}}>{loteId}</strong> y los <strong style={{fontWeight: "600"}}>{ft2Rest} ft²</strong> que te quedan dentro del límite del lote. Solo módulos que sí caben.</p>
+                <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Solo módulos que sí caben</p>
                 <button onClick={runAI} className="lgp-hover-zoom" style={{padding: "11px 17px", background: "#1C1E1F", color: "#FBFBFA", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>{aiLabel}</button>
               </div>
 
@@ -817,7 +817,7 @@ export default function HomeConfigurator() {
     <Fragment>
 
                 <p style={{margin: "0 0 18px", padding: "12px 14px", borderLeft: "3px solid #F4DA40", background: "#FEFCEC", fontSize: "13px", color: "#6B6E70"}}>{aiError}</p>
-              
+
     </Fragment>
     ) : null}
 
@@ -886,13 +886,46 @@ export default function HomeConfigurator() {
     ) : null}
               </div>
               <p style={{margin: "14px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>Agregados: {modulosAgregados}</p>
-              <p style={{margin: "8px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>La IA interpreta intención y filtra el catálogo. No mueve muros ni genera planos.</p>
+              <p style={{margin: "8px 0 26px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>La IA interpreta intención y filtra el catálogo. No mueve muros ni genera planos.</p>
+
+              <div style={{border: "1px solid #EAE7E3", background: "#fff", padding: "22px"}}>
+                <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "18px"}}>
+                  <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.18em", textTransform: "uppercase"}}>Vista previa en vivo</p>
+                  <button onClick={() => setPreviewOpen(true)} className="lgp-hover-zoom" style={{padding: "9px 15px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>Ver en pantalla completa ↗</button>
+                </div>
+                <div style={{display: "flex", gap: "26px", flexWrap: "wrap", alignItems: "center"}}>
+                  <div style={{width: "130px", flex: "none"}}>
+                    <FloorplanDiagram planKey={plan ?? 'A'} />
+                  </div>
+                  <div style={{display: "flex", gap: "8px", flex: "none"}}>
+                    {interiorSeleccionado ? [interiorSeleccionado.c1, interiorSeleccionado.c2, interiorSeleccionado.c3].map((c, _i) => (
+    <Fragment key={_i}>
+                      <span style={{width: "28px", height: "28px", borderRadius: "999px", background: c, border: "1px solid rgba(28,30,31,0.08)", display: "block"}}></span>
+    </Fragment>
+    )) : (
+                      <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>Sin paleta aún</span>
+                    )}
+                  </div>
+                  <div style={{display: "flex", gap: "8px", flexWrap: "wrap", flex: "1 1 200px"}}>
+                    {modulosSeleccionados.length ? modulosSeleccionados.slice(0, 6).map((m, _i) => (
+    <Fragment key={_i}>
+                      <span style={{display: "flex", alignItems: "center", gap: "7px", padding: "7px 11px", border: "1px solid #EAE7E3", background: "#F7F5F2"}}>
+                        <ModuloIcon moduleKey={m.iconKey} size={14} />
+                        <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#505759", textTransform: "uppercase"}}>{m.nombre}</span>
+                      </span>
+    </Fragment>
+    )) : (
+                      <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>Sin módulos aún</span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-          
+
     </Fragment>
     ) : null}
 
-          {esPaso7 ? (
+          {esPaso6 ? (
     <Fragment>
 
             <div style={{maxWidth: "520px"}}>
@@ -913,11 +946,11 @@ export default function HomeConfigurator() {
                 </label>
               </div>
             </div>
-          
+
     </Fragment>
     ) : null}
 
-          {esPaso8 ? (
+          {esPaso7 ? (
     <Fragment>
 
             <div>
@@ -929,7 +962,7 @@ export default function HomeConfigurator() {
                   <p style={{margin: "0 0 16px", fontSize: "clamp(19px,2.2vw,24px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Tu configuración ya está con el arquitecto, {leadPrimerNombre}.</p>
                   <p style={{margin: "0", fontSize: "15px", lineHeight: "1.65", color: "#505759"}}>Te escribimos dentro de las próximas 24 horas para agendar la visita al lote. Seguimiento a 24 h, 72 h y 7 días — luego te dejamos en paz.</p>
                 </div>
-              
+
     </Fragment>
     ) : null}
               {noEnviado ? (
@@ -945,7 +978,7 @@ export default function HomeConfigurator() {
                         <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase", flex: "none"}}>{r.k}</span>
                         <span style={{fontSize: "14px", lineHeight: "1.5", textAlign: "right", color: "#1C1E1F"}}>{r.v}</span>
                       </div>
-                    
+
     </Fragment>
     ))}
                   </div>
@@ -955,11 +988,11 @@ export default function HomeConfigurator() {
                     <p style={{margin: "14px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>Prototipo — no se envía correo real</p>
                   </div>
                 </div>
-              
+
     </Fragment>
     ) : null}
             </div>
-          
+
     </Fragment>
     ) : null}
 
@@ -1119,6 +1152,17 @@ export default function HomeConfigurator() {
       
     </Fragment>
     ) : null}
+
+    <MoodboardPreview
+      open={previewOpen}
+      onClose={() => setPreviewOpen(false)}
+      planKey={plan}
+      planNombre={planNombreSel}
+      interior={interiorSeleccionado}
+      modulosSeleccionados={modulosSeleccionados}
+      brief={brief}
+      resumen={resumen}
+    />
 
     </div>
   );

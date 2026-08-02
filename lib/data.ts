@@ -54,7 +54,7 @@ export const FAQS = [
   { q: '¿Qué es exactamente una casa custom de La Gran Piedra?', a: 'Partes de un lote con reglas conocidas y de floorplans que ya validamos estructural y térmicamente. Sobre esa base decides fachada, interiores y qué módulos añadir. No es un catálogo cerrado ni un lienzo en blanco: es libertad con guardarraíles.' },
   { q: '¿Cuánto tiempo toma construir?', a: 'Entre 9 y 13 meses desde la firma, según el floorplan y los módulos. El calendario se comparte completo antes de arrancar y se actualiza cada semana.' },
   { q: '¿Puedo cambiar cosas después de configurar en la web?', a: 'Sí. El configurador es el punto de partida de la conversación, no un contrato. Todo se revisa con el arquitecto en la cita presencial en el lote.' },
-  { q: '¿Cómo funcionan las sugerencias por IA del paso 6?', a: 'Leemos tu brief y lo cruzamos con la orientación de tu lote y los pies cuadrados que te quedan disponibles. La IA solo filtra e interpreta: te propone módulos de nuestro catálogo que sí caben. No genera planos ni mueve muros.' },
+  { q: '¿Cómo funcionan las sugerencias por IA al armar mis zonas?', a: 'Leemos tu brief y lo cruzamos con la orientación de tu lote y los pies cuadrados que te quedan disponibles. La IA solo filtra e interpreta: te propone módulos de nuestro catálogo que sí caben. No genera planos ni mueve muros.' },
   { q: '¿Los lotes son de ustedes?', a: 'Sí. Piedra Norte en Edinburg es nuestra subdivisión, lo que nos permite garantizar reglas de diseño y evitar sorpresas de servidumbres o permisos.' },
   { q: '¿Trabajan con financiamiento?', a: 'Trabajamos con prestamistas de construcción locales del Valle. Te conectamos, pero el crédito lo contratas tú directo — nosotros no cobramos comisión por eso.' },
   { q: '¿Qué incluye el smart home?', a: 'Clima por zonas, control de accesos, riego, iluminación e infraestructura de red, todo cableado desde obra gris. Sin adhesivos ni dispositivos improvisados al final.' },
@@ -70,14 +70,13 @@ export const NAV = [
   { label: 'Contacto', id: 'contacto' },
 ];
 
-export const PASO_NOMBRES = ['Lote', 'Floorplan', 'Fachada', 'Interior', 'Brief', 'Sugerencias IA', 'Tus datos', 'Resumen'];
+export const PASO_NOMBRES = ['Lote', 'Floorplan', 'Fachada', 'Brief', 'Interior y módulos', 'Tus datos', 'Resumen'];
 export const PASO_HINTS = [
   'Elige un lote disponible para continuar',
   'Variantes curadas para tu lote',
   'Selecciona un estilo de fachada',
-  'Selecciona una paleta de interiores',
   'Escribe libremente, o sáltalo',
-  'Marca los módulos que quieras añadir',
+  'Elige tu paleta y arma tus zonas',
   'Solo pedimos datos al final',
   'Revisa y envía',
 ];
