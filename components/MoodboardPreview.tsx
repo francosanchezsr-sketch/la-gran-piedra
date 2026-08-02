@@ -2,6 +2,7 @@
 
 import FloorplanDiagram from '@/components/FloorplanDiagram';
 import { ModuloIcon } from '@/components/ConfigIcons';
+import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
 
 type ModuloRef = {
   iconKey: string;
@@ -17,15 +18,6 @@ type InteriorRef = {
 } | null;
 
 type ResumenRow = { k: string; v: string };
-
-const PHOTO_BY_MODULE: Record<string, string> = {
-  cocinaext: '/moodboard/cocinaext.jpg',
-  primary: '/moodboard/primary.jpg',
-  scullery: '/moodboard/scullery.jpg',
-  mudroom: '/moodboard/mudroom.jpg',
-  cocinaexh: '/moodboard/cocinaexh.jpg',
-  rec2: '/moodboard/rec2.jpg',
-};
 
 function ZoneCard({ modulo, tilt }: { modulo: ModuloRef; tilt: number }) {
   const photo = PHOTO_BY_MODULE[modulo.iconKey];

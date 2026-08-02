@@ -17,6 +17,7 @@ import HeroLoopVideo from '@/components/HeroLoopVideo';
 import { ModuloIcon, FachadaIcon } from '@/components/ConfigIcons';
 import MoodboardPreview from '@/components/MoodboardPreview';
 import FloorplanDiagram from '@/components/FloorplanDiagram';
+import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
 
 type Lote = (typeof LOTES)[number];
 type PlanKey = keyof typeof PLANES;
@@ -785,32 +786,25 @@ export default function HomeConfigurator() {
     <Fragment>
 
             <div>
-              <p style={{margin: "0 0 26px", maxWidth: "560px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Paletas de interiorismo vigentes en 2026. Puedes cambiarla más adelante sin costo.</p>
-              <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3"}}>
-                {interiores.map((i, _i) => (
+              <div style={{display: "flex", alignItems: "center", gap: "18px", flexWrap: "wrap", marginBottom: "34px"}}>
+                <p style={{margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase", flex: "none"}}>Gama</p>
+                <div style={{display: "flex", gap: "10px", flexWrap: "wrap"}}>
+                  {interiores.map((i, _i) => (
     <Fragment key={_i}>
 
-                  <button onClick={i.onSelect} style={i.cardStyle} className="lgp-hover-zoom">
-                    <span style={{display: "flex", height: "64px"}}>
+                    <button onClick={i.onSelect} title={i.nombre} className="lgp-hover-zoom" style={{display: "flex", width: "46px", height: "30px", padding: 0, border: i.on ? "2px solid #F2004B" : "1px solid #E4E1DD", overflow: "hidden", cursor: "pointer"}}>
                       <span style={{flex: "1", background: i.c1}}></span><span style={{flex: "1", background: i.c2}}></span><span style={{flex: "1", background: i.c3}}></span>
-                    </span>
-                    <span style={{display: "block", marginTop: "14px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>{i.nombre}</span>
-                    <span style={{display: "block", marginTop: "7px", fontSize: "13px", lineHeight: "1.5", color: "#8A8F91"}}>{i.desc}</span>
-                    {i.on ? (
-    <Fragment>
-    <span style={{display: "block", marginTop: "12px", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.16em", color: "#F2004B", textTransform: "uppercase"}}>✓ Seleccionada</span>
-    </Fragment>
-    ) : null}
-                  </button>
+                    </button>
 
     </Fragment>
     ))}
+                </div>
+                <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>{interiorSeleccionado ? interiorSeleccionado.nombre : 'Elige una'}</span>
               </div>
 
-              <p style={{margin: "40px 0 26px", maxWidth: "600px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Ahora arma tus zonas. Cruzamos tu brief con la orientación de <strong style={{fontWeight: "600"}}>{loteId}</strong> y los <strong style={{fontWeight: "600"}}>{ft2Rest} ft²</strong> que te quedan dentro del límite del lote.</p>
-              <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "18px", flexWrap: "wrap", marginBottom: "22px"}}>
-                <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Solo módulos que sí caben</p>
-                <button onClick={runAI} className="lgp-hover-zoom" style={{padding: "11px 17px", background: "#1C1E1F", color: "#FBFBFA", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>{aiLabel}</button>
+              <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "18px", flexWrap: "wrap", marginBottom: "14px"}}>
+                <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Zonas</p>
+                <button onClick={runAI} className="lgp-hover-zoom" style={{padding: "9px 15px", background: "#1C1E1F", color: "#FBFBFA", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>{aiLabel}</button>
               </div>
 
               {aiError ? (
@@ -852,72 +846,58 @@ export default function HomeConfigurator() {
 
                 {focoModulo ? (
     <Fragment>
-                <div style={{background: "#fff", padding: "24px 24px 26px", display: "flex", flexDirection: "column"}}>
-                  <div style={{display: "flex", alignItems: "center", gap: "14px"}}>
-                    <span style={{width: "44px", height: "44px", flex: "none", display: "flex", alignItems: "center", justifyContent: "center", background: "#F7F5F2", borderRadius: "9px"}}>
-                      <ModuloIcon moduleKey={focoModulo.iconKey} size={24} />
-                    </span>
-                    <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "15px", letterSpacing: "0.03em", textTransform: "uppercase"}}>{focoModulo.nombre}</span>
-                  </div>
-                  <div style={{marginTop: "16px", borderTop: "1px solid #F0EDE9"}}>
-                    {[{ k: 'Rango', v: focoModulo.rango }, { k: 'Área', v: focoModulo.area + ' ft²' }, { k: 'Proporción', v: focoModulo.prop }].map((d, _i) => (
-    <Fragment key={_i}>
-
-                      <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "16px", padding: "10px 0", borderBottom: "1px solid #F4F1ED"}}>
-                        <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>{d.k}</span>
-                        <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "700", fontSize: "14px"}}>{d.v}</span>
-                      </div>
-
-    </Fragment>
-    ))}
-                  </div>
-                  {focoModulo.razon ? (
+                <div style={{background: "#fff", padding: "20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: "12px"}}>
+                  <div style={{width: "72px", height: "72px", flex: "none", borderRadius: "10px", overflow: "hidden", background: "#F7F5F2", display: "flex", alignItems: "center", justifyContent: "center"}}>
+                    {PHOTO_BY_MODULE[focoModulo.iconKey] ? (
     <Fragment>
-
-                    <p style={{margin: "12px 0 0", fontSize: "13px", lineHeight: "1.55", color: "#505759"}}>{focoModulo.razon}</p>
-
+    <img src={PHOTO_BY_MODULE[focoModulo.iconKey]} alt={focoModulo.nombre} style={{width: "100%", height: "100%", objectFit: "cover", display: "block"}} />
     </Fragment>
-    ) : null}
-                  <div style={{marginTop: "auto", paddingTop: "20px"}}>
-                    <button onClick={focoModulo.onToggle} className="lgp-hover-zoom" style={focoModulo.on ? {padding: "11px 17px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"} : {padding: "11px 17px", background: "#F2004B", border: "0", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>{focoModulo.on ? '✓ Agregado — quitar' : '+ Agregar módulo'}</button>
+    ) : (
+    <Fragment>
+    <ModuloIcon moduleKey={focoModulo.iconKey} size={30} />
+    </Fragment>
+    )}
                   </div>
+                  <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.04em", textTransform: "uppercase"}}>{focoModulo.nombre}</span>
+                  <button onClick={focoModulo.onToggle} className="lgp-hover-zoom" style={focoModulo.on ? {padding: "9px 15px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"} : {padding: "9px 15px", background: "#F2004B", border: "0", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>{focoModulo.on ? '✓ Agregado' : '+ Agregar'}</button>
                 </div>
     </Fragment>
     ) : null}
               </div>
-              <p style={{margin: "14px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>Agregados: {modulosAgregados}</p>
-              <p style={{margin: "8px 0 26px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>La IA interpreta intención y filtra el catálogo. No mueve muros ni genera planos.</p>
 
-              <div style={{border: "1px solid #EAE7E3", background: "#fff", padding: "22px"}}>
-                <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", marginBottom: "18px"}}>
-                  <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.18em", textTransform: "uppercase"}}>Vista previa en vivo</p>
-                  <button onClick={() => setPreviewOpen(true)} className="lgp-hover-zoom" style={{padding: "9px 15px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>Ver en pantalla completa ↗</button>
-                </div>
-                <div style={{display: "flex", gap: "26px", flexWrap: "wrap", alignItems: "center"}}>
-                  <div style={{width: "130px", flex: "none"}}>
+              <div style={{position: "relative", marginTop: "34px", padding: "30px 22px", background: "repeating-linear-gradient(135deg,#F3F1EE 0 6px,#FCFBFA 6px 12px)", border: "1px solid #EAE7E3"}}>
+                <button onClick={() => setPreviewOpen(true)} className="lgp-hover-zoom" style={{position: "absolute", top: "14px", right: "14px", padding: "8px 13px", background: "#fff", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Pantalla completa ↗</button>
+                <div style={{display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center"}}>
+                  <div style={{width: "84px", flex: "none", background: "#fff", padding: "8px", boxShadow: "0 10px 20px rgba(28,30,31,0.12)", transform: "rotate(-2deg)"}}>
                     <FloorplanDiagram planKey={plan ?? 'A'} />
                   </div>
-                  <div style={{display: "flex", gap: "8px", flex: "none"}}>
-                    {interiorSeleccionado ? [interiorSeleccionado.c1, interiorSeleccionado.c2, interiorSeleccionado.c3].map((c, _i) => (
+                  {interiorSeleccionado ? [interiorSeleccionado.c1, interiorSeleccionado.c2, interiorSeleccionado.c3].map((c, _i) => (
     <Fragment key={_i}>
-                      <span style={{width: "28px", height: "28px", borderRadius: "999px", background: c, border: "1px solid rgba(28,30,31,0.08)", display: "block"}}></span>
+                    <span style={{width: "34px", height: "34px", flex: "none", background: c, boxShadow: "0 8px 16px rgba(28,30,31,0.14)", transform: `rotate(${_i % 2 === 0 ? -4 : 3}deg)`, display: "block"}}></span>
     </Fragment>
-    )) : (
-                      <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>Sin paleta aún</span>
-                    )}
-                  </div>
-                  <div style={{display: "flex", gap: "8px", flexWrap: "wrap", flex: "1 1 200px"}}>
-                    {modulosSeleccionados.length ? modulosSeleccionados.slice(0, 6).map((m, _i) => (
+    )) : null}
+                  {modulosSeleccionados.map((m, _i) => (
     <Fragment key={_i}>
-                      <span style={{display: "flex", alignItems: "center", gap: "7px", padding: "7px 11px", border: "1px solid #EAE7E3", background: "#F7F5F2"}}>
-                        <ModuloIcon moduleKey={m.iconKey} size={14} />
-                        <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#505759", textTransform: "uppercase"}}>{m.nombre}</span>
-                      </span>
+                    <div style={{width: "58px", height: "58px", flex: "none", background: "#fff", padding: "4px", boxShadow: "0 10px 20px rgba(28,30,31,0.14)", transform: `rotate(${_i % 2 === 0 ? 3 : -3}deg)`}}>
+                      <div style={{width: "100%", height: "100%", overflow: "hidden", background: "#F7F5F2", display: "flex", alignItems: "center", justifyContent: "center"}}>
+                        {PHOTO_BY_MODULE[m.iconKey] ? (
+    <Fragment>
+    <img src={PHOTO_BY_MODULE[m.iconKey]} alt={m.nombre} style={{width: "100%", height: "100%", objectFit: "cover", display: "block"}} />
     </Fragment>
-    )) : (
-                      <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>Sin módulos aún</span>
-                    )}
-                  </div>
+    ) : (
+    <Fragment>
+    <ModuloIcon moduleKey={m.iconKey} size={22} />
+    </Fragment>
+    )}
+                      </div>
+                    </div>
+    </Fragment>
+    ))}
+                  {!interiorSeleccionado && !modulosSeleccionados.length ? (
+    <Fragment>
+                    <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>Tu escritorio — aquí van cayendo tus ideas</span>
+    </Fragment>
+    ) : null}
                 </div>
               </div>
             </div>
