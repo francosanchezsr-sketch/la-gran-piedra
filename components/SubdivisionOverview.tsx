@@ -1,6 +1,8 @@
 'use client';
 
-type PlatLot = { num: number; x: number; y: number; w: number; h: number };
+type PlatLot =
+  | { num: number; kind: 'rect'; x: number; y: number; w: number; h: number; rot?: number }
+  | { num: number; kind: 'wedge'; d: string; lx: number; ly: number };
 
 type OurLot = {
   id: string;
@@ -60,21 +62,34 @@ export default function SubdivisionOverview({
         </div>
 
         <div style={{ padding: '20px 26px 0' }}>
-          <svg viewBox="0 0 930 850" style={{ width: '100%', height: 'auto', display: 'block' }}>
+          <svg viewBox="0 0 600 1181" style={{ width: '100%', height: 'auto', maxHeight: '64vh', display: 'block', margin: '0 auto' }}>
+            {/* Calles privadas y bulbos de retorno (R50'), de contexto — el trazo de cada lote va encima */}
+            <rect x={140} y={165} width={35} height={890} fill="#EDEEEE" />
+            <rect x={355} y={165} width={35} height={890} fill="#EDEEEE" />
+            <rect x={255} y={198} width={24} height={857} fill="#E4E6E5" />
+            <circle cx={215} cy={165} r={50} fill="#EDEEEE" />
+            <circle cx={319} cy={165} r={50} fill="#EDEEEE" />
+
             {plat.map((p) => {
               const ours = ourByNum.get(p.num);
-              if (ours) {
+              const fill = ours ? ours.fill : '#F4F1ED';
+              const stroke = ours ? ours.stroke : '#DEDFDF';
+              const textFill = ours ? ours.textFill : '#B7BABB';
+              const onClick = ours ? () => { ours.onClick(); onClose(); } : undefined;
+
+              if (p.kind === 'wedge') {
                 return (
-                  <g key={p.num} onClick={() => { ours.onClick(); onClose(); }} style={{ cursor: 'pointer' }}>
-                    <rect x={p.x} y={p.y} width={p.w} height={p.h} fill={ours.fill} stroke={ours.stroke} strokeWidth={2} />
-                    <text x={p.x + p.w / 2} y={p.y + p.h / 2 + 4} textAnchor="middle" fontFamily="Archivo, sans-serif" fontSize={11} fontWeight={800} fill={ours.textFill}>{p.num}</text>
+                  <g key={p.num} onClick={onClick} style={ours ? { cursor: 'pointer' } : undefined}>
+                    <path d={p.d} fill={fill} stroke={stroke} strokeWidth={ours ? 2 : 1} />
+                    <text x={p.lx} y={p.ly + (ours ? 4 : 3)} textAnchor="middle" fontFamily={ours ? 'Archivo, sans-serif' : "'IBM Plex Mono', monospace"} fontSize={ours ? 10 : 8.5} fontWeight={ours ? 800 : 400} fill={textFill}>{p.num}</text>
                   </g>
                 );
               }
+              const transform = p.rot ? `rotate(${p.rot} ${p.x + p.w / 2} ${p.y + p.h / 2})` : undefined;
               return (
-                <g key={p.num}>
-                  <rect x={p.x} y={p.y} width={p.w} height={p.h} fill="#F4F1ED" stroke="#DEDFDF" strokeWidth={1} />
-                  <text x={p.x + p.w / 2} y={p.y + p.h / 2 + 3} textAnchor="middle" fontFamily="'IBM Plex Mono', monospace" fontSize={9} fill="#B7BABB">{p.num}</text>
+                <g key={p.num} onClick={onClick} style={ours ? { cursor: 'pointer' } : undefined} transform={transform}>
+                  <rect x={p.x} y={p.y} width={p.w} height={p.h} fill={fill} stroke={stroke} strokeWidth={ours ? 2 : 1} />
+                  <text x={p.x + p.w / 2} y={p.y + p.h / 2 + (ours ? 4 : 3)} textAnchor="middle" fontFamily={ours ? 'Archivo, sans-serif' : "'IBM Plex Mono', monospace"} fontSize={ours ? 10 : 8.5} fontWeight={ours ? 800 : 400} fill={textFill}>{p.num}</text>
                 </g>
               );
             })}
