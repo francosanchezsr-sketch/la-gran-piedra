@@ -12,11 +12,15 @@ import {
   NAV,
   PASO_NOMBRES,
   PASO_HINTS,
+  SUBDIVISIONES,
+  PLAT_ENCLAVE107,
 } from '@/lib/data';
+import type { SubdivisionKey } from '@/lib/data';
 import HeroLoopVideo from '@/components/HeroLoopVideo';
 import { ModuloIcon, FachadaIcon } from '@/components/ConfigIcons';
 import MoodboardPreview from '@/components/MoodboardPreview';
 import MoodboardCollage from '@/components/MoodboardCollage';
+import SubdivisionOverview from '@/components/SubdivisionOverview';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
 
 type Lote = (typeof LOTES)[number];
@@ -65,6 +69,9 @@ export default function HomeConfigurator() {
   const [moduloIdx, setModuloIdx] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [tragaluces, setTragaluces] = useState<string[]>([]);
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  const [subdivisionKey, setSubdivisionKey] = useState<SubdivisionKey>(SUBDIVISIONES[0].key);
+  const subdivisionActiva = SUBDIVISIONES.find((s) => s.key === subdivisionKey) ?? SUBDIVISIONES[0];
 
   // hexagon particle background (canvas), ported from the prototype
   useEffect(() => {
@@ -571,9 +578,26 @@ export default function HomeConfigurator() {
 
       <section id="lugares" data-screen-label="Lugares disponibles" style={{position: "relative", padding: "110px 22px 120px"}}>
         <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
-          <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "20px", flexWrap: "wrap", marginBottom: "38px"}}>
-            <h2 style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Lugares disponibles</h2>
-            <p style={{margin: "0", maxWidth: "420px", fontSize: "14px", lineHeight: "1.55", color: "#8A8F91"}}>Enclave on 107, McAllen TX. Toca un lote para ver frente, orientación y máximo construible.</p>
+          <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "20px", flexWrap: "wrap", marginBottom: "18px"}}>
+            <div>
+              <h2 style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Lugares disponibles</h2>
+              <div style={{display: "flex", alignItems: "center", gap: "10px", marginTop: "12px"}}>
+                <select
+                  value={subdivisionKey}
+                  onChange={(e) => setSubdivisionKey(e.target.value as SubdivisionKey)}
+                  style={{padding: "8px 12px", border: "1px solid #DDD9D4", background: "#fff", color: "#1C1E1F", fontFamily: "Archivo, sans-serif", fontWeight: "700", fontSize: "11px", letterSpacing: "0.06em", cursor: "pointer"}}
+                >
+                  {SUBDIVISIONES.map((s) => (
+                    <option key={s.key} value={s.key}>{s.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <p style={{margin: "10px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#8A8F91", textTransform: "uppercase"}}>{subdivisionActiva.zona} · {subdivisionActiva.direccion}</p>
+            </div>
+            <div style={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px"}}>
+              <button onClick={() => setOverviewOpen(true)} className="lgp-hover-zoom" style={{padding: "10px 16px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>Ver mapa completo ↗</button>
+              <p style={{margin: "0", maxWidth: "300px", fontSize: "13px", lineHeight: "1.5", color: "#8A8F91", textAlign: "right"}}>Toca un lote para ver frente, orientación y máximo construible.</p>
+            </div>
           </div>
 
           <div style={{position: "relative", border: "1px solid #EAE7E3", background: "#fff", padding: "26px 22px 18px"}}>
@@ -1154,6 +1178,17 @@ export default function HomeConfigurator() {
       modulosSeleccionados={modulosSeleccionados}
       brief={brief}
       resumen={resumen}
+    />
+
+    <SubdivisionOverview
+      open={overviewOpen}
+      onClose={() => setOverviewOpen(false)}
+      nombre={subdivisionActiva.nombre}
+      zona={subdivisionActiva.zona}
+      direccion={subdivisionActiva.direccion}
+      totalLotes={subdivisionActiva.totalLotes}
+      plat={PLAT_ENCLAVE107}
+      ourLotes={lotes}
     />
 
     </div>
