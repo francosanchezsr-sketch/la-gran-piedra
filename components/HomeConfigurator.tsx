@@ -293,12 +293,11 @@ export default function HomeConfigurator() {
       'svg',
       { viewBox: '0 0 900 430', style: { width: '100%', height: 'auto', display: 'block', overflow: 'visible' } },
       h('g', { key: 'st', stroke: '#C9CBCC', strokeWidth: 1, fill: 'none' },
-        h('line', { key: 'a', x1: 20, y1: 196, x2: 880, y2: 196 }),
-        h('line', { key: 'b', x1: 20, y1: 234, x2: 880, y2: 234 }),
         h('line', { key: 'c', x1: 20, y1: 20, x2: 20, y2: 410, strokeDasharray: '3 5' }),
         h('line', { key: 'd', x1: 880, y1: 20, x2: 880, y2: 410, strokeDasharray: '3 5' })),
-      h('text', { key: 's1', x: 26, y: 219, fontFamily: 'IBM Plex Mono, monospace', fontSize: 10, letterSpacing: 1.6, fill: '#B7BABB' }, 'PIEDRA NORTE DR'),
-      h('text', { key: 's2', x: 20, y: 16, fontFamily: 'IBM Plex Mono, monospace', fontSize: 10, letterSpacing: 1.6, fill: '#B7BABB' }, 'N ↑'),
+      h('text', { key: 's1', x: 26, y: 55, fontFamily: 'IBM Plex Mono, monospace', fontSize: 10, letterSpacing: 1.6, fill: '#B7BABB' }, 'LOTES 73–76 · 32.5\' × 80\''),
+      h('text', { key: 's3', x: 26, y: 240, fontFamily: 'IBM Plex Mono, monospace', fontSize: 10, letterSpacing: 1.6, fill: '#B7BABB' }, 'LOTES 116–119 · 33\' × 100\''),
+      h('text', { key: 's2', x: 840, y: 16, fontFamily: 'IBM Plex Mono, monospace', fontSize: 10, letterSpacing: 1.6, fill: '#B7BABB' }, 'N ↑'),
       lotes.map((l) => h('g', { key: l.id, onClick: l.onClick, style: { cursor: 'pointer' } },
         h('rect', { x: l.x, y: l.y, width: l.w, height: l.h, fill: l.fill, stroke: l.stroke, strokeWidth: 1.4 }),
         h('text', { x: l.tx, y: l.ty, fontFamily: 'Archivo, sans-serif', fontSize: 13, fontWeight: 700, fill: l.textFill }, l.id),
@@ -555,11 +554,11 @@ export default function HomeConfigurator() {
         <div data-nofx="1" style={{position: "relative", zIndex: "2", maxWidth: "1000px", margin: "20px auto 0", width: "100%", background: "#FBFBFA", boxShadow: "0 18px 46px rgba(28,30,31,0.10)"}}>
           <div style={{display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))"}}>
             <div style={{padding: "26px 24px", borderRight: "1px solid #EAE7E3"}}>
-              <div style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "26px", letterSpacing: "-0.02em"}}>14</div>
-              <div style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase", marginTop: "5px"}}>Lotes en Edinburg</div>
+              <div style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "26px", letterSpacing: "-0.02em"}}>8</div>
+              <div style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase", marginTop: "5px"}}>Lotes en McAllen</div>
             </div>
             <div style={{padding: "26px 24px", borderRight: "1px solid #EAE7E3"}}>
-              <div style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "26px", letterSpacing: "-0.02em"}}>8</div>
+              <div style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "26px", letterSpacing: "-0.02em"}}>7</div>
               <div style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase", marginTop: "5px"}}>Pasos, cero sorpresas</div>
             </div>
             <div style={{padding: "26px 24px"}}>
@@ -574,7 +573,7 @@ export default function HomeConfigurator() {
         <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
           <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "20px", flexWrap: "wrap", marginBottom: "38px"}}>
             <h2 style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Lugares disponibles</h2>
-            <p style={{margin: "0", maxWidth: "420px", fontSize: "14px", lineHeight: "1.55", color: "#8A8F91"}}>Subdivisión Piedra Norte, Edinburg TX. Toca un lote para ver frente, orientación y máximo construible.</p>
+            <p style={{margin: "0", maxWidth: "420px", fontSize: "14px", lineHeight: "1.55", color: "#8A8F91"}}>Enclave on 107, McAllen TX. Toca un lote para ver frente, orientación y máximo construible.</p>
           </div>
 
           <div style={{position: "relative", border: "1px solid #EAE7E3", background: "#fff", padding: "26px 22px 18px"}}>
@@ -703,8 +702,8 @@ export default function HomeConfigurator() {
                     <g fill="#F67599" opacity="0.5"><rect x="196" y="26" width="76" height="56"></rect></g>
                     <text x="204" y="58" fontFamily="IBM Plex Mono, monospace" fontSize="8" letterSpacing="0.6" fill="#8A2249">PATIO</text>
                   </svg>
-                  <span style={{display: "block", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Corredor Norte</span>
-                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>2,450 ft² · 3 rec · 2.5 baños · 1 piso</span>
+                  <span style={{display: "block", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Enclave Compacta</span>
+                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>2,132 ft² · 3 rec · 3 baños · 2 pisos · sin patio</span>
                   {planAOn ? (
     <Fragment>
     <span style={{display: "block", marginTop: "12px", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.16em", color: "#F2004B", textTransform: "uppercase"}}>✓ Seleccionado</span>
@@ -729,8 +728,8 @@ export default function HomeConfigurator() {
                     <circle cx="150" cy="95" r="13" fill="none" stroke="#F2004B" strokeWidth="1.2"></circle>
                     <text x="112" y="122" fontFamily="IBM Plex Mono, monospace" fontSize="8" letterSpacing="0.6" fill="#8A2249">PATIO + ÁRBOL</text>
                   </svg>
-                  <span style={{display: "block", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Patio Central</span>
-                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>2,780 ft² · 4 rec · 3 baños · 1 piso</span>
+                  <span style={{display: "block", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Enclave con Patio</span>
+                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>2,212 ft² · 3 rec · 3 baños · 2 pisos · patio 80 ft²</span>
                   {planBOn ? (
     <Fragment>
     <span style={{display: "block", marginTop: "12px", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.16em", color: "#F2004B", textTransform: "uppercase"}}>✓ Seleccionado</span>
@@ -753,8 +752,8 @@ export default function HomeConfigurator() {
                     <g fill="#F4DA40" opacity="0.45"><rect x="212" y="86" width="74" height="90"></rect></g>
                     <text x="219" y="170" fontFamily="IBM Plex Mono, monospace" fontSize="8" letterSpacing="0.6" fill="#7A6A12">CASITA</text>
                   </svg>
-                  <span style={{display: "block", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Casita Anexa</span>
-                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>3,120 ft² · 3+1 rec · 3.5 baños · 2 pisos</span>
+                  <span style={{display: "block", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Enclave Completa</span>
+                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>2,249 ft² · 3 rec · 3 baños · 2 pisos · patio + balcón</span>
                   {planCOn ? (
     <Fragment>
     <span style={{display: "block", marginTop: "12px", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.16em", color: "#F2004B", textTransform: "uppercase"}}>✓ Seleccionado</span>

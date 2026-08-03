@@ -160,6 +160,14 @@ const MODULE_ICONS: Record<string, (p: IconProps) => ReactElement> = {
       <path d="M12 12.5V19" />
     </svg>
   ),
+  lavanderia: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <rect x="4" y="3" width="16" height="18" rx="1.4" />
+      <circle cx="12" cy="13" r="5" />
+      <circle cx="12" cy="13" r="2.2" />
+      <path d="M7 6.5h.01M10 6.5h.01" />
+    </svg>
+  ),
 };
 
 export function ModuloIcon({ moduleKey, size, color }: { moduleKey: string; size?: number; color?: string }) {
