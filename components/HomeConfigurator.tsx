@@ -64,6 +64,7 @@ export default function HomeConfigurator() {
   const [drumIdx, setDrumIdx] = useState(1);
   const [moduloIdx, setModuloIdx] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [tragaluces, setTragaluces] = useState<string[]>([]);
 
   // hexagon particle background (canvas), ported from the prototype
   useEffect(() => {
@@ -374,12 +375,28 @@ export default function HomeConfigurator() {
   const mods = (sugeridos || MODULOS.map((m) => ({ key: m.key, razon: null as string | null }))).map((sg) => {
     const m = MODULOS.find((x) => x.key === sg.key)!;
     const on = modulos.indexOf(m.key) >= 0;
+    const requiereFaltante = m.requiere && !modulos.includes(m.requiere);
+    const sinPresupuesto = !on && m.min > ft2Rest;
+    const disabled = !on && (Boolean(requiereFaltante) || sinPresupuesto);
+    const requeridoNombre = m.requiere ? (MODULOS.find((x) => x.key === m.requiere)?.corto ?? m.requiere) : null;
+    const disabledReason = requiereFaltante
+      ? `Primero agrega: ${requeridoNombre}`
+      : sinPresupuesto
+        ? `No cabe en tu presupuesto restante (quedan ${ft2Rest} ft², esta zona necesita mínimo ${m.min} ft²)`
+        : null;
     return {
-      iconKey: m.key, nombre: m.corto, rango: m.rango, area: m.area, prop: m.prop, razon: sg.razon,
-      on,
+      iconKey: m.key, nombre: m.corto, rango: m.rango, area: m.area, prop: m.prop, min: m.min, razon: sg.razon,
+      on, disabled, disabledReason, requiereFaltante: Boolean(requiereFaltante),
       box: on ? '#F2004B' : '#fff',
       cardStyle: cardStyle(on),
-      onToggle: () => setModulos((prev) => (prev.indexOf(m.key) >= 0 ? prev.filter((k) => k !== m.key) : prev.concat([m.key]))),
+      onToggle: () => {
+        if (disabled) return;
+        setModulos((prev) => {
+          if (prev.indexOf(m.key) >= 0) return prev.filter((k) => k !== m.key);
+          const sinGrupo = m.grupo ? prev.filter((k) => MODULOS.find((x) => x.key === k)?.grupo !== m.grupo) : prev;
+          return sinGrupo.concat([m.key]);
+        });
+      },
     };
   });
 
@@ -390,6 +407,7 @@ export default function HomeConfigurator() {
     return {
       iconKey: m.iconKey, nombre: m.nombre,
       dot: m.on ? '#F2004B' : '#D5D7D8',
+      disabled: m.disabled, disabledReason: m.disabledReason,
       onClick: () => setModuloIdx(i),
       style: {
         position: 'absolute', left: '20px', right: '20px', top: '50%', height: '42px', marginTop: '-21px',
@@ -404,6 +422,17 @@ export default function HomeConfigurator() {
     };
   });
   const focoModulo = mods[moduloDrumIdx] || null;
+  const focoTieneTragaluz = focoModulo ? tragaluces.includes(focoModulo.iconKey) : false;
+  const tragaluzLleno = tragaluces.length >= 3;
+  const orientacionHint = lote ? ((lote.orient as string) === 'Oeste' ? 'Esta zona da al poniente — no ideal para tragaluz.' : `Orientación al ${lote.orient} — buena para tragaluz.`) : '';
+  const toggleTragaluz = () => {
+    if (!focoModulo || !focoModulo.on) return;
+    setTragaluces((prev) => {
+      if (prev.includes(focoModulo.iconKey)) return prev.filter((k) => k !== focoModulo.iconKey);
+      if (prev.length >= 3) return prev;
+      return prev.concat([focoModulo.iconKey]);
+    });
+  };
   const moduloDrumUp = () => setModuloIdx((i) => Math.max(0, i - 1));
   const moduloDrumDown = () => setModuloIdx((i) => Math.min(mods.length - 1, i + 1));
   const onModuloDrumWheel = (e: WheelEvent<HTMLDivElement>) => {
@@ -429,6 +458,7 @@ export default function HomeConfigurator() {
     { k: 'Fachada', v: fachada ? (FACHADAS.find((f) => f.key === fachada) || ({} as any)).nombre : 'Sin elegir' },
     { k: 'Interior', v: interior ? (INTERIORES.find((i) => i.key === interior) || ({} as any)).nombre : 'Sin elegir' },
     { k: 'Módulos', v: modulos.length ? modulos.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).nombre).join(', ') : 'Ninguno' },
+    { k: 'Tragaluces', v: tragaluces.length ? tragaluces.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).corto).join(', ') : 'Ninguno' },
     { k: 'Brief', v: brief ? '“' + brief.slice(0, 150) + (brief.length > 150 ? '…' : '') + '”' : 'Sin brief' },
     { k: 'Contacto', v: (lead.nombre || '—') + (lead.correo ? ' · ' + lead.correo : '') + (lead.tel ? ' · ' + lead.tel : '') },
     { k: 'ft² libres', v: ft2Rest + ' ft² dentro del límite' },
@@ -803,7 +833,10 @@ export default function HomeConfigurator() {
               </div>
 
               <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "18px", flexWrap: "wrap", marginBottom: "14px"}}>
-                <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Zonas</p>
+                <div style={{display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap"}}>
+                  <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Zonas</p>
+                  <span title="Ft² disponibles dentro del límite de tu lote, ya restando el floorplan y las zonas que llevas" style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: ft2Rest > 0 ? "#F2004B" : "#B7BABB", textTransform: "uppercase"}}>{ft2Rest} ft² disponibles</span>
+                </div>
                 <button onClick={runAI} className="lgp-hover-zoom" style={{padding: "9px 15px", background: "#1C1E1F", color: "#FBFBFA", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>{aiLabel}</button>
               </div>
 
@@ -826,8 +859,8 @@ export default function HomeConfigurator() {
                       {moduloDrum.map((m, _i) => (
     <Fragment key={_i}>
 
-                        <button onClick={m.onClick} style={m.style} className="lgp-hover-zoom">
-                          <span style={{display: "flex", alignItems: "center", gap: "10px"}}>
+                        <button onClick={m.onClick} style={m.style} className="lgp-hover-zoom" title={m.disabledReason ?? undefined}>
+                          <span style={{display: "flex", alignItems: "center", gap: "10px", opacity: m.disabled ? 0.4 : 1}}>
                             <span style={{width: "7px", height: "7px", display: "block", flex: "none", background: m.dot}}></span>
                             <ModuloIcon moduleKey={m.iconKey} size={16} />
                             <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.03em", textTransform: "uppercase"}}>{m.nombre}</span>
@@ -859,7 +892,18 @@ export default function HomeConfigurator() {
     )}
                   </div>
                   <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.04em", textTransform: "uppercase"}}>{focoModulo.nombre}</span>
-                  <button onClick={focoModulo.onToggle} className="lgp-hover-zoom" style={focoModulo.on ? {padding: "9px 15px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"} : {padding: "9px 15px", background: "#F2004B", border: "0", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>{focoModulo.on ? '✓ Agregado' : '+ Agregar'}</button>
+                  <button onClick={focoModulo.onToggle} disabled={focoModulo.disabled} title={focoModulo.disabledReason ?? undefined} className="lgp-hover-zoom" style={focoModulo.disabled ? {padding: "9px 15px", background: "#F4F1ED", border: "1px solid #E4E1DD", color: "#B7BABB", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "not-allowed"} : focoModulo.on ? {padding: "9px 15px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"} : {padding: "9px 15px", background: "#F2004B", border: "0", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>{focoModulo.on ? '✓ Agregado' : focoModulo.disabled ? (focoModulo.requiereFaltante ? 'Requiere zona' : 'No cabe') : '+ Agregar'}</button>
+                  {focoModulo.disabledReason ? (
+    <Fragment>
+                  <p style={{margin: 0, maxWidth: "220px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>{focoModulo.disabledReason}</p>
+    </Fragment>
+    ) : null}
+                  {focoModulo.on ? (
+    <Fragment>
+                  <button onClick={toggleTragaluz} disabled={!focoTieneTragaluz && tragaluzLleno} className="lgp-hover-zoom" style={{padding: "6px 12px", background: focoTieneTragaluz ? "#1C1E1F" : "transparent", border: "1px solid " + (focoTieneTragaluz ? "#1C1E1F" : "#DDD9D4"), color: focoTieneTragaluz ? "#fff" : (tragaluzLleno ? "#DDD9D4" : "#505759"), fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: (!focoTieneTragaluz && tragaluzLleno) ? "not-allowed" : "pointer"}}>{focoTieneTragaluz ? '☀ Con tragaluz' : '+ Tragaluz'}</button>
+                  <p style={{margin: 0, maxWidth: "200px", fontSize: "10px", lineHeight: 1.5, color: "#B7BABB"}}>{tragaluzLleno && !focoTieneTragaluz ? 'Máximo 3 tragaluces a la vez.' : orientacionHint}</p>
+    </Fragment>
+    ) : null}
                 </div>
     </Fragment>
     ) : null}

@@ -48,6 +48,21 @@ export const MODULOS = [
   { key: 'mudroom', nombre: 'Mudroom desde el garage', corto: 'Mudroom', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: '' },
   { key: 'cocinaexh', nombre: 'Cocina de exhibición con tragaluz', corto: 'Cocina exhibición', rango: '12×16 – 16×20', area: '192–320', prop: '3:4', min: 192, nota: 'Norte o este; evitar poniente' },
   { key: 'rec2', nombre: 'Recámara secundaria', corto: 'Recámara 2', rango: '11×12 – 12×14', area: '132–168', prop: '11:12', min: 132, nota: '' },
+
+  // Variantes de floorplan (consumen del mismo presupuesto; algunas son mutuamente excluyentes o requieren otra zona)
+  { key: 'cocinaabierta', nombre: 'Cocina concepto abierto', corto: 'Cocina abierta', rango: 'sin muros extra', area: '168', prop: '3:4', min: 168, nota: '', grupo: 'cocina' },
+  { key: 'cocinacerrada', nombre: 'Cocina concepto cerrado', corto: 'Cocina cerrada', rango: '168 + 56 de muros', area: '224', prop: '3:4', min: 224, nota: 'Incluye muros y circulación extra', grupo: 'cocina' },
+  { key: 'pasillo', nombre: 'Pasillo con ventanas', corto: 'Pasillo conector', rango: '4×20 – 4×30', area: '80–120', prop: '1:5 a 1:7.5', min: 80, nota: 'Cuenta como circulación, no como zona' },
+  { key: 'masterpatio', nombre: 'Master con conexión al patio', corto: 'Master + patio', rango: 'recámara estándar', area: '224', prop: '—', min: 224, nota: 'Requiere Patio central', requiere: 'patio', grupo: 'master' },
+  { key: 'masterbalcon', nombre: 'Master con balcón', corto: 'Master + balcón', rango: 'balcón 60–96 ft² extra', area: '284–320', prop: 'balcón 5:8', min: 284, nota: '', grupo: 'master' },
+  { key: 'floatingoffice', nombre: 'Floating office', corto: 'Floating office', rango: '—', area: '80–120', prop: '4:5', min: 80, nota: '' },
+
+  // Zonas opcionales (add-on sobre el presupuesto restante)
+  { key: 'walkingcloset', nombre: 'Walking closet secundario', corto: 'Walking closet', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: 'El closet del master ya está incluido' },
+  { key: 'alberca', nombre: 'Alberca con deck perimetral', corto: 'Alberca', rango: '12×24 – 16×32', area: '400–700', prop: '1:2', min: 400, nota: 'Incluye deck perimetral' },
+  { key: 'bbq', nombre: 'Zona BBQ compacta', corto: 'Zona BBQ', rango: '8×8 – 10×10', area: '64–100', prop: '1:1', min: 64, nota: 'Distinta de la cocina exterior cubierta' },
+  { key: 'sunkenlounge', nombre: 'Sunken lounge en el gran salón', corto: 'Sunken lounge', rango: '+100–150 sobre el salón', area: '100–150', prop: '—', min: 100, nota: 'Rebaje de piso, no es un cuarto nuevo' },
+  { key: 'storage', nombre: 'Storage', corto: 'Storage', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: '' },
 ];
 
 export const FAQS = [

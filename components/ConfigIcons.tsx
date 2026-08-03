@@ -87,6 +87,79 @@ const MODULE_ICONS: Record<string, (p: IconProps) => ReactElement> = {
     </svg>
   ),
   rec2: Bed,
+  cocinaabierta: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <rect x="7" y="9" width="10" height="6" rx="1" />
+      <path d="M3 12h2M19 12h2" />
+    </svg>
+  ),
+  cocinacerrada: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <rect x="3" y="4" width="18" height="16" rx="1" />
+      <rect x="8" y="9" width="8" height="6" />
+    </svg>
+  ),
+  pasillo: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <path d="M8 3v18" />
+      <path d="M16 3v18" />
+      <rect x="10" y="9" width="4" height="6" />
+    </svg>
+  ),
+  masterpatio: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <path d="M3 18v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5" />
+      <path d="M3 15h18" />
+      <circle cx="19" cy="6" r="2.4" />
+    </svg>
+  ),
+  masterbalcon: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <path d="M3 14v-3a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3" />
+      <path d="M3 14h18" />
+      <path d="M3 14v6M8 14v6M13 14v6M18 14v6M23 14v6" />
+    </svg>
+  ),
+  floatingoffice: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <path d="M4 9h16" />
+      <path d="M7 9V6.5A1.5 1.5 0 0 1 8.5 5h7A1.5 1.5 0 0 1 17 6.5V9" />
+      <path d="M6 9v3M18 9v3" />
+    </svg>
+  ),
+  walkingcloset: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <path d="M12 4.5a1.6 1.6 0 0 1 1.6 1.6" />
+      <path d="M12 6.1 4 11h16z" />
+      <path d="M6 11v7M18 11v7" />
+    </svg>
+  ),
+  alberca: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <rect x="3" y="5" width="18" height="14" rx="1.4" />
+      <path d="M5 11c1.4 0 1.4 2 2.8 2s1.4-2 2.8-2 1.4 2 2.8 2 1.4-2 2.8-2 1.4 2 2.8 2" />
+    </svg>
+  ),
+  bbq: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <circle cx="12" cy="11" r="7" />
+      <path d="M7.5 11h9M9 8l6 6M15 8l-6 6" />
+      <path d="M9 18l-1.5 3M15 18l1.5 3" />
+    </svg>
+  ),
+  sunkenlounge: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <rect x="3" y="4" width="18" height="16" rx="1" />
+      <path d="M6 10h12v7H6z" />
+    </svg>
+  ),
+  storage: ({ size = 26, color = '#505759' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
+      <path d="M3 8l9-4.5L21 8v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" />
+      <path d="M3 8l9 4.5L21 8" />
+      <path d="M12 12.5V19" />
+    </svg>
+  ),
 };
 
 export function ModuloIcon({ moduleKey, size, color }: { moduleKey: string; size?: number; color?: string }) {
