@@ -355,11 +355,9 @@ export default function HomeConfigurator() {
   const siguiente = () => setPaso((p) => Math.min(PASO_NOMBRES.length, p + 1));
 
   const loteId = lote ? lote.id : 'tu lote';
-  const planAOn = plan === 'A', planBOn = plan === 'B', planCOn = plan === 'C';
-  const planAStyle = cardStyle(plan === 'A', { border: '1px solid #EAE7E3' });
+  const planBOn = plan === 'B', planCOn = plan === 'C';
   const planBStyle = cardStyle(plan === 'B', { border: '1px solid #EAE7E3' });
   const planCStyle = cardStyle(plan === 'C', { border: '1px solid #EAE7E3' });
-  const selPlanA = () => { setPlan('A'); setSugeridos(null); };
   const selPlanB = () => { setPlan('B'); setSugeridos(null); };
   const selPlanC = () => { setPlan('C'); setSugeridos(null); };
 
@@ -710,30 +708,6 @@ export default function HomeConfigurator() {
             <div>
               <p style={{margin: "0 0 26px", maxWidth: "600px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Estas son las variantes que nuestros arquitectos curaron para <strong style={{fontWeight: "600"}}>{loteId}</strong>, ordenadas según la orientación de su fachada.</p>
               <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: "22px"}}>
-
-                <button onClick={selPlanA} style={planAStyle} className="lgp-hover-zoom">
-                  <svg viewBox="0 0 300 190" style={{width: "100%", height: "auto", display: "block"}}>
-                    <g fill="none" stroke="#505759" strokeWidth="1.6">
-                      <rect x="14" y="14" width="272" height="162"></rect>
-                      <line x1="14" y1="96" x2="180" y2="96"></line><line x1="180" y1="14" x2="180" y2="176"></line>
-                      <line x1="96" y1="96" x2="96" y2="176"></line><line x1="232" y1="96" x2="286" y2="96"></line>
-                    </g>
-                    <g fill="none" stroke="#C9CBCC" strokeWidth="1">
-                      <rect x="26" y="26" width="60" height="40"></rect><rect x="112" y="26" width="54" height="26"></rect>
-                      <rect x="106" y="110" width="60" height="52"></rect><rect x="26" y="110" width="56" height="30"></rect>
-                      <rect x="196" y="110" width="76" height="20"></rect><line x1="196" y1="40" x2="272" y2="40"></line>
-                    </g>
-                    <g fill="#F67599" opacity="0.5"><rect x="196" y="26" width="76" height="56"></rect></g>
-                    <text x="204" y="58" fontFamily="IBM Plex Mono, monospace" fontSize="8" letterSpacing="0.6" fill="#8A2249">PATIO</text>
-                  </svg>
-                  <span style={{display: "block", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Enclave Compacta</span>
-                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>2,132 ft² · 3 rec · 3 baños · 2 pisos · sin patio</span>
-                  {planAOn ? (
-    <Fragment>
-    <span style={{display: "block", marginTop: "12px", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.16em", color: "#F2004B", textTransform: "uppercase"}}>✓ Seleccionado</span>
-    </Fragment>
-    ) : null}
-                </button>
 
                 <button onClick={selPlanB} style={planBStyle} className="lgp-hover-zoom">
                   <svg viewBox="0 0 300 190" style={{width: "100%", height: "auto", display: "block"}}>

@@ -68,7 +68,7 @@ export default function MoodboardCollage({
   modulosSeleccionados,
   compact = false,
 }: {
-  planKey: 'A' | 'B' | 'C' | null;
+  planKey: 'B' | 'C' | null;
   planNombre: string;
   interior: InteriorRef;
   modulosSeleccionados: ModuloRef[];
@@ -97,7 +97,7 @@ export default function MoodboardCollage({
 
         <div>
           <div style={{ border: '1px solid #EAE7E3', background: '#fff', padding: compact ? '10px 10px 4px' : '18px 18px 10px' }}>
-            <FloorplanDiagram planKey={planKey ?? 'A'} />
+            <FloorplanDiagram planKey={planKey ?? 'B'} />
           </div>
           <p style={{ margin: '10px 0 0', textAlign: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', color: '#8A8F91', textTransform: 'uppercase' }}>
             {planNombre}

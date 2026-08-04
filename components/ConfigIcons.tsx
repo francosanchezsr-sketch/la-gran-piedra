@@ -34,29 +34,6 @@ function Bed({ size = 26, color = '#505759' }: IconProps) {
 }
 
 const MODULE_ICONS: Record<string, (p: IconProps) => ReactElement> = {
-  patio: ({ size = 26, color = '#505759' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M12 19v-6" />
-      <circle cx="12" cy="9.5" r="3.6" />
-    </svg>
-  ),
-  cocinaext: ({ size = 26, color = '#505759' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
-      <path d="M6 14a6 6 0 0 1 12 0" />
-      <path d="M5 14h14" />
-      <path d="M7.5 14 6 19" />
-      <path d="M16.5 14 18 19" />
-      <path d="M12 7V4" />
-    </svg>
-  ),
-  primary: Bed,
-  dual: ({ size = 26, color = '#505759' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
-      <rect x="2.5" y="3" width="12" height="12" rx="1.5" />
-      <rect x="9.5" y="9" width="12" height="12" rx="1.5" />
-    </svg>
-  ),
   office: ({ size = 26, color = '#505759' }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
       <rect x="4" y="4.5" width="16" height="11" rx="1.4" />
@@ -90,14 +67,6 @@ const MODULE_ICONS: Record<string, (p: IconProps) => ReactElement> = {
       <path d="M6.5 16.7v2M17.5 16.7v2" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
     </Squircle>
   ),
-  cocinaexh: ({ size = 26, color = '#505759' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
-      <path d="M4 10.5 12 4l8 6.5" />
-      <rect x="5" y="10.5" width="14" height="9.5" rx="1.2" />
-      <circle cx="12" cy="3" r="0" fill="none" />
-      <path d="M12 6.5V9" />
-    </svg>
-  ),
   rec2: Bed,
   cocinaabierta: ({ size, color }) => (
     <Squircle size={size} color={color}>
@@ -119,13 +88,6 @@ const MODULE_ICONS: Record<string, (p: IconProps) => ReactElement> = {
       <circle cx="15.4" cy="14.8" r="0.9" fill="#fff" />
     </Squircle>
   ),
-  pasillo: ({ size = 26, color = '#505759' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
-      <path d="M8 3v18" />
-      <path d="M16 3v18" />
-      <rect x="10" y="9" width="4" height="6" />
-    </svg>
-  ),
   masterpatio: ({ size, color }) => (
     <Squircle size={size} color={color}>
       <path d="M5 15v-2.5a1.6 1.6 0 0 1 1.6-1.6H12a1.6 1.6 0 0 1 1.6 1.6V15" fill="none" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -142,14 +104,6 @@ const MODULE_ICONS: Record<string, (p: IconProps) => ReactElement> = {
       <path d="M4.3 14h16.4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
       <path d="M17 14v5M20.7 14v5" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" />
       <path d="M17 19h3.7" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" />
-    </Squircle>
-  ),
-  floatingoffice: ({ size, color }) => (
-    <Squircle size={size} color={color}>
-      <rect x="6" y="7.5" width="9.5" height="7" rx="0.7" fill="none" stroke="#fff" strokeWidth="1.4" />
-      <path d="M9.8 14.5v1.6" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M6.5 18.5h14" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
-      <path d="M17.5 18.5v-8" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
     </Squircle>
   ),
   walkingcloset: ({ size, color }) => (
@@ -193,14 +147,6 @@ const MODULE_ICONS: Record<string, (p: IconProps) => ReactElement> = {
       <rect x="6.8" y="6.3" width="10.4" height="4.7" rx="0.8" fill="none" stroke="#fff" strokeWidth="1.4" />
       <path d="M9.9 8.1h4.2" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" />
     </Squircle>
-  ),
-  lavanderia: ({ size = 26, color = '#505759' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.6} {...base}>
-      <rect x="4" y="3" width="16" height="18" rx="1.4" />
-      <circle cx="12" cy="13" r="5" />
-      <circle cx="12" cy="13" r="2.2" />
-      <path d="M7 6.5h.01M10 6.5h.01" />
-    </svg>
   ),
 };
 

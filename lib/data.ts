@@ -175,7 +175,6 @@ export const PLAT_ENCLAVE107: PlatLot[] = [
 // 729 ft² planta alta = 1,635 ft² habitables + 473 ft² garage + 24 ft² pórtico
 // (+ 80 ft² patio cubierto / + 37 ft² balcón según la variante).
 export const PLANES = {
-  A: { key: 'A', nombre: 'Enclave Compacta', ft2: 2132 },
   B: { key: 'B', nombre: 'Corredor en patio', ft2: 2212 },
   C: { key: 'C', nombre: 'Patio central', ft2: 2249 },
 } as const;
@@ -194,33 +193,38 @@ export const INTERIORES = [
   { key: 'carmin', nombre: 'Acento carmín', desc: 'Base neutra con un solo golpe de color de marca.', c1: '#F5F2EF', c2: '#505759', c3: '#F2004B' },
 ];
 
-export const MODULOS = [
-  { key: 'patio', nombre: 'Patio cubierto', corto: 'Patio cubierto', rango: '8×10 (real, set arquitectónico Lote 17)', area: '80', prop: '4:5', min: 80, nota: 'Ajustado al patio cubierto real de 80 ft² — no cabe uno más grande en un lote de 33’' },
-  { key: 'cocinaext', nombre: 'Cocina exterior cubierta', corto: 'Cocina exterior', rango: '10×12 – 14×16', area: '120–224', prop: '5:6', min: 120, nota: 'Profundidad mínima 10 ft' },
-  { key: 'primary', nombre: 'Primary suite', corto: 'Primary suite', rango: 'rec 14’2×13’6 · W.I.C. 10’6×5’6 · baño 5’6×15', area: '300–450', prop: '7:8', min: 300, nota: 'Basado en el master real del set arquitectónico (≈331 ft²)' },
-  { key: 'dual', nombre: 'Dual primary / casita anexa', corto: 'Dual primary', rango: 'mínimo 380 ft²', area: '400–600', prop: '—', min: 380, nota: '' },
+type Modulo = {
+  key: string;
+  nombre: string;
+  corto: string;
+  rango: string;
+  area: string;
+  prop: string;
+  min: number;
+  nota: string;
+  grupo?: string;
+  requiere?: string;
+};
+
+export const MODULOS: Modulo[] = [
   { key: 'office', nombre: 'Home office junto a la entrada', corto: 'Home office', rango: '10×12 – 12×14', area: '120–168', prop: '5:6', min: 120, nota: '' },
   { key: 'bonus', nombre: 'Bonus / game room', corto: 'Bonus room', rango: '14×16 – 16×20', area: '224–320', prop: '4:5', min: 224, nota: '' },
-  { key: 'scullery', nombre: 'Scullery oculta', corto: 'Scullery', rango: '8×10 – 10×12', area: '80–120', prop: '4:5', min: 80, nota: '' },
+  { key: 'scullery', nombre: 'Walking pantry', corto: 'Walking pantry', rango: '8×10 – 10×12', area: '80–120', prop: '4:5', min: 80, nota: '' },
   { key: 'mudroom', nombre: 'Mudroom desde el garage', corto: 'Mudroom', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: '' },
-  { key: 'cocinaexh', nombre: 'Cocina de exhibición con tragaluz', corto: 'Cocina exhibición', rango: '12×16 – 16×20', area: '192–320', prop: '3:4', min: 192, nota: 'Norte o este; evitar poniente' },
   { key: 'rec2', nombre: 'Recámara secundaria', corto: 'Recámara 2', rango: '10’6×10’0 (real, set arquitectónico Lote 17)', area: '105', prop: '21:20', min: 105, nota: 'Recámara 2/3 reales del townhouse — ya no se infla a 132–168 ft²' },
 
   // Variantes de floorplan (consumen del mismo presupuesto; algunas son mutuamente excluyentes o requieren otra zona)
   { key: 'cocinaabierta', nombre: 'Cocina concepto abierto', corto: 'Cocina abierta', rango: 'sin muros extra', area: '168', prop: '3:4', min: 168, nota: '', grupo: 'cocina' },
   { key: 'cocinacerrada', nombre: 'Cocina concepto cerrado', corto: 'Cocina cerrada', rango: '168 + 56 de muros', area: '224', prop: '3:4', min: 224, nota: 'Incluye muros y circulación extra', grupo: 'cocina' },
-  { key: 'pasillo', nombre: 'Pasillo con ventanas', corto: 'Pasillo conector', rango: '4×20 – 4×30', area: '80–120', prop: '1:5 a 1:7.5', min: 80, nota: 'Cuenta como circulación, no como zona' },
-  { key: 'masterpatio', nombre: 'Master con conexión al patio', corto: 'Master + patio', rango: 'recámara estándar', area: '224', prop: '—', min: 224, nota: 'Requiere Patio central', requiere: 'patio', grupo: 'master' },
+  { key: 'masterpatio', nombre: 'Master con conexión al patio', corto: 'Master + patio', rango: 'recámara estándar', area: '224', prop: '—', min: 224, nota: 'Conexión directa al patio central del floorplan', grupo: 'master' },
   { key: 'masterbalcon', nombre: 'Master con balcón', corto: 'Master + balcón', rango: 'balcón real 4’3×8’8 (37 ft²)', area: '261', prop: 'balcón 1:2', min: 261, nota: 'Ajustado al balcón real del set arquitectónico (antes se inflaba a 60–96 ft²)', grupo: 'master' },
-  { key: 'floatingoffice', nombre: 'Floating office', corto: 'Floating office', rango: '—', area: '80–120', prop: '4:5', min: 80, nota: '' },
 
   // Zonas opcionales (add-on sobre el presupuesto restante)
   { key: 'walkingcloset', nombre: 'Walking closet secundario', corto: 'Walking closet', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: 'El closet del master ya está incluido' },
   { key: 'alberca', nombre: 'Alberca con deck perimetral', corto: 'Alberca', rango: '12×24 – 16×32', area: '400–700', prop: '1:2', min: 400, nota: 'Incluye deck perimetral' },
-  { key: 'bbq', nombre: 'Zona BBQ compacta', corto: 'Zona BBQ', rango: '8×8 – 10×10', area: '64–100', prop: '1:1', min: 64, nota: 'Distinta de la cocina exterior cubierta' },
+  { key: 'bbq', nombre: 'Zona BBQ compacta', corto: 'Zona BBQ', rango: '8×8 – 10×10', area: '64–100', prop: '1:1', min: 64, nota: '' },
   { key: 'sunkenlounge', nombre: 'Sunken lounge en el gran salón', corto: 'Sunken lounge', rango: '+100–150 sobre el salón', area: '100–150', prop: '—', min: 100, nota: 'Rebaje de piso, no es un cuarto nuevo' },
   { key: 'storage', nombre: 'Storage', corto: 'Storage', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: '' },
-  { key: 'lavanderia', nombre: 'Lavandería independiente', corto: 'Lavandería', rango: '5’6×7’8 (real, set arquitectónico Lote 17)', area: '42', prop: '3:4', min: 42, nota: 'Junto al A/C, planta alta' },
 ];
 
 export const FAQS = [

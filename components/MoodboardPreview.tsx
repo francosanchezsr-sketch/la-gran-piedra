@@ -16,7 +16,7 @@ export default function MoodboardPreview({
 }: {
   open: boolean;
   onClose: () => void;
-  planKey: 'A' | 'B' | 'C' | null;
+  planKey: 'B' | 'C' | null;
   planNombre: string;
   interior: InteriorRef;
   modulosSeleccionados: ModuloRef[];
