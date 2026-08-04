@@ -1,6 +1,7 @@
 'use client';
 
 import FloorplanDiagram from '@/components/FloorplanDiagram';
+import type { PlanDiagramKey } from '@/components/FloorplanDiagram';
 import { ModuloIcon } from '@/components/ConfigIcons';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
 
@@ -68,7 +69,7 @@ export default function MoodboardCollage({
   modulosSeleccionados,
   compact = false,
 }: {
-  planKey: 'B' | 'C' | null;
+  planKey: PlanDiagramKey | null;
   planNombre: string;
   interior: InteriorRef;
   modulosSeleccionados: ModuloRef[];

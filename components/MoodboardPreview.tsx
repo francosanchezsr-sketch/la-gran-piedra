@@ -1,6 +1,7 @@
 'use client';
 
 import MoodboardCollage, { type InteriorRef, type ModuloRef } from '@/components/MoodboardCollage';
+import type { PlanDiagramKey } from '@/components/FloorplanDiagram';
 
 type ResumenRow = { k: string; v: string };
 
@@ -16,7 +17,7 @@ export default function MoodboardPreview({
 }: {
   open: boolean;
   onClose: () => void;
-  planKey: 'B' | 'C' | null;
+  planKey: PlanDiagramKey | null;
   planNombre: string;
   interior: InteriorRef;
   modulosSeleccionados: ModuloRef[];

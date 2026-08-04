@@ -1,20 +1,64 @@
 // Lotes reales de la subdivisión "Enclave on 107" (McAllen, TX) — tomados del
 // plat oficial (lotes 73-76 y 116-119) y del set arquitectónico permitido del
-// Lote 17 (mismo tipo de lote/producto que 116-119: 33'x100'). maxft = 2,249
-// ft², el total real construible por el set arquitectónico (1,635 living +
-// 473 garage + 24 porche + 80 patio + 37 balcón), no una cifra estimada.
+// Lote 17 (mismo tipo de lote/producto que 116-119: 33'x100').
+//
+// El presupuesto del configurador se lleva SOLO en área habitable:
+//   maxLiving = 1,635 ft²  → tope de área habitable que permite la subdivisión
+//                            (906 planta baja + 729 planta alta del set real).
+//   maxft     = 2,249 ft²  → envolvente total construida, informativa. Incluye
+//                            473 garage + 24 pórtico + 80 patio + 37 balcón,
+//                            que NO consumen presupuesto habitable.
+//
+// tipo: 'townhouse' → la subdivisión entrega la casa ya diseñada. El floorplan
+// no se elige (planFijo) y hay zonas prohibidas por reglamento. Ver REGLAS_LOTE.
 export const LOTES = [
-  { id: 'L-73', x: 60,  y: 70,  w: 110, h: 150, frente: '32.5 ft', fondo: '80 ft',  orient: 'Este', maxft: 2249, pisos: '2 pisos', status: 'disponible' },
-  { id: 'L-74', x: 180, y: 70,  w: 110, h: 150, frente: '32.5 ft', fondo: '80 ft',  orient: 'Este', maxft: 2249, pisos: '2 pisos', status: 'disponible' },
-  { id: 'L-75', x: 300, y: 70,  w: 110, h: 150, frente: '32.5 ft', fondo: '80 ft',  orient: 'Este', maxft: 2249, pisos: '2 pisos', status: 'disponible' },
-  { id: 'L-76', x: 420, y: 70,  w: 110, h: 150, frente: '32.5 ft', fondo: '80 ft',  orient: 'Este', maxft: 2249, pisos: '2 pisos', status: 'disponible' },
-  { id: 'L-116', x: 60,  y: 250, w: 110, h: 170, frente: '33 ft', fondo: '100 ft', orient: 'Norte', maxft: 2249, pisos: '2 pisos', status: 'disponible' },
-  { id: 'L-117', x: 180, y: 250, w: 110, h: 170, frente: '33 ft', fondo: '100 ft', orient: 'Norte', maxft: 2249, pisos: '2 pisos', status: 'disponible' },
-  { id: 'L-118', x: 300, y: 250, w: 110, h: 170, frente: '33 ft', fondo: '100 ft', orient: 'Norte', maxft: 2249, pisos: '2 pisos', status: 'disponible' },
-  { id: 'L-119', x: 420, y: 250, w: 110, h: 170, frente: '33 ft', fondo: '100 ft', orient: 'Norte', maxft: 2249, pisos: '2 pisos', status: 'disponible' },
+  { id: 'L-73', x: 60,  y: 70,  w: 110, h: 150, frente: '32.5 ft', fondo: '80 ft',  orient: 'Este', maxft: 2249, maxLiving: 1635, pisos: '2 pisos', tipo: 'townhouse', planFijo: 'TH', status: 'disponible' },
+  { id: 'L-74', x: 180, y: 70,  w: 110, h: 150, frente: '32.5 ft', fondo: '80 ft',  orient: 'Este', maxft: 2249, maxLiving: 1635, pisos: '2 pisos', tipo: 'townhouse', planFijo: 'TH', status: 'disponible' },
+  { id: 'L-75', x: 300, y: 70,  w: 110, h: 150, frente: '32.5 ft', fondo: '80 ft',  orient: 'Este', maxft: 2249, maxLiving: 1635, pisos: '2 pisos', tipo: 'townhouse', planFijo: 'TH', status: 'disponible' },
+  { id: 'L-76', x: 420, y: 70,  w: 110, h: 150, frente: '32.5 ft', fondo: '80 ft',  orient: 'Este', maxft: 2249, maxLiving: 1635, pisos: '2 pisos', tipo: 'townhouse', planFijo: 'TH', status: 'disponible' },
+  { id: 'L-116', x: 60,  y: 250, w: 110, h: 170, frente: '33 ft', fondo: '100 ft', orient: 'Norte', maxft: 2249, maxLiving: 1635, pisos: '2 pisos', tipo: 'townhouse', planFijo: 'TH', status: 'disponible' },
+  { id: 'L-117', x: 180, y: 250, w: 110, h: 170, frente: '33 ft', fondo: '100 ft', orient: 'Norte', maxft: 2249, maxLiving: 1635, pisos: '2 pisos', tipo: 'townhouse', planFijo: 'TH', status: 'disponible' },
+  { id: 'L-118', x: 300, y: 250, w: 110, h: 170, frente: '33 ft', fondo: '100 ft', orient: 'Norte', maxft: 2249, maxLiving: 1635, pisos: '2 pisos', tipo: 'townhouse', planFijo: 'TH', status: 'disponible' },
+  { id: 'L-119', x: 420, y: 250, w: 110, h: 170, frente: '33 ft', fondo: '100 ft', orient: 'Norte', maxft: 2249, maxLiving: 1635, pisos: '2 pisos', tipo: 'townhouse', planFijo: 'TH', status: 'disponible' },
 ] as const;
 
-export type Lote = (typeof LOTES)[number];
+export type LoteTipo = 'townhouse' | 'libre';
+
+// Un lote puede venir del catálogo (readonly, con `as const`) o de un plano que
+// el usuario subió en el paso 1 — por eso el tipo es estructural, no derivado.
+export type Lote = {
+  id: string;
+  x: number; y: number; w: number; h: number;
+  frente: string; fondo: string; orient: string;
+  maxft: number; maxLiving: number; pisos: string;
+  tipo: LoteTipo;
+  planFijo?: string;
+  status: string;
+  origen?: 'catalogo' | 'usuario';
+  fuente?: string;
+};
+
+// Reglas de construcción por tipo de lote. Son restricciones del reglamento de
+// la subdivisión, no preferencias de diseño: por eso bloquean en vez de sugerir.
+export const REGLAS_LOTE: Record<LoteTipo, {
+  planes: string[];
+  zonasBloqueadas: string[];
+  motivo: string;
+}> = {
+  townhouse: {
+    // La casa viene diseñada por default; el floorplan no se elige.
+    planes: ['TH'],
+    // Sin patio central ni alberca: no hay servidumbre lateral ni trasera que
+    // los admita en un lote de 32.5'–33' de frente pegado a sus vecinos.
+    zonasBloqueadas: ['alberca', 'masterpatio'],
+    motivo: 'No permitido por reglas de la subdivisión en lotes townhouse',
+  },
+  libre: {
+    planes: ['B', 'C', 'D'],
+    zonasBloqueadas: [],
+    motivo: '',
+  },
+};
 
 // Subdivisiones (zonas) donde La Gran Piedra tiene lotes propios. Hoy solo
 // "Enclave on 107" está armada con datos reales; el arreglo existe para que
@@ -170,13 +214,31 @@ export const PLAT_ENCLAVE107: PlatLot[] = [
   { num: 119, kind: 'rect', x: 40, y: 964, w: 100, h: 31.5 },
 ] as const;
 
-// Las 3 opciones son combinaciones reales de los componentes del set
-// arquitectónico del Lote 17 (no cifras inventadas): 906 ft² planta baja +
-// 729 ft² planta alta = 1,635 ft² habitables + 473 ft² garage + 24 ft² pórtico
-// (+ 80 ft² patio cubierto / + 37 ft² balcón según la variante).
+// Floorplans. `living` es lo único que consume presupuesto; `total` es la
+// envolvente construida (living + garage + pórtico + patio + balcón) y solo se
+// muestra como referencia.
+//
+// TH sale íntegro del set arquitectónico del Lote 17, sin estimar nada:
+//   906 planta baja + 729 planta alta = 1,635 habitables
+//   + 473 garage + 24 pórtico + 80 patio cubierto + 37 balcón = 2,249 total.
+//
+// B, C y D son las variantes para lotes sin la restricción townhouse. Su
+// desglose usa las mismas categorías del set real; los patios de B se ajustaron
+// a 6'×6' = 36 ft² (el corredor techado cruza un patio chico, no un patio de
+// estar), lo que baja su envolvente de 2,212 a 2,168.
 export const PLANES = {
-  B: { key: 'B', nombre: 'Corredor en patio', ft2: 2212 },
-  C: { key: 'C', nombre: 'Patio central', ft2: 2249 },
+  TH: { key: 'TH', nombre: 'Townhouse 2 pisos', living: 1635, total: 2249, rec: 3, banos: 3, pisos: 2, fijo: true },
+  B:  { key: 'B',  nombre: 'Corredor en patio', living: 1575, total: 2168, rec: 3, banos: 3, pisos: 1, fijo: false },
+  C:  { key: 'C',  nombre: 'Patio central',     living: 1635, total: 2249, rec: 3, banos: 3, pisos: 1, fijo: false },
+  D:  { key: 'D',  nombre: '2 pisos',           living: 1780, total: 2394, rec: 4, banos: 3, pisos: 2, fijo: false },
+} as const;
+
+// Cuartos y baños extra que el usuario puede sumar en el paso 5. Las medidas
+// salen del set del Lote 17: recámara 2/3 = 10'6"×10'0" = 105 ft²; baño
+// secundario ≈ 50 ft². Consumen área habitable como cualquier otra zona.
+export const EXTRAS = {
+  recamara: { key: 'recamara', nombre: 'Recámara', living: 105, nota: '10’6×10’0 — medida real del set arquitectónico', max: 3 },
+  bano:     { key: 'bano',     nombre: 'Baño',     living: 50,  nota: 'Baño secundario del set arquitectónico', max: 3 },
 } as const;
 
 export const FACHADAS = [
@@ -204,7 +266,18 @@ type Modulo = {
   nota: string;
   grupo?: string;
   requiere?: string;
+  // Zona exterior: ocupa terreno pero no área habitable, así que no consume
+  // presupuesto. `living` permite separar la parte techada de la exterior
+  // cuando el módulo tiene las dos (p. ej. master + balcón).
+  exterior?: boolean;
+  living?: number;
 };
+
+// Área habitable que consume un módulo. Las zonas exteriores no consumen.
+export function livingDeModulo(m: Modulo): number {
+  if (m.exterior) return 0;
+  return m.living ?? m.min;
+}
 
 export const MODULOS: Modulo[] = [
   { key: 'office', nombre: 'Home office junto a la entrada', corto: 'Home office', rango: '10×12 – 12×14', area: '120–168', prop: '5:6', min: 120, nota: '' },
@@ -217,12 +290,12 @@ export const MODULOS: Modulo[] = [
   { key: 'cocinaabierta', nombre: 'Cocina concepto abierto', corto: 'Cocina abierta', rango: 'sin muros extra', area: '168', prop: '3:4', min: 168, nota: '', grupo: 'cocina' },
   { key: 'cocinacerrada', nombre: 'Cocina concepto cerrado', corto: 'Cocina cerrada', rango: '168 + 56 de muros', area: '224', prop: '3:4', min: 224, nota: 'Incluye muros y circulación extra', grupo: 'cocina' },
   { key: 'masterpatio', nombre: 'Master con conexión al patio', corto: 'Master + patio', rango: 'recámara estándar', area: '224', prop: '—', min: 224, nota: 'Conexión directa al patio central del floorplan', grupo: 'master' },
-  { key: 'masterbalcon', nombre: 'Master con balcón', corto: 'Master + balcón', rango: 'balcón real 4’3×8’8 (37 ft²)', area: '261', prop: 'balcón 1:2', min: 261, nota: 'Ajustado al balcón real del set arquitectónico (antes se inflaba a 60–96 ft²)', grupo: 'master' },
+  { key: 'masterbalcon', nombre: 'Master con balcón', corto: 'Master + balcón', rango: 'balcón real 4’3×8’8 (37 ft²)', area: '261', prop: 'balcón 1:2', min: 261, living: 224, nota: 'Del total, 37 ft² son balcón: no consumen área habitable', grupo: 'master' },
 
   // Zonas opcionales (add-on sobre el presupuesto restante)
   { key: 'walkingcloset', nombre: 'Walking closet secundario', corto: 'Walking closet', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: 'El closet del master ya está incluido' },
-  { key: 'alberca', nombre: 'Alberca con deck perimetral', corto: 'Alberca', rango: '12×24 – 16×32', area: '400–700', prop: '1:2', min: 400, nota: 'Incluye deck perimetral' },
-  { key: 'bbq', nombre: 'Zona BBQ compacta', corto: 'Zona BBQ', rango: '8×8 – 10×10', area: '64–100', prop: '1:1', min: 64, nota: '' },
+  { key: 'alberca', nombre: 'Alberca con deck perimetral', corto: 'Alberca', rango: '12×24 – 16×32', area: '400–700', prop: '1:2', min: 400, nota: 'Zona exterior: ocupa terreno, no área habitable', exterior: true },
+  { key: 'bbq', nombre: 'Zona BBQ compacta', corto: 'Zona BBQ', rango: '8×8 – 10×10', area: '64–100', prop: '1:1', min: 64, nota: 'Zona exterior: ocupa terreno, no área habitable', exterior: true },
   { key: 'sunkenlounge', nombre: 'Sunken lounge en el gran salón', corto: 'Sunken lounge', rango: '+100–150 sobre el salón', area: '100–150', prop: '—', min: 100, nota: 'Rebaje de piso, no es un cuarto nuevo' },
   { key: 'storage', nombre: 'Storage', corto: 'Storage', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: '' },
 ];

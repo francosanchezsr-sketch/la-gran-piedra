@@ -5,9 +5,12 @@ import type { ChangeEvent, WheelEvent } from 'react';
 import {
   LOTES,
   PLANES,
+  EXTRAS,
+  REGLAS_LOTE,
   FACHADAS,
   INTERIORES,
   MODULOS,
+  livingDeModulo,
   FAQS,
   NAV,
   PASO_NOMBRES,
@@ -15,15 +18,15 @@ import {
   SUBDIVISIONES,
   PLAT_ENCLAVE107,
 } from '@/lib/data';
-import type { SubdivisionKey } from '@/lib/data';
+import type { SubdivisionKey, Lote } from '@/lib/data';
 import HeroLoopVideo from '@/components/HeroLoopVideo';
 import { ModuloIcon, FachadaIcon, TragaluzIcon } from '@/components/ConfigIcons';
 import MoodboardPreview from '@/components/MoodboardPreview';
 import MoodboardCollage from '@/components/MoodboardCollage';
 import SubdivisionOverview from '@/components/SubdivisionOverview';
+import PlanDiagram from '@/components/FloorplanDiagram';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
 
-type Lote = (typeof LOTES)[number];
 type PlanKey = keyof typeof PLANES;
 type Sugerencia = { key: string; razon: string | null };
 type Lead = { nombre: string; correo: string; tel: string };
@@ -72,6 +75,21 @@ export default function HomeConfigurator() {
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [subdivisionKey, setSubdivisionKey] = useState<SubdivisionKey>(SUBDIVISIONES[0].key);
   const subdivisionActiva = SUBDIVISIONES.find((s) => s.key === subdivisionKey) ?? SUBDIVISIONES[0];
+  const [recamarasExtra, setRecamarasExtra] = useState(0);
+  const [banosExtra, setBanosExtra] = useState(0);
+  const [lotePropio, setLotePropio] = useState<Lote | null>(null);
+  const [loteFile, setLoteFile] = useState<{ nombre: string; dataUrl: string; mime: string } | null>(null);
+  const [loteLoading, setLoteLoading] = useState(false);
+  const [loteError, setLoteError] = useState<string | null>(null);
+  const [loteAnalisis, setLoteAnalisis] = useState<{
+    frente: number | null; fondo: number | null; areaLote: number;
+    maxLiving: number; factor: number; confianza: string; nota: string; fuente: string;
+  } | null>(null);
+
+  // Reglas del lote activo. Sin lote todavía no se restringe nada.
+  const reglas = lote ? REGLAS_LOTE[lote.tipo] : null;
+  const planFijo = lote?.planFijo ?? null;
+  const lotePropioActivo = lote?.origen === 'usuario';
 
   // hexagon particle background (canvas), ported from the prototype
   useEffect(() => {
@@ -211,14 +229,34 @@ export default function HomeConfigurator() {
     }
   }
 
+  // Al cambiar de lote se reaplican las reglas de su subdivisión: se fija el
+  // floorplan si el lote lo trae por default, se descarta el que ya no aplique
+  // y se sueltan las zonas que el reglamento prohíbe en ese tipo de lote.
+  useEffect(() => {
+    if (!lote) return;
+    const r = REGLAS_LOTE[lote.tipo];
+    if (lote.planFijo) {
+      setPlan(lote.planFijo as PlanKey);
+    } else {
+      setPlan((p) => (p && r.planes.includes(p) ? p : null));
+    }
+    if (r.zonasBloqueadas.length) {
+      setModulos((prev) => prev.filter((k) => !r.zonasBloqueadas.includes(k)));
+    }
+    setSugeridos(null);
+  }, [lote]);
+
+  // Presupuesto en área habitable: es lo único que topa la subdivisión. Garage,
+  // pórtico, patio y balcón quedan fuera (ver livingDeModulo y PLANES.living).
   function ft2Restantes() {
     if (!lote) return 0;
-    const usados = plan ? PLANES[plan].ft2 : 0;
+    const usados = plan ? PLANES[plan].living : 0;
     const extra = modulos.reduce((s, k) => {
       const m = MODULOS.find((x) => x.key === k);
-      return s + (m ? m.min : 0);
+      return s + (m ? livingDeModulo(m) : 0);
     }, 0);
-    return Math.max(0, lote.maxft - usados - extra);
+    const extrasCuartos = recamarasExtra * EXTRAS.recamara.living + banosExtra * EXTRAS.bano.living;
+    return Math.max(0, lote.maxLiving - usados - extra - extrasCuartos);
   }
 
   async function runAI() {
@@ -252,6 +290,87 @@ export default function HomeConfigurator() {
       setAiLoading(false);
       setAiError('No se pudo consultar el modelo ahora mismo — mostramos el filtro por metraje y orientación.');
     }
+  }
+
+  // Paso 1 — el usuario puede traer su propio lote (plano en imagen o PDF).
+  // La IA lee las cotas y de ahí sale el presupuesto habitable del lote.
+  function onLoteFile(e: ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoteError(null);
+    if (file.size > 8 * 1024 * 1024) {
+      setLoteError('El archivo pesa más de 8 MB. Sube una versión más ligera.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result);
+      setLoteFile({ nombre: file.name, dataUrl, mime: file.type });
+      analizarLote(dataUrl, file.type, file.name);
+    };
+    reader.onerror = () => setLoteError('No se pudo leer el archivo.');
+    reader.readAsDataURL(file);
+  }
+
+  async function analizarLote(dataUrl: string, mime: string, nombre: string) {
+    setLoteLoading(true);
+    setLoteError(null);
+    try {
+      const res = await fetch('/api/analizar-lote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dataUrl, mime, nombre }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLoteError(
+          data?.detalle ??
+            (res.status === 501
+              ? 'El análisis por IA no está configurado todavía. Puedes seguir con un lote del catálogo.'
+              : 'No se pudo analizar el documento. Revisa que se vean las cotas del lote.'),
+        );
+        setLoteLoading(false);
+        return;
+      }
+      // Lote propio: fuera de la subdivisión, así que no carga la restricción
+      // townhouse y se le abren los tres floorplans.
+      const propio: Lote = {
+        id: 'Tu lote',
+        x: 0, y: 0, w: 0, h: 0,
+        frente: data.frente ? `${data.frente} ft` : '—',
+        fondo: data.fondo ? `${data.fondo} ft` : '—',
+        orient: 'Por definir',
+        maxft: Math.round(data.areaLote),
+        maxLiving: data.maxLiving,
+        pisos: 'hasta 2 pisos',
+        tipo: 'libre',
+        status: 'disponible',
+        origen: 'usuario',
+        fuente: data.fuente,
+      };
+      setLotePropio(propio);
+      setLote(propio);
+      setLoteAnalisis(data);
+      setLoteLoading(false);
+    } catch {
+      setLoteError('No se pudo analizar el documento. Intenta de nuevo.');
+      setLoteLoading(false);
+    }
+  }
+
+  // El lote del usuario y los del catálogo son excluyentes: elegir uno del
+  // selector deja el subido en pausa, no lo borra, para poder regresar a él.
+  function usarLotePropio() {
+    if (lotePropio) setLote(lotePropio);
+  }
+
+  function quitarLotePropio() {
+    setLotePropio(null);
+    setLoteFile(null);
+    setLoteAnalisis(null);
+    setLoteError(null);
+    setLote(null);
+    setPlan(null);
   }
 
   const mostrarVendidos = true;
@@ -332,7 +451,10 @@ export default function HomeConfigurator() {
     { k: 'Frente', v: foco.frente },
     { k: 'Fondo', v: foco.fondo },
     { k: 'Fachada al', v: foco.orient },
-    { k: 'Máx construible', v: foco.maxft + ' ft²' },
+    // El presupuesto del configurador corre sobre habitables; el total se
+    // muestra aparte para que no parezca que sobran ft² que no existen.
+    { k: 'Máx habitable', v: foco.maxLiving + ' ft²' },
+    { k: 'Total construido', v: foco.maxft + ' ft² (con garage y exteriores)' },
     { k: 'Pisos', v: foco.pisos },
   ] : [];
 
@@ -355,11 +477,27 @@ export default function HomeConfigurator() {
   const siguiente = () => setPaso((p) => Math.min(PASO_NOMBRES.length, p + 1));
 
   const loteId = lote ? lote.id : 'tu lote';
-  const planBOn = plan === 'B', planCOn = plan === 'C';
-  const planBStyle = cardStyle(plan === 'B', { border: '1px solid #EAE7E3' });
-  const planCStyle = cardStyle(plan === 'C', { border: '1px solid #EAE7E3' });
-  const selPlanB = () => { setPlan('B'); setSugeridos(null); };
-  const selPlanC = () => { setPlan('C'); setSugeridos(null); };
+
+  // Floorplans que el lote permite. En un lote townhouse la casa ya viene
+  // diseñada, así que la lista trae un solo plan y el paso 2 se muestra fijo.
+  const planesPermitidos = (reglas ? reglas.planes : ['B', 'C', 'D']) as PlanKey[];
+  const planesVista = planesPermitidos.map((k) => {
+    const p = PLANES[k];
+    return {
+      key: k,
+      nombre: p.nombre,
+      living: p.living,
+      total: p.total,
+      resumen: `${p.living.toLocaleString('es-MX')} ft² habitables · ${p.rec} rec · ${p.banos} baños · ${p.pisos === 2 ? '2 pisos' : '1 piso'}`,
+      detalle: `${p.total.toLocaleString('es-MX')} ft² construidos en total (incluye garage, pórtico y exteriores)`,
+      on: plan === k,
+      cardStyle: cardStyle(plan === k, { border: '1px solid #EAE7E3' }),
+      onSelect: () => { if (!planFijo) { setPlan(k); setSugeridos(null); } },
+    };
+  });
+  const planesExcluidos = (['B', 'C', 'D'] as PlanKey[])
+    .filter((k) => !planesPermitidos.includes(k))
+    .map((k) => ({ key: k, nombre: PLANES[k].nombre }));
 
   const fachadas = FACHADAS.map((f) => ({
     ...f, on: fachada === f.key,
@@ -379,18 +517,23 @@ export default function HomeConfigurator() {
   const mods = (sugeridos || MODULOS.map((m) => ({ key: m.key, razon: null as string | null }))).map((sg) => {
     const m = MODULOS.find((x) => x.key === sg.key)!;
     const on = modulos.indexOf(m.key) >= 0;
+    // El reglamento de la subdivisión manda sobre todo lo demás.
+    const bloqueadaPorReglamento = Boolean(reglas?.zonasBloqueadas.includes(m.key));
+    const costoLiving = livingDeModulo(m);
     const requiereFaltante = m.requiere && !modulos.includes(m.requiere);
-    const sinPresupuesto = !on && m.min > ft2Rest;
-    const disabled = !on && (Boolean(requiereFaltante) || sinPresupuesto);
+    const sinPresupuesto = !on && costoLiving > ft2Rest;
+    const disabled = bloqueadaPorReglamento || (!on && (Boolean(requiereFaltante) || sinPresupuesto));
     const requeridoNombre = m.requiere ? (MODULOS.find((x) => x.key === m.requiere)?.corto ?? m.requiere) : null;
-    const disabledReason = requiereFaltante
-      ? `Primero agrega: ${requeridoNombre}`
-      : sinPresupuesto
-        ? `No cabe en tu presupuesto restante (quedan ${ft2Rest} ft², esta zona necesita mínimo ${m.min} ft²)`
-        : null;
+    const disabledReason = bloqueadaPorReglamento
+      ? reglas!.motivo
+      : requiereFaltante
+        ? `Primero agrega: ${requeridoNombre}`
+        : sinPresupuesto
+          ? `No cabe en tu presupuesto restante (quedan ${ft2Rest} ft² habitables, esta zona necesita mínimo ${costoLiving} ft²)`
+          : null;
     return {
       iconKey: m.key, nombre: m.corto, rango: m.rango, area: m.area, prop: m.prop, min: m.min, razon: sg.razon,
-      on, disabled, disabledReason, requiereFaltante: Boolean(requiereFaltante),
+      on, disabled, disabledReason, requiereFaltante: Boolean(requiereFaltante), bloqueadaPorReglamento,
       box: on ? '#F2004B' : '#fff',
       cardStyle: cardStyle(on),
       onToggle: () => {
@@ -456,16 +599,70 @@ export default function HomeConfigurator() {
   const onCorreo = (e: ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) => setLead((prev) => ({ ...prev, correo: e.target.value }));
   const onTel = (e: ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) => setLead((prev) => ({ ...prev, tel: e.target.value }));
 
+  const totalRec = plan ? PLANES[plan].rec + recamarasExtra : recamarasExtra;
+  const totalBanos = plan ? PLANES[plan].banos + banosExtra : banosExtra;
+
+  // Cuartos y baños extra. Cada uno consume área habitable igual que una zona,
+  // así que solo se puede sumar si el lote todavía tiene presupuesto libre.
+  function motivoTope(extra: number, def: { nombre: string; living: number; max: number }) {
+    if (!lote) return 'Primero elige un lote en el paso 1.';
+    if (!plan) return 'Primero elige un floorplan en el paso 2.';
+    if (extra >= def.max) return `Máximo ${def.max} ${def.nombre.toLowerCase()}s extra.`;
+    if (def.living > ft2Rest) {
+      return `No cabe: quedan ${ft2Rest} ft² habitables y ${def.nombre.toLowerCase()} necesita ${def.living} ft².`;
+    }
+    return null;
+  }
+
+  const contadores = [
+    {
+      key: 'recamara',
+      nombre: 'Recámaras',
+      base: plan ? PLANES[plan].rec : 0,
+      total: totalRec,
+      living: EXTRAS.recamara.living,
+      extra: recamarasExtra,
+      masMotivo: motivoTope(recamarasExtra, EXTRAS.recamara),
+      masDisabled: Boolean(motivoTope(recamarasExtra, EXTRAS.recamara)),
+      menosDisabled: recamarasExtra <= 0,
+      // El tope se revalida aquí y no solo con `disabled`: si llegaran varios
+      // clics antes de que React repinte, todos parten del mismo valor y el
+      // presupuesto nunca se rebasa.
+      onMas: () => {
+        if (motivoTope(recamarasExtra, EXTRAS.recamara)) return;
+        setRecamarasExtra(recamarasExtra + 1);
+      },
+      onMenos: () => setRecamarasExtra((n) => Math.max(0, n - 1)),
+    },
+    {
+      key: 'bano',
+      nombre: 'Baños',
+      base: plan ? PLANES[plan].banos : 0,
+      total: totalBanos,
+      living: EXTRAS.bano.living,
+      extra: banosExtra,
+      masMotivo: motivoTope(banosExtra, EXTRAS.bano),
+      masDisabled: Boolean(motivoTope(banosExtra, EXTRAS.bano)),
+      menosDisabled: banosExtra <= 0,
+      onMas: () => {
+        if (motivoTope(banosExtra, EXTRAS.bano)) return;
+        setBanosExtra(banosExtra + 1);
+      },
+      onMenos: () => setBanosExtra((n) => Math.max(0, n - 1)),
+    },
+  ];
+
   const resumen = [
-    { k: 'Lote', v: lote ? lote.id + ' · fachada al ' + lote.orient + ' · máx ' + lote.maxft + ' ft²' : 'Sin elegir' },
-    { k: 'Floorplan', v: plan ? PLANES[plan].nombre + ' · ' + PLANES[plan].ft2 + ' ft²' : 'Sin elegir' },
+    { k: 'Lote', v: lote ? lote.id + ' · fachada al ' + lote.orient + ' · máx ' + lote.maxLiving + ' ft² habitables' : 'Sin elegir' },
+    { k: 'Floorplan', v: plan ? PLANES[plan].nombre + ' · ' + PLANES[plan].living + ' ft² habitables' + (planFijo ? ' (incluido en el lote)' : '') : 'Sin elegir' },
+    { k: 'Recámaras / baños', v: plan ? `${totalRec} rec · ${totalBanos} baños` + (recamarasExtra || banosExtra ? ` (+${recamarasExtra} rec, +${banosExtra} baños extra)` : '') : 'Sin elegir' },
     { k: 'Fachada', v: fachada ? (FACHADAS.find((f) => f.key === fachada) || ({} as any)).nombre : 'Sin elegir' },
     { k: 'Interior', v: interior ? (INTERIORES.find((i) => i.key === interior) || ({} as any)).nombre : 'Sin elegir' },
     { k: 'Módulos', v: modulos.length ? modulos.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).nombre).join(', ') : 'Ninguno' },
     { k: 'Tragaluces', v: tragaluces.length ? tragaluces.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).corto).join(', ') : 'Ninguno' },
     { k: 'Brief', v: brief ? '“' + brief.slice(0, 150) + (brief.length > 150 ? '…' : '') + '”' : 'Sin brief' },
     { k: 'Contacto', v: (lead.nombre || '—') + (lead.correo ? ' · ' + lead.correo : '') + (lead.tel ? ' · ' + lead.tel : '') },
-    { k: 'ft² libres', v: ft2Rest + ' ft² dentro del límite' },
+    { k: 'ft² habitables libres', v: ft2Rest + ' ft² dentro del límite' },
   ];
 
   const interiorSeleccionado = interior ? INTERIORES.find((i) => i.key === interior) ?? null : null;
@@ -697,6 +894,81 @@ export default function HomeConfigurator() {
                 </div>
               </div>
               <p style={{margin: "14px 0 0"}}><a href="#lugares" style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#8A8F91", textTransform: "uppercase", borderBottom: "1px solid #E4E1DD"}}>Ver el plano completo de la subdivisión ↗</a></p>
+
+              {/* ¿Ya tienes tu propio terreno? Sube el plano y lo analizamos. */}
+              <div style={{marginTop: "34px", padding: "24px", background: "#fff", border: "1px solid #EAE7E3"}}>
+                <p style={{margin: "0 0 6px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>¿Ya tienes tu propio lote?</p>
+                <p style={{margin: "0 0 18px", maxWidth: "520px", fontSize: "13px", lineHeight: 1.6, color: "#8A8F91"}}>
+                  Sube el plano o el documento del terreno (imagen o PDF) y leemos sus dimensiones para calcular cuánta área habitable admite. Al ser un lote fuera de la subdivisión, se te abren los tres floorplans.
+                </p>
+
+                {lotePropio ? (
+    <Fragment>
+                <div style={{padding: "18px", background: "#F7F5F2", border: "1px solid #EAE7E3"}}>
+                  <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", flexWrap: "wrap"}}>
+                    <div>
+                      <p style={{margin: "0 0 4px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "15px"}}>Tu lote</p>
+                      <p style={{margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#8A8F91", textTransform: "uppercase"}}>{loteFile ? loteFile.nombre : ''}</p>
+                    </div>
+                    <div style={{display: "flex", gap: "8px", flex: "none"}}>
+                      {lotePropioActivo ? (
+    <Fragment>
+                      <span style={{padding: "8px 13px", background: "#F2004B", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase"}}>✓ En uso</span>
+    </Fragment>
+    ) : (
+    <Fragment>
+                      <button onClick={usarLotePropio} className="lgp-hover-zoom" style={{padding: "8px 13px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>Usar este lote</button>
+    </Fragment>
+    )}
+                      <button onClick={quitarLotePropio} style={{padding: "8px 13px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>Quitar</button>
+                    </div>
+                  </div>
+                  {!lotePropioActivo ? (
+    <Fragment>
+                  <p style={{margin: "14px 0 0", padding: "10px 12px", background: "#FEFCEC", borderLeft: "3px solid #F4DA40", fontSize: "12px", lineHeight: 1.5, color: "#6B6E70"}}>
+                    Ahorita estás configurando sobre <strong style={{fontWeight: 600}}>{loteId}</strong> del catálogo. Toca “Usar este lote” para volver al tuyo.
+                  </p>
+    </Fragment>
+    ) : null}
+                  {loteAnalisis ? (
+    <Fragment>
+                  <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: "12px", marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #E4E1DD"}}>
+                    {[
+                      { k: 'Frente', v: loteAnalisis.frente ? loteAnalisis.frente + ' ft' : '—' },
+                      { k: 'Fondo', v: loteAnalisis.fondo ? loteAnalisis.fondo + ' ft' : '—' },
+                      { k: 'Área del lote', v: loteAnalisis.areaLote.toLocaleString('es-MX') + ' ft²' },
+                      { k: 'Máx habitable', v: loteAnalisis.maxLiving.toLocaleString('es-MX') + ' ft²' },
+                    ].map((d) => (
+    <Fragment key={d.k}>
+                    <div>
+                      <p style={{margin: "0 0 3px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>{d.k}</p>
+                      <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "700", fontSize: "14px"}}>{d.v}</p>
+                    </div>
+    </Fragment>
+    ))}
+                  </div>
+                  <p style={{margin: "14px 0 0", fontSize: "11px", lineHeight: 1.6, color: "#8A8F91"}}>
+                    <strong style={{fontWeight: 600}}>Estimado automático</strong> — confianza {loteAnalisis.confianza}. El máximo habitable se calcula como {Math.round(loteAnalisis.factor * 100)}% del área del lote, proporción tomada del set arquitectónico del Lote 17. {loteAnalisis.nota} El arquitecto verifica las medidas reales en la cita.
+                  </p>
+    </Fragment>
+    ) : null}
+                </div>
+    </Fragment>
+    ) : (
+    <Fragment>
+                <label style={{display: "inline-flex", alignItems: "center", gap: "10px", padding: "12px 18px", background: loteLoading ? "#F4F1ED" : "#1C1E1F", color: loteLoading ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: loteLoading ? "wait" : "pointer"}}>
+                  {loteLoading ? 'Analizando plano…' : '+ Subir plano de mi lote'}
+                  <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={onLoteFile} disabled={loteLoading} style={{display: "none"}} />
+                </label>
+    </Fragment>
+    )}
+
+                {loteError ? (
+    <Fragment>
+                <p style={{margin: "16px 0 0", padding: "12px 14px", borderLeft: "3px solid #F4DA40", background: "#FEFCEC", fontSize: "13px", lineHeight: 1.6, color: "#6B6E70"}}>{loteError}</p>
+    </Fragment>
+    ) : null}
+              </div>
             </div>
           
     </Fragment>
@@ -706,65 +978,53 @@ export default function HomeConfigurator() {
     <Fragment>
 
             <div>
-              <p style={{margin: "0 0 26px", maxWidth: "600px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Estas son las variantes que nuestros arquitectos curaron para <strong style={{fontWeight: "600"}}>{loteId}</strong>, ordenadas según la orientación de su fachada.</p>
+              {planFijo ? (
+    <Fragment>
+              <p style={{margin: "0 0 22px", maxWidth: "640px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>El lote <strong style={{fontWeight: "600"}}>{loteId}</strong> se entrega con la casa ya diseñada y aprobada por la subdivisión, así que el floorplan no se cambia. Lo que sí personalizas es la fachada, el interior y las zonas que quepan en el presupuesto.</p>
+    </Fragment>
+    ) : (
+    <Fragment>
+              <p style={{margin: "0 0 22px", maxWidth: "640px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Estas son las variantes que nuestros arquitectos curaron para <strong style={{fontWeight: "600"}}>{loteId}</strong>. El presupuesto se lleva en área habitable: garage, pórtico y exteriores no lo consumen.</p>
+    </Fragment>
+    )}
+
               <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: "22px"}}>
-
-                <button onClick={selPlanB} style={planBStyle} className="lgp-hover-zoom">
-                  <svg viewBox="0 0 300 190" style={{width: "100%", height: "auto", display: "block"}}>
-                    <g fill="none" stroke="#505759" strokeWidth="1.6">
-                      <rect x="14" y="14" width="108" height="162"></rect>
-                      <rect x="188" y="14" width="98" height="162"></rect>
-                      <line x1="14" y1="88" x2="122" y2="88"></line>
-                      <line x1="188" y1="96" x2="286" y2="96"></line>
-                    </g>
-                    <g fill="none" stroke="#C9CBCC" strokeWidth="1">
-                      <rect x="26" y="100" width="54" height="64"></rect><rect x="26" y="26" width="84" height="50"></rect>
-                      <rect x="200" y="26" width="74" height="56"></rect><rect x="200" y="120" width="74" height="44"></rect>
-                    </g>
-                    <g fill="#F67599" opacity="0.5"><rect x="122" y="14" width="66" height="162"></rect></g>
-                    <g fill="none" stroke="#8A2249" strokeWidth="1">
-                      <rect x="134" y="30" width="16" height="16" rx="2"></rect><rect x="134" y="144" width="16" height="16" rx="2"></rect>
-                    </g>
-                    <circle cx="142" cy="38" r="3" fill="#8A2249"></circle><circle cx="142" cy="152" r="3" fill="#8A2249"></circle>
-                    <line x1="122" y1="60" x2="188" y2="60" stroke="#8A2249" strokeWidth="1"></line>
-                    <line x1="122" y1="130" x2="188" y2="130" stroke="#8A2249" strokeWidth="1"></line>
-                    <text x="129" y="98" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.4" fill="#8A2249">CORREDOR</text>
-                  </svg>
-                  <span style={{display: "block", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Corredor en patio</span>
-                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>2,212 ft² · 3 rec · 3 baños · 2 pisos · corredor + patio 80 ft²</span>
-                  {planBOn ? (
+                {planesVista.map((p) => (
+    <Fragment key={p.key}>
+                <button onClick={p.onSelect} disabled={Boolean(planFijo)} style={planFijo ? { ...p.cardStyle, cursor: "default" } : p.cardStyle} className={planFijo ? undefined : "lgp-hover-zoom"}>
+                  <PlanDiagram planKey={p.key} />
+                  <span style={{display: "flex", alignItems: "center", gap: "8px", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>
+                    {p.nombre}
+                    {planFijo ? (
+    <Fragment>
+    <span style={{padding: "3px 7px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", fontWeight: "400", letterSpacing: "0.1em"}}>INCLUIDO</span>
+    </Fragment>
+    ) : null}
+                  </span>
+                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>{p.resumen}</span>
+                  <span style={{display: "block", marginTop: "5px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>{p.detalle}</span>
+                  {p.on && !planFijo ? (
     <Fragment>
     <span style={{display: "block", marginTop: "12px", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.16em", color: "#F2004B", textTransform: "uppercase"}}>✓ Seleccionado</span>
     </Fragment>
     ) : null}
                 </button>
-
-                <button onClick={selPlanC} style={planCStyle} className="lgp-hover-zoom">
-                  <svg viewBox="0 0 300 190" style={{width: "100%", height: "auto", display: "block"}}>
-                    <g fill="none" stroke="#505759" strokeWidth="1.6">
-                      <rect x="14" y="14" width="272" height="162"></rect>
-                    </g>
-                    <g fill="none" stroke="#C9CBCC" strokeWidth="1">
-                      <rect x="26" y="26" width="86" height="58"></rect><rect x="26" y="118" width="86" height="58"></rect>
-                      <rect x="188" y="26" width="74" height="58"></rect><rect x="188" y="118" width="74" height="58"></rect>
-                    </g>
-                    <g fill="#F4DA40" opacity="0.4"><rect x="122" y="58" width="56" height="74"></rect></g>
-                    <rect x="122" y="58" width="56" height="74" fill="none" stroke="#7A6A12" strokeWidth="1.2"></rect>
-                    <circle cx="150" cy="95" r="9" fill="none" stroke="#7A6A12" strokeWidth="1.2"></circle>
-                    <path d="M150 86v-8M143 79l7 7 7-7" stroke="#7A6A12" strokeWidth="1"></path>
-                    <text x="127" y="146" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.4" fill="#7A6A12">PATIO CENTRAL</text>
-                  </svg>
-                  <span style={{display: "block", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Patio central</span>
-                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>2,249 ft² · 3 rec · 3 baños · 2 pisos · patio central + balcón</span>
-                  {planCOn ? (
-    <Fragment>
-    <span style={{display: "block", marginTop: "12px", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.16em", color: "#F2004B", textTransform: "uppercase"}}>✓ Seleccionado</span>
     </Fragment>
-    ) : null}
-                </button>
+    ))}
               </div>
+
+              {planesExcluidos.length ? (
+    <Fragment>
+              <div style={{marginTop: "20px", padding: "16px 18px", background: "#F7F5F2", border: "1px solid #EAE7E3"}}>
+                <p style={{margin: "0 0 8px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>No disponibles en este lote</p>
+                <p style={{margin: 0, fontSize: "13px", lineHeight: 1.6, color: "#8A8F91"}}>
+                  {planesExcluidos.map((p) => p.nombre).join(' · ')} — {reglas ? reglas.motivo : ''}.
+                </p>
+              </div>
+    </Fragment>
+    ) : null}
             </div>
-          
+
     </Fragment>
     ) : null}
 
@@ -833,10 +1093,35 @@ export default function HomeConfigurator() {
                 <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>{interiorSeleccionado ? interiorSeleccionado.nombre : 'Elige una'}</span>
               </div>
 
+              <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "22px"}}>
+                {contadores.map((c) => (
+    <Fragment key={c.key}>
+                <div style={{background: "#fff", padding: "16px 18px"}}>
+                  <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "14px"}}>
+                    <div>
+                      <p style={{margin: "0 0 3px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase"}}>{c.nombre}</p>
+                      <p style={{margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#A9ADAF", textTransform: "uppercase"}}>{c.base} incluidas · {c.living} ft² c/u</p>
+                    </div>
+                    <div style={{display: "flex", alignItems: "center", gap: "2px", flex: "none"}}>
+                      <button onClick={c.onMenos} disabled={c.menosDisabled} title={c.menosDisabled ? 'No hay extras que quitar' : undefined} style={{width: "30px", height: "30px", border: "1px solid #E4E1DD", background: "transparent", color: c.menosDisabled ? "#DDD9D4" : "#505759", fontSize: "15px", lineHeight: 1, cursor: c.menosDisabled ? "not-allowed" : "pointer"}}>−</button>
+                      <span style={{minWidth: "38px", textAlign: "center", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "17px"}}>{c.total}</span>
+                      <button onClick={c.onMas} disabled={c.masDisabled} title={c.masMotivo ?? undefined} style={{width: "30px", height: "30px", border: "0", background: c.masDisabled ? "#F4F1ED" : "#F2004B", color: c.masDisabled ? "#B7BABB" : "#fff", fontSize: "15px", lineHeight: 1, cursor: c.masDisabled ? "not-allowed" : "pointer"}}>+</button>
+                    </div>
+                  </div>
+                  {c.masMotivo ? (
+    <Fragment>
+                  <p style={{margin: "10px 0 0", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>{c.masMotivo}</p>
+    </Fragment>
+    ) : null}
+                </div>
+    </Fragment>
+    ))}
+              </div>
+
               <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "18px", flexWrap: "wrap", marginBottom: "14px"}}>
                 <div style={{display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap"}}>
                   <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Zonas</p>
-                  <span title="Ft² disponibles dentro del límite de tu lote, ya restando el floorplan y las zonas que llevas" style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: ft2Rest > 0 ? "#F2004B" : "#B7BABB", textTransform: "uppercase"}}>{ft2Rest} ft² disponibles</span>
+                  <span title="Área habitable disponible dentro del límite de tu lote, ya restando el floorplan, los cuartos extra y las zonas que llevas" style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: ft2Rest > 0 ? "#F2004B" : "#B7BABB", textTransform: "uppercase"}}>{ft2Rest} ft² habitables disponibles</span>
                 </div>
                 <button onClick={runAI} className="lgp-hover-zoom" style={{padding: "9px 15px", background: "#1C1E1F", color: "#FBFBFA", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>{aiLabel}</button>
               </div>
