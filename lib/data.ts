@@ -226,16 +226,24 @@ export const PLAT_ENCLAVE107: PlatLot[] = [
 // desglose usa las mismas categorías del set real; los patios de B se ajustaron
 // a 6'×6' = 36 ft² (el corredor techado cruza un patio chico, no un patio de
 // estar), lo que baja su envolvente de 2,212 a 2,168.
+// `incluidas` son zonas que el plano aprobado YA trae, así que su área ya está
+// dentro de `living` y no se vuelven a cobrar. En el townhouse del Lote 17 eso
+// es el balcón del master (37 ft², puerta corrediza 8'×8' desde la recámara
+// principal) y la cocina de concepto abierto al living/dining de doble altura.
+//
+// `recMin`/`banosMin` son los cuartos y baños que no se pueden quitar. El
+// resto sí: liberarlos devuelve sus ft² al presupuesto, que es como el usuario
+// cambia una recámara por un game room o un walking closet.
 export const PLANES = {
-  TH: { key: 'TH', nombre: 'Townhouse 2 pisos', living: 1635, total: 2249, rec: 3, banos: 3, pisos: 2, fijo: true },
-  B:  { key: 'B',  nombre: 'Corredor en patio', living: 1575, total: 2168, rec: 3, banos: 3, pisos: 1, fijo: false },
-  C:  { key: 'C',  nombre: 'Patio central',     living: 1635, total: 2249, rec: 3, banos: 3, pisos: 1, fijo: false },
-  D:  { key: 'D',  nombre: '2 pisos',           living: 1780, total: 2394, rec: 4, banos: 3, pisos: 2, fijo: false },
+  TH: { key: 'TH', nombre: 'Townhouse 2 pisos', living: 1635, total: 2249, rec: 3, banos: 3, pisos: 2, fijo: true,  incluidas: ['masterbalcon', 'cocinaabierta'], recMin: 1, banosMin: 2 },
+  B:  { key: 'B',  nombre: 'Corredor en patio', living: 1575, total: 2168, rec: 3, banos: 3, pisos: 1, fijo: false, incluidas: ['cocinaabierta'],                 recMin: 1, banosMin: 2 },
+  C:  { key: 'C',  nombre: 'Patio central',     living: 1635, total: 2249, rec: 3, banos: 3, pisos: 1, fijo: false, incluidas: ['cocinaabierta'],                 recMin: 1, banosMin: 2 },
+  D:  { key: 'D',  nombre: '2 pisos',           living: 1780, total: 2394, rec: 4, banos: 3, pisos: 2, fijo: false, incluidas: ['cocinaabierta'],                 recMin: 1, banosMin: 2 },
 } as const;
 
-// Cuartos y baños extra que el usuario puede sumar en el paso 5. Las medidas
+// Cuartos y baños que el usuario puede sumar o quitar en el paso 5. Las medidas
 // salen del set del Lote 17: recámara 2/3 = 10'6"×10'0" = 105 ft²; baño
-// secundario ≈ 50 ft². Consumen área habitable como cualquier otra zona.
+// secundario ≈ 50 ft². Quitar uno libera sus ft² para gastarlos en otra zona.
 export const EXTRAS = {
   recamara: { key: 'recamara', nombre: 'Recámara', living: 105, nota: '10’6×10’0 — medida real del set arquitectónico', max: 3 },
   bano:     { key: 'bano',     nombre: 'Baño',     living: 50,  nota: 'Baño secundario del set arquitectónico', max: 3 },

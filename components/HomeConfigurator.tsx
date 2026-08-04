@@ -246,14 +246,48 @@ export default function HomeConfigurator() {
     setSugeridos(null);
   }, [lote]);
 
+  // ¿Otra zona del mismo grupo desplazó a la que el plano traía de fábrica?
+  // (elegir cocina cerrada sustituye a la cocina abierta incluida)
+  function grupoSustituido(key: string) {
+    const m = MODULOS.find((x) => x.key === key);
+    if (!m?.grupo) return false;
+    return modulos.some((k) => {
+      if (k === key) return false;
+      return MODULOS.find((x) => x.key === k)?.grupo === m.grupo;
+    });
+  }
+
+  // Una zona está "incluida" si el plano ya la trae y nadie la sustituyó.
+  function esIncluida(key: string) {
+    if (!plan) return false;
+    const incluidas = PLANES[plan].incluidas as readonly string[];
+    return incluidas.includes(key) && !grupoSustituido(key);
+  }
+
+  // Costo real de una zona en área habitable. Si el plano ya la incluye no se
+  // cobra; si sustituye a una incluida del mismo grupo solo se cobra la
+  // diferencia (cocina cerrada sobre cocina abierta = 224 − 168 = 56 ft²).
+  function costoZona(m: (typeof MODULOS)[number]) {
+    if (!plan) return livingDeModulo(m);
+    const incluidas = PLANES[plan].incluidas as readonly string[];
+    if (incluidas.includes(m.key)) return 0;
+    if (m.grupo) {
+      const sustituida = MODULOS.find((x) => x.grupo === m.grupo && incluidas.includes(x.key));
+      if (sustituida) return livingDeModulo(m) - livingDeModulo(sustituida);
+    }
+    return livingDeModulo(m);
+  }
+
   // Presupuesto en área habitable: es lo único que topa la subdivisión. Garage,
   // pórtico, patio y balcón quedan fuera (ver livingDeModulo y PLANES.living).
+  // recamarasExtra/banosExtra pueden ser negativos: quitar un cuarto devuelve
+  // sus ft² al presupuesto, que es como se cambia una recámara por otra zona.
   function ft2Restantes() {
     if (!lote) return 0;
     const usados = plan ? PLANES[plan].living : 0;
     const extra = modulos.reduce((s, k) => {
       const m = MODULOS.find((x) => x.key === k);
-      return s + (m ? livingDeModulo(m) : 0);
+      return s + (m ? costoZona(m) : 0);
     }, 0);
     const extrasCuartos = recamarasExtra * EXTRAS.recamara.living + banosExtra * EXTRAS.bano.living;
     return Math.max(0, lote.maxLiving - usados - extra - extrasCuartos);
@@ -516,10 +550,11 @@ export default function HomeConfigurator() {
   const ft2Rest = ft2Restantes();
   const mods = (sugeridos || MODULOS.map((m) => ({ key: m.key, razon: null as string | null }))).map((sg) => {
     const m = MODULOS.find((x) => x.key === sg.key)!;
-    const on = modulos.indexOf(m.key) >= 0;
+    const incluida = esIncluida(m.key);
+    const on = incluida || modulos.indexOf(m.key) >= 0;
     // El reglamento de la subdivisión manda sobre todo lo demás.
     const bloqueadaPorReglamento = Boolean(reglas?.zonasBloqueadas.includes(m.key));
-    const costoLiving = livingDeModulo(m);
+    const costoLiving = costoZona(m);
     const requiereFaltante = m.requiere && !modulos.includes(m.requiere);
     const sinPresupuesto = !on && costoLiving > ft2Rest;
     const disabled = bloqueadaPorReglamento || (!on && (Boolean(requiereFaltante) || sinPresupuesto));
@@ -531,13 +566,20 @@ export default function HomeConfigurator() {
         : sinPresupuesto
           ? `No cabe en tu presupuesto restante (quedan ${ft2Rest} ft² habitables, esta zona necesita mínimo ${costoLiving} ft²)`
           : null;
+    // Una zona que sustituye a otra incluida solo cobra la diferencia.
+    const sustituyeA = !incluida && m.grupo
+      ? MODULOS.find((x) => x.grupo === m.grupo && (plan ? (PLANES[plan].incluidas as readonly string[]).includes(x.key) : false))
+      : undefined;
     return {
       iconKey: m.key, nombre: m.corto, rango: m.rango, area: m.area, prop: m.prop, min: m.min, razon: sg.razon,
       on, disabled, disabledReason, requiereFaltante: Boolean(requiereFaltante), bloqueadaPorReglamento,
+      incluida, costoLiving, sustituyeA: sustituyeA ? sustituyeA.corto : null,
       box: on ? '#F2004B' : '#fff',
       cardStyle: cardStyle(on),
       onToggle: () => {
-        if (disabled) return;
+        // Las zonas que el plano ya trae no se quitan desde aquí: se cambian
+        // eligiendo la alternativa de su mismo grupo.
+        if (disabled || incluida) return;
         setModulos((prev) => {
           if (prev.indexOf(m.key) >= 0) return prev.filter((k) => k !== m.key);
           const sinGrupo = m.grupo ? prev.filter((k) => MODULOS.find((x) => x.key === k)?.grupo !== m.grupo) : prev;
@@ -552,7 +594,7 @@ export default function HomeConfigurator() {
     const a = (i - moduloDrumIdx) * STEP;
     const far = Math.abs(a) > 76;
     return {
-      iconKey: m.iconKey, nombre: m.nombre,
+      iconKey: m.iconKey, nombre: m.nombre, incluida: m.incluida,
       dot: m.on ? '#F2004B' : '#D5D7D8',
       disabled: m.disabled, disabledReason: m.disabledReason,
       onClick: () => setModuloIdx(i),
@@ -602,8 +644,9 @@ export default function HomeConfigurator() {
   const totalRec = plan ? PLANES[plan].rec + recamarasExtra : recamarasExtra;
   const totalBanos = plan ? PLANES[plan].banos + banosExtra : banosExtra;
 
-  // Cuartos y baños extra. Cada uno consume área habitable igual que una zona,
-  // así que solo se puede sumar si el lote todavía tiene presupuesto libre.
+  // Cuartos y baños. Se pueden sumar si hay presupuesto libre, y se pueden
+  // quitar hasta el mínimo del plano — quitar uno devuelve sus ft² para
+  // gastarlos en otra zona (cambiar una recámara por un game room, etc.).
   function motivoTope(extra: number, def: { nombre: string; living: number; max: number }) {
     if (!lote) return 'Primero elige un lote en el paso 1.';
     if (!plan) return 'Primero elige un floorplan en el paso 2.';
@@ -613,6 +656,15 @@ export default function HomeConfigurator() {
     }
     return null;
   }
+
+  function motivoQuitar(total: number, min: number, etiqueta: string) {
+    if (!plan) return 'Primero elige un floorplan en el paso 2.';
+    if (total <= min) return `El plano no puede quedar con menos de ${min} ${etiqueta}.`;
+    return null;
+  }
+
+  const recMin = plan ? PLANES[plan].recMin : 0;
+  const banosMin = plan ? PLANES[plan].banosMin : 0;
 
   const contadores = [
     {
@@ -624,7 +676,8 @@ export default function HomeConfigurator() {
       extra: recamarasExtra,
       masMotivo: motivoTope(recamarasExtra, EXTRAS.recamara),
       masDisabled: Boolean(motivoTope(recamarasExtra, EXTRAS.recamara)),
-      menosDisabled: recamarasExtra <= 0,
+      menosMotivo: motivoQuitar(totalRec, recMin, 'recámara'),
+      menosDisabled: Boolean(motivoQuitar(totalRec, recMin, 'recámara')),
       // El tope se revalida aquí y no solo con `disabled`: si llegaran varios
       // clics antes de que React repinte, todos parten del mismo valor y el
       // presupuesto nunca se rebasa.
@@ -632,7 +685,10 @@ export default function HomeConfigurator() {
         if (motivoTope(recamarasExtra, EXTRAS.recamara)) return;
         setRecamarasExtra(recamarasExtra + 1);
       },
-      onMenos: () => setRecamarasExtra((n) => Math.max(0, n - 1)),
+      onMenos: () => {
+        if (motivoQuitar(totalRec, recMin, 'recámara')) return;
+        setRecamarasExtra(recamarasExtra - 1);
+      },
     },
     {
       key: 'bano',
@@ -643,12 +699,16 @@ export default function HomeConfigurator() {
       extra: banosExtra,
       masMotivo: motivoTope(banosExtra, EXTRAS.bano),
       masDisabled: Boolean(motivoTope(banosExtra, EXTRAS.bano)),
-      menosDisabled: banosExtra <= 0,
+      menosMotivo: motivoQuitar(totalBanos, banosMin, 'baño'),
+      menosDisabled: Boolean(motivoQuitar(totalBanos, banosMin, 'baño')),
       onMas: () => {
         if (motivoTope(banosExtra, EXTRAS.bano)) return;
         setBanosExtra(banosExtra + 1);
       },
-      onMenos: () => setBanosExtra((n) => Math.max(0, n - 1)),
+      onMenos: () => {
+        if (motivoQuitar(totalBanos, banosMin, 'baño')) return;
+        setBanosExtra(banosExtra - 1);
+      },
     },
   ];
 
@@ -1100,10 +1160,10 @@ export default function HomeConfigurator() {
                   <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "14px"}}>
                     <div>
                       <p style={{margin: "0 0 3px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase"}}>{c.nombre}</p>
-                      <p style={{margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#A9ADAF", textTransform: "uppercase"}}>{c.base} incluidas · {c.living} ft² c/u</p>
+                      <p style={{margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#A9ADAF", textTransform: "uppercase"}}>{c.base} en el plano · {c.living} ft² c/u</p>
                     </div>
                     <div style={{display: "flex", alignItems: "center", gap: "2px", flex: "none"}}>
-                      <button onClick={c.onMenos} disabled={c.menosDisabled} title={c.menosDisabled ? 'No hay extras que quitar' : undefined} style={{width: "30px", height: "30px", border: "1px solid #E4E1DD", background: "transparent", color: c.menosDisabled ? "#DDD9D4" : "#505759", fontSize: "15px", lineHeight: 1, cursor: c.menosDisabled ? "not-allowed" : "pointer"}}>−</button>
+                      <button onClick={c.onMenos} disabled={c.menosDisabled} title={c.menosMotivo ?? undefined} style={{width: "30px", height: "30px", border: "1px solid #E4E1DD", background: "transparent", color: c.menosDisabled ? "#DDD9D4" : "#505759", fontSize: "15px", lineHeight: 1, cursor: c.menosDisabled ? "not-allowed" : "pointer"}}>−</button>
                       <span style={{minWidth: "38px", textAlign: "center", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "17px"}}>{c.total}</span>
                       <button onClick={c.onMas} disabled={c.masDisabled} title={c.masMotivo ?? undefined} style={{width: "30px", height: "30px", border: "0", background: c.masDisabled ? "#F4F1ED" : "#F2004B", color: c.masDisabled ? "#B7BABB" : "#fff", fontSize: "15px", lineHeight: 1, cursor: c.masDisabled ? "not-allowed" : "pointer"}}>+</button>
                     </div>
@@ -1151,6 +1211,11 @@ export default function HomeConfigurator() {
                             <ModuloIcon moduleKey={m.iconKey} size={16} />
                             <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.03em", textTransform: "uppercase"}}>{m.nombre}</span>
                           </span>
+                          {m.incluida ? (
+    <Fragment>
+    <span style={{flex: "none", padding: "2px 6px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", letterSpacing: "0.1em"}}>INCLUIDO</span>
+    </Fragment>
+    ) : null}
                         </button>
 
     </Fragment>
@@ -1178,12 +1243,26 @@ export default function HomeConfigurator() {
     )}
                   </div>
                   <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.04em", textTransform: "uppercase"}}>{focoModulo.nombre}</span>
+                  {focoModulo.incluida ? (
+    <Fragment>
+                  <span style={{padding: "9px 15px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>✓ Incluido en el plano</span>
+                  <p style={{margin: 0, maxWidth: "230px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>Ya viene en el plano aprobado, no consume presupuesto. Para cambiarla, elige la alternativa de su mismo grupo.</p>
+    </Fragment>
+    ) : (
+    <Fragment>
                   <button onClick={focoModulo.onToggle} disabled={focoModulo.disabled} title={focoModulo.disabledReason ?? undefined} className="lgp-hover-zoom" style={focoModulo.disabled ? {padding: "9px 15px", background: "#F4F1ED", border: "1px solid #E4E1DD", color: "#B7BABB", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "not-allowed"} : focoModulo.on ? {padding: "9px 15px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"} : {padding: "9px 15px", background: "#F2004B", border: "0", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>{focoModulo.on ? '✓ Agregado' : focoModulo.disabled ? (focoModulo.requiereFaltante ? 'Requiere zona' : 'No cabe') : '+ Agregar'}</button>
+                  {focoModulo.sustituyeA && !focoModulo.on ? (
+    <Fragment>
+                  <p style={{margin: 0, maxWidth: "230px", fontSize: "11px", lineHeight: 1.5, color: "#8A8F91"}}>Sustituye a <strong style={{fontWeight: 600}}>{focoModulo.sustituyeA}</strong> — solo cuesta la diferencia: {focoModulo.costoLiving} ft².</p>
+    </Fragment>
+    ) : null}
                   {focoModulo.disabledReason ? (
     <Fragment>
                   <p style={{margin: 0, maxWidth: "220px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>{focoModulo.disabledReason}</p>
     </Fragment>
     ) : null}
+    </Fragment>
+    )}
                   {focoModulo.on ? (
     <Fragment>
                   <button onClick={toggleTragaluz} disabled={!focoTieneTragaluz && tragaluzLleno} className="lgp-hover-zoom" style={{display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: focoTieneTragaluz ? "#1C1E1F" : "transparent", border: "1px solid " + (focoTieneTragaluz ? "#1C1E1F" : "#DDD9D4"), color: focoTieneTragaluz ? "#fff" : (tragaluzLleno ? "#DDD9D4" : "#505759"), fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: (!focoTieneTragaluz && tragaluzLleno) ? "not-allowed" : "pointer"}}><TragaluzIcon size={13} color={focoTieneTragaluz ? "#fff" : (tragaluzLleno ? "#DDD9D4" : "#505759")} />{focoTieneTragaluz ? 'Con tragaluz' : 'Tragaluz'}</button>
