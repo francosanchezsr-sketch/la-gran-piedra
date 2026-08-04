@@ -36,25 +36,29 @@ export default function FloorplanDiagram({ planKey, style }: FloorplanDiagramPro
     return (
       <svg viewBox="0 0 300 190" style={base}>
         <g fill="none" stroke="#505759" strokeWidth="1.6">
-          <rect x="14" y="14" width="272" height="162"></rect>
-          <rect x="106" y="62" width="88" height="66"></rect>
-          <line x1="14" y1="62" x2="106" y2="62"></line>
-          <line x1="194" y1="128" x2="286" y2="128"></line>
-          <line x1="106" y1="14" x2="106" y2="62"></line>
-          <line x1="194" y1="128" x2="194" y2="176"></line>
+          <rect x="14" y="14" width="108" height="162"></rect>
+          <rect x="188" y="14" width="98" height="162"></rect>
+          <line x1="14" y1="88" x2="122" y2="88"></line>
+          <line x1="188" y1="96" x2="286" y2="96"></line>
         </g>
         <g fill="none" stroke="#C9CBCC" strokeWidth="1">
-          <rect x="26" y="74" width="64" height="42"></rect>
-          <rect x="26" y="26" width="64" height="24"></rect>
-          <rect x="210" y="26" width="62" height="40"></rect>
-          <rect x="210" y="140" width="62" height="24"></rect>
-          <rect x="120" y="140" width="58" height="24"></rect>
+          <rect x="26" y="100" width="54" height="64"></rect>
+          <rect x="26" y="26" width="84" height="50"></rect>
+          <rect x="200" y="26" width="74" height="56"></rect>
+          <rect x="200" y="120" width="74" height="44"></rect>
         </g>
         <g fill="#F67599" opacity="0.5">
-          <rect x="106" y="62" width="88" height="66"></rect>
+          <rect x="122" y="14" width="66" height="162"></rect>
         </g>
-        <circle cx="150" cy="95" r="13" fill="none" stroke="#F2004B" strokeWidth="1.2"></circle>
-        <text x="112" y="122" fontFamily="IBM Plex Mono, monospace" fontSize="8" letterSpacing="0.6" fill="#8A2249">PATIO + ÁRBOL</text>
+        <g fill="none" stroke="#8A2249" strokeWidth="1">
+          <rect x="134" y="30" width="16" height="16" rx="2"></rect>
+          <rect x="134" y="144" width="16" height="16" rx="2"></rect>
+        </g>
+        <circle cx="142" cy="38" r="3" fill="#8A2249"></circle>
+        <circle cx="142" cy="152" r="3" fill="#8A2249"></circle>
+        <line x1="122" y1="60" x2="188" y2="60" stroke="#8A2249" strokeWidth="1"></line>
+        <line x1="122" y1="130" x2="188" y2="130" stroke="#8A2249" strokeWidth="1"></line>
+        <text x="129" y="98" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.4" fill="#8A2249">CORREDOR</text>
       </svg>
     );
   }
@@ -62,23 +66,21 @@ export default function FloorplanDiagram({ planKey, style }: FloorplanDiagramPro
   return (
     <svg viewBox="0 0 300 190" style={base}>
       <g fill="none" stroke="#505759" strokeWidth="1.6">
-        <rect x="14" y="14" width="180" height="162"></rect>
-        <rect x="212" y="86" width="74" height="90"></rect>
-        <line x1="14" y1="104" x2="194" y2="104"></line>
-        <line x1="104" y1="14" x2="104" y2="104"></line>
+        <rect x="14" y="14" width="272" height="162"></rect>
       </g>
       <g fill="none" stroke="#C9CBCC" strokeWidth="1">
-        <rect x="26" y="26" width="62" height="60"></rect>
-        <rect x="118" y="26" width="62" height="34"></rect>
-        <rect x="26" y="118" width="70" height="44"></rect>
-        <rect x="112" y="118" width="68" height="20"></rect>
-        <rect x="222" y="98" width="54" height="34"></rect>
-        <line x1="222" y1="150" x2="276" y2="150"></line>
+        <rect x="26" y="26" width="86" height="58"></rect>
+        <rect x="26" y="118" width="86" height="58"></rect>
+        <rect x="188" y="26" width="74" height="58"></rect>
+        <rect x="188" y="118" width="74" height="58"></rect>
       </g>
-      <g fill="#F4DA40" opacity="0.45">
-        <rect x="212" y="86" width="74" height="90"></rect>
+      <g fill="#F4DA40" opacity="0.4">
+        <rect x="122" y="58" width="56" height="74"></rect>
       </g>
-      <text x="219" y="170" fontFamily="IBM Plex Mono, monospace" fontSize="8" letterSpacing="0.6" fill="#7A6A12">CASITA</text>
+      <rect x="122" y="58" width="56" height="74" fill="none" stroke="#7A6A12" strokeWidth="1.2"></rect>
+      <circle cx="150" cy="95" r="9" fill="none" stroke="#7A6A12" strokeWidth="1.2"></circle>
+      <path d="M150 86v-8M143 79l7 7 7-7" stroke="#7A6A12" strokeWidth="1"></path>
+      <text x="127" y="146" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.4" fill="#7A6A12">PATIO CENTRAL</text>
     </svg>
   );
 }

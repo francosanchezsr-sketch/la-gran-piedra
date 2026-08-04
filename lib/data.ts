@@ -176,8 +176,8 @@ export const PLAT_ENCLAVE107: PlatLot[] = [
 // (+ 80 ft² patio cubierto / + 37 ft² balcón según la variante).
 export const PLANES = {
   A: { key: 'A', nombre: 'Enclave Compacta', ft2: 2132 },
-  B: { key: 'B', nombre: 'Enclave con Patio', ft2: 2212 },
-  C: { key: 'C', nombre: 'Enclave Completa', ft2: 2249 },
+  B: { key: 'B', nombre: 'Corredor en patio', ft2: 2212 },
+  C: { key: 'C', nombre: 'Patio central', ft2: 2249 },
 } as const;
 
 export const FACHADAS = [
