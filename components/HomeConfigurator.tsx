@@ -31,6 +31,7 @@ import MoodboardCollage from '@/components/MoodboardCollage';
 import SubdivisionOverview from '@/components/SubdivisionOverview';
 import PlanDiagram from '@/components/FloorplanDiagram';
 import PresupuestoBar from '@/components/PresupuestoBar';
+import RetirosDiagrama from '@/components/RetirosDiagrama';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
 
 type PlanKey = keyof typeof PLANES;
@@ -1379,9 +1380,12 @@ export default function HomeConfigurator() {
                 </div>
 
                 <div style={{marginTop: "18px", paddingTop: "16px", borderTop: "1px dashed #E4E1DD"}}>
-                  <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Retiros del terreno (ft)</p>
-                  <p style={{margin: "0 0 12px", maxWidth: "480px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>
-                    Lo que el municipio obliga a dejar libre. De aquí sale la superficie construible — si tu ciudad pide otros, corrígelos.
+                  <p style={{margin: "0 0 6px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Retiros del terreno (ft)</p>
+                  <p style={{margin: "0 0 6px", maxWidth: "520px", fontSize: "12px", lineHeight: 1.6, color: "#505759"}}>
+                    Un <strong style={{fontWeight: 600}}>retiro</strong> es la franja que el municipio obliga a dejar libre entre la casa y el límite del terreno. Ahí no se puede construir, así que lo que sobra es tu superficie construible.
+                  </p>
+                  <p style={{margin: "0 0 14px", maxWidth: "520px", fontSize: "11px", lineHeight: 1.6, color: "#B7BABB"}}>
+                    ¿Dónde vienen los tuyos? En el plat del terreno aparecen como línea punteada marcada <em style={{fontStyle: "italic"}}>“building setback line”</em> o B.S.L., y si no, los da el departamento de desarrollo urbano del municipio. Los valores de abajo son un arranque común en el Valle, <strong style={{fontWeight: 600}}>no el reglamento de tu ciudad</strong> — si los tuyos son otros, cámbialos y el cálculo se ajusta solo.
                   </p>
                   <div style={{display: "flex", gap: "10px", flexWrap: "wrap"}}>
                     {([
@@ -1397,12 +1401,22 @@ export default function HomeConfigurator() {
     </Fragment>
     ))}
                   </div>
-                  {loteFrente && loteFondo && Number.isFinite(parseFloat(loteFrente)) && Number.isFinite(parseFloat(loteFondo)) ? (
+                  {loteFrente && loteFondo && Number.isFinite(parseFloat(loteFrente)) && Number.isFinite(parseFloat(loteFondo)) && parseFloat(loteFrente) > 0 && parseFloat(loteFondo) > 0 ? (
     <Fragment>
-                  <p style={{margin: "12px 0 0", fontSize: "12px", lineHeight: 1.5, color: "#505759"}}>
-                    Huella construible en planta baja: <strong style={{fontWeight: 700}}>{huellaConstruible(parseFloat(loteFrente), parseFloat(loteFondo), retiros).toLocaleString('es-MX')} ft²</strong>
-                    <span style={{color: "#B7BABB"}}> ({Math.max(0, parseFloat(loteFrente) - retiros.lados * 2)}&apos; × {Math.max(0, parseFloat(loteFondo) - retiros.frente - retiros.fondo)}&apos;)</span>
-                  </p>
+                  <div style={{display: "flex", gap: "20px", alignItems: "center", flexWrap: "wrap", marginTop: "16px", padding: "14px", background: "#FBFBFA", border: "1px solid #EAE7E3"}}>
+                    <RetirosDiagrama frente={parseFloat(loteFrente)} fondo={parseFloat(loteFondo)} retiros={retiros} />
+                    <div style={{flex: "1 1 200px"}}>
+                      <p style={{margin: "0 0 6px", fontSize: "13px", lineHeight: 1.5, color: "#505759"}}>
+                        Huella construible en planta baja
+                      </p>
+                      <p style={{margin: "0 0 6px", fontFamily: "Archivo, sans-serif", fontWeight: 800, fontSize: "22px", letterSpacing: "-0.01em"}}>
+                        {huellaConstruible(parseFloat(loteFrente), parseFloat(loteFondo), retiros).toLocaleString('es-MX')} <span style={{fontSize: "13px", fontWeight: 400, color: "#8A8F91"}}>ft²</span>
+                      </p>
+                      <p style={{margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91"}}>
+                        {Math.max(0, parseFloat(loteFrente) - retiros.lados * 2)}&apos; × {Math.max(0, parseFloat(loteFondo) - retiros.frente - retiros.fondo)}&apos; de los {parseFloat(loteFrente)}&apos; × {parseFloat(loteFondo)}&apos; del lote
+                      </p>
+                    </div>
+                  </div>
     </Fragment>
     ) : null}
                 </div>
