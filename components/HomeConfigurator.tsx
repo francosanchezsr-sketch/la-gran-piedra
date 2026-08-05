@@ -81,6 +81,9 @@ export default function HomeConfigurator() {
   const [loteFile, setLoteFile] = useState<{ nombre: string; dataUrl: string; mime: string } | null>(null);
   const [loteLoading, setLoteLoading] = useState(false);
   const [loteError, setLoteError] = useState<string | null>(null);
+  // 'info' = la vía manual sigue disponible (no pasó nada malo);
+  // 'error' = el usuario tiene que corregir algo.
+  const [loteErrorTipo, setLoteErrorTipo] = useState<'info' | 'error'>('error');
   const [loteAnalisis, setLoteAnalisis] = useState<{
     frente: number | null; fondo: number | null; areaLote: number;
     maxLiving: number; factor: number; confianza: string; nota: string; fuente: string;
@@ -342,7 +345,7 @@ export default function HomeConfigurator() {
     if (!file) return;
     setLoteError(null);
     if (file.size > 8 * 1024 * 1024) {
-      setLoteError('El archivo pesa más de 8 MB. Sube una versión más ligera.');
+      setLoteErrorTipo('error'); setLoteError('El archivo pesa más de 8 MB. Sube una versión más ligera.');
       return;
     }
     const reader = new FileReader();
@@ -351,7 +354,7 @@ export default function HomeConfigurator() {
       setLoteFile({ nombre: file.name, dataUrl, mime: file.type });
       analizarLote({ dataUrl, mime: file.type, nombre: file.name });
     };
-    reader.onerror = () => setLoteError('No se pudo leer el archivo.');
+    reader.onerror = () => { setLoteErrorTipo('error'); setLoteError('No se pudo leer el archivo.'); };
     reader.readAsDataURL(file);
   }
 
@@ -406,9 +409,10 @@ export default function HomeConfigurator() {
         // Sin llave de IA, la captura manual es la única vía que funciona:
         // mandamos ahí en lugar de dejar al usuario atorado en la pestaña.
         if (res.status === 501) setLoteModo('medidas');
+        setLoteErrorTipo(res.status === 501 || data?.error === 'solo_ubicacion' ? 'info' : 'error');
         setLoteError(
           res.status === 501
-            ? 'El análisis automático no está activo todavía (falta configurar la llave de IA). Mientras tanto captura el frente y el fondo aquí abajo — es la vía más confiable de todos modos.'
+            ? 'El análisis automático todavía no está activo. Captura el frente y el fondo de tu lote y seguimos igual.'
             : (data?.detalle ?? 'No se pudo analizar. Revisa que se vean las cotas del lote.'),
         );
         setLoteLoading(false);
@@ -417,7 +421,7 @@ export default function HomeConfigurator() {
       aplicarLotePropio(data);
       setLoteLoading(false);
     } catch {
-      setLoteError('No se pudo analizar. Intenta de nuevo.');
+      setLoteErrorTipo('error'); setLoteError('No se pudo analizar. Intenta de nuevo.');
       setLoteLoading(false);
     }
   }
@@ -428,12 +432,12 @@ export default function HomeConfigurator() {
     const f = parseFloat(loteFrente.replace(',', '.'));
     const d = parseFloat(loteFondo.replace(',', '.'));
     if (!Number.isFinite(f) || !Number.isFinite(d) || f <= 0 || d <= 0) {
-      setLoteError('Escribe el frente y el fondo en pies, con números mayores a cero.');
+      setLoteErrorTipo('error'); setLoteError('Escribe el frente y el fondo en pies, con números mayores a cero.');
       return;
     }
     const area = f * d;
     if (area < 1200 || area > 40000) {
-      setLoteError(`Esas medidas dan ${Math.round(area).toLocaleString('es-MX')} ft², fuera del rango de un lote residencial (1,200 – 40,000 ft²). Revísalas.`);
+      setLoteErrorTipo('error'); setLoteError(`Esas medidas dan ${Math.round(area).toLocaleString('es-MX')} ft², fuera del rango de un lote residencial (1,200 – 40,000 ft²). Revísalas.`);
       return;
     }
     setLoteError(null);
@@ -1104,6 +1108,14 @@ export default function HomeConfigurator() {
     ))}
                 </div>
 
+                {/* El aviso va antes de los campos: si manda a capturar algo,
+                    tiene que verse antes de lo que hay que capturar. */}
+                {loteError ? (
+    <Fragment>
+                <p style={{margin: "0 0 16px", padding: "12px 14px", borderLeft: "3px solid " + (loteErrorTipo === 'info' ? "#B7BABB" : "#F4DA40"), background: loteErrorTipo === 'info' ? "#F7F5F2" : "#FEFCEC", fontSize: "13px", lineHeight: 1.6, color: "#6B6E70"}}>{loteError}</p>
+    </Fragment>
+    ) : null}
+
                 {loteModo === 'plano' ? (
     <Fragment>
                 <label style={{display: "inline-flex", alignItems: "center", gap: "10px", padding: "12px 18px", background: loteLoading ? "#F4F1ED" : "#1C1E1F", color: loteLoading ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: loteLoading ? "wait" : "pointer"}}>
@@ -1153,12 +1165,6 @@ export default function HomeConfigurator() {
     ) : null}
     </Fragment>
     )}
-
-                {loteError ? (
-    <Fragment>
-                <p style={{margin: "16px 0 0", padding: "12px 14px", borderLeft: "3px solid #F4DA40", background: "#FEFCEC", fontSize: "13px", lineHeight: 1.6, color: "#6B6E70"}}>{loteError}</p>
-    </Fragment>
-    ) : null}
               </div>
             </div>
           
