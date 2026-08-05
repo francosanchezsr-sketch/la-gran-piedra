@@ -25,6 +25,7 @@ import MoodboardPreview from '@/components/MoodboardPreview';
 import MoodboardCollage from '@/components/MoodboardCollage';
 import SubdivisionOverview from '@/components/SubdivisionOverview';
 import PlanDiagram from '@/components/FloorplanDiagram';
+import PresupuestoBar from '@/components/PresupuestoBar';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
 
 type PlanKey = keyof typeof PLANES;
@@ -77,6 +78,9 @@ export default function HomeConfigurator() {
   const subdivisionActiva = SUBDIVISIONES.find((s) => s.key === subdivisionKey) ?? SUBDIVISIONES[0];
   const [recamarasExtra, setRecamarasExtra] = useState(0);
   const [banosExtra, setBanosExtra] = useState(0);
+  // Dimmer del paso 2: área habitable objetivo del floorplan. null = el tamaño
+  // de fábrica del plan. Solo aplica en lotes donde el plano no viene fijo.
+  const [planLivingSel, setPlanLivingSel] = useState<number | null>(null);
   const [lotePropio, setLotePropio] = useState<Lote | null>(null);
   const [loteFile, setLoteFile] = useState<{ nombre: string; dataUrl: string; mime: string; peso: number } | null>(null);
   // Dirección que el usuario ya nos dio, aunque el análisis no haya corrido.
@@ -257,6 +261,8 @@ export default function HomeConfigurator() {
     if (r.zonasBloqueadas.length) {
       setModulos((prev) => prev.filter((k) => !r.zonasBloqueadas.includes(k)));
     }
+    // El dimmer se recalibra: su rango depende del máximo habitable del lote.
+    setPlanLivingSel(null);
     setSugeridos(null);
   }, [lote]);
 
@@ -296,15 +302,28 @@ export default function HomeConfigurator() {
   // pórtico, patio y balcón quedan fuera (ver livingDeModulo y PLANES.living).
   // recamarasExtra/banosExtra pueden ser negativos: quitar un cuarto devuelve
   // sus ft² al presupuesto, que es como se cambia una recámara por otra zona.
-  function ft2Restantes() {
-    if (!lote) return 0;
-    const usados = plan ? PLANES[plan].living : 0;
-    const extra = modulos.reduce((s, k) => {
+  // Área habitable que consume el floorplan: la que el usuario ajustó con el
+  // dimmer, o el tamaño de fábrica del plan si no lo ha tocado.
+  function livingDelPlan() {
+    if (!plan) return 0;
+    if (planFijo) return PLANES[plan].living;
+    return planLivingSel ?? PLANES[plan].living;
+  }
+
+  function livingDeZonas() {
+    return modulos.reduce((s, k) => {
       const m = MODULOS.find((x) => x.key === k);
       return s + (m ? costoZona(m) : 0);
     }, 0);
-    const extrasCuartos = recamarasExtra * EXTRAS.recamara.living + banosExtra * EXTRAS.bano.living;
-    return Math.max(0, lote.maxLiving - usados - extra - extrasCuartos);
+  }
+
+  function livingDeCuartos() {
+    return recamarasExtra * EXTRAS.recamara.living + banosExtra * EXTRAS.bano.living;
+  }
+
+  function ft2Restantes() {
+    if (!lote) return 0;
+    return Math.max(0, lote.maxLiving - livingDelPlan() - livingDeZonas() - livingDeCuartos());
   }
 
   async function runAI() {
@@ -613,12 +632,39 @@ export default function HomeConfigurator() {
       detalle: `${p.total.toLocaleString('es-MX')} ft² construidos en total (incluye garage, pórtico y exteriores)`,
       on: plan === k,
       cardStyle: cardStyle(plan === k, { border: '1px solid #EAE7E3' }),
-      onSelect: () => { if (!planFijo) { setPlan(k); setSugeridos(null); } },
+      onSelect: () => { if (!planFijo) { setPlan(k); setPlanLivingSel(null); setSugeridos(null); } },
     };
   });
   const planesExcluidos = (['B', 'C', 'D'] as PlanKey[])
     .filter((k) => !planesPermitidos.includes(k))
     .map((k) => ({ key: k, nombre: PLANES[k].nombre }));
+
+  // ---- Dimmer de superficie (paso 2) -------------------------------------
+  // El plan trae un tamaño de fábrica; el usuario puede estirarlo hasta donde
+  // le alcance el lote, ya descontando las zonas y cuartos que lleva. Nunca
+  // por debajo del plano diseñado: eso ya sería otro proyecto.
+  const planBaseLiving = plan ? PLANES[plan].living : 0;
+  const planNoHabitable = plan ? PLANES[plan].total - PLANES[plan].living : 0;
+  const comprometidoFuera = livingDeZonas() + livingDeCuartos();
+  const dimmerMin = planBaseLiving;
+  const dimmerMax = lote ? Math.max(planBaseLiving, lote.maxLiving - comprometidoFuera) : planBaseLiving;
+  const dimmerValor = Math.min(Math.max(livingDelPlan(), dimmerMin), dimmerMax);
+  const dimmerActivo = Boolean(plan && lote && !planFijo && dimmerMax > dimmerMin);
+  const dimmerTotal = dimmerValor + planNoHabitable;
+  const dimmerPct = dimmerMax > dimmerMin ? ((dimmerValor - dimmerMin) / (dimmerMax - dimmerMin)) * 100 : 0;
+  const onDimmer = (e: ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) => {
+    const v = parseInt(e.target.value, 10);
+    if (Number.isFinite(v)) setPlanLivingSel(Math.min(Math.max(v, dimmerMin), dimmerMax));
+  };
+  const resetDimmer = () => setPlanLivingSel(null);
+
+  // ---- Barra de presupuesto (pasos 2 a 5) --------------------------------
+  const presupuestoSegmentos = [
+    { key: 'plan', label: plan ? PLANES[plan].nombre : 'Floorplan', ft2: livingDelPlan(), color: '#1C1E1F' },
+    { key: 'cuartos', label: 'Cuartos y baños extra', ft2: livingDeCuartos(), color: '#8A8F91' },
+    { key: 'zonas', label: 'Zonas', ft2: livingDeZonas(), color: '#F2004B' },
+  ];
+  const mostrarPresupuesto = paso >= 2 && paso <= 5;
 
   const fachadas = FACHADAS.map((f) => ({
     ...f, on: fachada === f.key,
@@ -801,7 +847,10 @@ export default function HomeConfigurator() {
 
   const resumen = [
     { k: 'Lote', v: lote ? lote.id + ' · fachada al ' + lote.orient + ' · máx ' + lote.maxLiving + ' ft² habitables' : 'Sin elegir' },
-    { k: 'Floorplan', v: plan ? PLANES[plan].nombre + ' · ' + PLANES[plan].living + ' ft² habitables' + (planFijo ? ' (incluido en el lote)' : '') : 'Sin elegir' },
+    { k: 'Floorplan', v: plan
+        ? PLANES[plan].nombre + ' · ' + livingDelPlan().toLocaleString('es-MX') + ' ft² habitables'
+          + (planFijo ? ' (incluido en el lote)' : planLivingSel !== null ? ` (ajustado desde ${PLANES[plan].living.toLocaleString('es-MX')})` : '')
+        : 'Sin elegir' },
     { k: 'Recámaras / baños', v: plan ? `${totalRec} rec · ${totalBanos} baños` + (recamarasExtra || banosExtra ? ` (+${recamarasExtra} rec, +${banosExtra} baños extra)` : '') : 'Sin elegir' },
     { k: 'Fachada', v: fachada ? (FACHADAS.find((f) => f.key === fachada) || ({} as any)).nombre : 'Sin elegir' },
     { k: 'Interior', v: interior ? (INTERIORES.find((i) => i.key === interior) || ({} as any)).nombre : 'Sin elegir' },
@@ -967,15 +1016,25 @@ export default function HomeConfigurator() {
             <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Paso {pasoNum} de {PASO_NOMBRES.length} — {pasoNombre}</span>
           </div>
 
-          <div style={{display: "flex", gap: "1px", background: "#EAE7E3", marginBottom: "34px"}}>
+          <div style={{display: "flex", gap: "1px", background: "#EAE7E3", marginBottom: mostrarPresupuesto ? "16px" : "34px"}}>
             {pasos.map((p, _i) => (
     <Fragment key={_i}>
 
               <button onClick={p.onClick} style={p.style} className="lgp-hover-zoom">{p.n}</button>
-            
+
     </Fragment>
     ))}
           </div>
+
+          {/* Barra de presupuesto: visible del paso 2 al 5, pegada arriba para
+              que el usuario nunca pierda de vista cuánto le queda. */}
+          {mostrarPresupuesto ? (
+    <Fragment>
+          <div style={{position: "sticky", top: "0", zIndex: 20, marginBottom: "30px", boxShadow: "0 8px 24px rgba(28,30,31,0.06)"}}>
+            <PresupuestoBar max={lote ? lote.maxLiving : 0} segmentos={presupuestoSegmentos} sinLote={!lote} />
+          </div>
+    </Fragment>
+    ) : null}
 
           {esPaso1 ? (
     <Fragment>
@@ -1258,6 +1317,59 @@ export default function HomeConfigurator() {
     </Fragment>
     ))}
               </div>
+
+              {/* Dimmer: estira el floorplan dentro de lo que permite el lote. */}
+              {plan && lote ? (
+    <Fragment>
+              <div style={{marginTop: "22px", padding: "20px", background: "#fff", border: "1px solid #EAE7E3"}}>
+                <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "14px", flexWrap: "wrap", marginBottom: "16px"}}>
+                  <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Ajusta la superficie</p>
+                  {planLivingSel !== null && dimmerActivo ? (
+    <Fragment>
+                  <button onClick={resetDimmer} style={{padding: "6px 11px", background: "transparent", border: "1px solid #E4E1DD", color: "#8A8F91", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer"}}>Volver al plano base</button>
+    </Fragment>
+    ) : null}
+                </div>
+
+                <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "18px"}}>
+                  <div style={{background: "#fff", padding: "13px 15px"}}>
+                    <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Habitable</p>
+                    <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "20px", letterSpacing: "-0.01em"}}>{dimmerValor.toLocaleString('es-MX')} <span style={{fontSize: "12px", fontWeight: 400, color: "#8A8F91"}}>ft²</span></p>
+                  </div>
+                  <div style={{background: "#fff", padding: "13px 15px"}}>
+                    <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Total construido</p>
+                    <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "20px", letterSpacing: "-0.01em", color: "#505759"}}>{dimmerTotal.toLocaleString('es-MX')} <span style={{fontSize: "12px", fontWeight: 400, color: "#8A8F91"}}>ft²</span></p>
+                  </div>
+                  <div style={{background: "#fff", padding: "13px 15px"}}>
+                    <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Te quedan</p>
+                    <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "20px", letterSpacing: "-0.01em", color: ft2Rest > 0 ? "#F2004B" : "#B7BABB"}}>{ft2Rest.toLocaleString('es-MX')} <span style={{fontSize: "12px", fontWeight: 400, color: "#8A8F91"}}>ft²</span></p>
+                  </div>
+                </div>
+
+                {dimmerActivo ? (
+    <Fragment>
+                <input type="range" min={dimmerMin} max={dimmerMax} step={5} value={dimmerValor} onChange={onDimmer} aria-label="Área habitable del floorplan" style={{width: "100%", accentColor: "#F2004B", cursor: "pointer"}} />
+                <div style={{display: "flex", justifyContent: "space-between", gap: "12px", marginTop: "6px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>
+                  <span>Plano base {dimmerMin.toLocaleString('es-MX')}</span>
+                  <span>{Math.round(dimmerPct)}% estirado</span>
+                  <span>Máximo del lote {dimmerMax.toLocaleString('es-MX')}</span>
+                </div>
+                <p style={{margin: "12px 0 0", maxWidth: "560px", fontSize: "12px", lineHeight: 1.6, color: "#8A8F91"}}>
+                  Mueve el control para estirar el plano dentro de lo que permite <strong style={{fontWeight: 600}}>{loteId}</strong>. El tope baja solo conforme agregues zonas y cuartos en el paso 5.
+                </p>
+    </Fragment>
+    ) : (
+    <Fragment>
+                <p style={{margin: 0, maxWidth: "560px", fontSize: "12px", lineHeight: 1.6, color: "#8A8F91"}}>
+                  {planFijo
+                    ? 'Este lote entrega la casa ya diseñada y aprobada, así que su superficie no se ajusta. Lo que sí puedes mover son las zonas del paso 5.'
+                    : 'El plano base ya usa todo el presupuesto habitable de este lote, así que no hay margen para estirarlo.'}
+                </p>
+    </Fragment>
+    )}
+              </div>
+    </Fragment>
+    ) : null}
 
               {planesExcluidos.length ? (
     <Fragment>
