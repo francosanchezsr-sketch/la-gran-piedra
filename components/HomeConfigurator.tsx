@@ -403,11 +403,13 @@ export default function HomeConfigurator() {
           setLoteUbicacion(data.ubicacion);
           setLoteModo('medidas');
         }
+        // Sin llave de IA, la captura manual es la única vía que funciona:
+        // mandamos ahí en lugar de dejar al usuario atorado en la pestaña.
+        if (res.status === 501) setLoteModo('medidas');
         setLoteError(
-          data?.detalle ??
-            (res.status === 501
-              ? 'El análisis por IA no está configurado todavía. Captura las medidas a mano o sigue con un lote del catálogo.'
-              : 'No se pudo analizar. Revisa que se vean las cotas del lote.'),
+          res.status === 501
+            ? 'El análisis automático no está activo todavía (falta configurar la llave de IA). Mientras tanto captura el frente y el fondo aquí abajo — es la vía más confiable de todos modos.'
+            : (data?.detalle ?? 'No se pudo analizar. Revisa que se vean las cotas del lote.'),
         );
         setLoteLoading(false);
         return;
