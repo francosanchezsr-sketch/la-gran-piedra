@@ -16,16 +16,24 @@ type Lectura = {
   frente_ft: number | null;
   fondo_ft: number | null;
   area_ft2: number | null;
+  direccion: string | null;
+  coordenadas: string | null;
   confianza: "alta" | "media" | "baja";
   nota: string;
 };
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { dataUrl, mime, nombre } = body as { dataUrl: string; mime: string; nombre: string };
+  const { dataUrl, mime, nombre, texto } = body as {
+    dataUrl?: string;
+    mime?: string;
+    nombre?: string;
+    texto?: string;
+  };
 
-  if (!dataUrl || !mime) {
-    return NextResponse.json({ error: "Falta el archivo" }, { status: 400 });
+  const modoTexto = !dataUrl && Boolean(texto && texto.trim());
+  if (!modoTexto && (!dataUrl || !mime)) {
+    return NextResponse.json({ error: "Falta el archivo o la descripción" }, { status: 400 });
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -33,14 +41,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "AI not configured" }, { status: 501 });
   }
 
-  const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
-  const esPdf = mime === "application/pdf";
+  // Reglas compartidas por los dos modos. La de "no inventes" importa más en
+  // el modo texto: de una dirección suelta no se puede deducir un tamaño, y
+  // aquí el estimado fija el presupuesto de obra.
+  const reglasComunes = `- Si una medida está en metros, conviértela a pies (1 m = 3.28084 ft) y dilo en la nota.
+- Si no puedes determinar una dimensión con seguridad, pon null. NUNCA inventes ni estimes números.
+- direccion: la dirección postal si aparece, si no null.
+- coordenadas: latitud,longitud si aparecen, si no null.
+- nota: una frase corta en español explicando de dónde salieron las medidas.
 
-  const bloque = esPdf
-    ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } }
-    : { type: "image", source: { type: "base64", media_type: mime, data: base64 } };
+Responde SOLO con JSON válido:
+{"frente_ft":<número|null>,"fondo_ft":<número|null>,"area_ft2":<número|null>,"direccion":<texto|null>,"coordenadas":<texto|null>,"confianza":"alta|media|baja","nota":"<texto>"}`;
 
-  const prompt = `Eres un asistente que lee planos y documentos de lotes para una constructora en el Rio Grande Valley, Texas.
+  const promptDoc = `Eres un asistente que lee planos y documentos de lotes para una constructora en el Rio Grande Valley, Texas.
 
 Del documento adjunto extrae ÚNICAMENTE las dimensiones del lote (no de la casa):
 - frente_ft: el ancho del lote en pies
@@ -50,13 +63,32 @@ Del documento adjunto extrae ÚNICAMENTE las dimensiones del lote (no de la casa
 Reglas:
 - Si el documento indica el área directamente, úsala. Si no, calcula frente x fondo.
 - Si el lote es irregular, usa las dimensiones dominantes y dilo en la nota.
-- Si una cota está en metros, conviértela a pies (1 m = 3.28084 ft) y dilo en la nota.
-- Si no puedes leer una dimensión con seguridad, pon null. NO inventes números.
 - confianza: "alta" si las cotas se leen claras, "media" si tuviste que inferir, "baja" si el documento es ambiguo o no parece un plano de lote.
-- nota: una frase corta en español explicando de dónde sacaste las medidas.
+${reglasComunes}`;
 
-Responde SOLO con JSON válido:
-{"frente_ft":<número|null>,"fondo_ft":<número|null>,"area_ft2":<número|null>,"confianza":"alta|media|baja","nota":"<texto>"}`;
+  const promptTexto = `Eres un asistente que interpreta descripciones de lotes para una constructora en el Rio Grande Valley, Texas.
+
+Descripción del usuario:
+"""
+${texto}
+"""
+
+Extrae las dimensiones del lote SOLO si el usuario las escribió explícitamente.
+
+Reglas críticas:
+- Una dirección o unas coordenadas NO dicen cuánto mide un lote. Si el usuario solo dio ubicación y ninguna medida, devuelve frente_ft, fondo_ft y area_ft2 en null. NO deduzcas el tamaño a partir de la zona, la colonia, el vecindario ni el tipo de construcción típica.
+- Si el usuario escribió medidas (por ejemplo "60 x 120 pies", "mide 20 por 40 metros", "son 7,200 ft²"), úsalas tal cual.
+- confianza: "alta" solo si el usuario dio medidas claras; "baja" si solo dio ubicación.
+${reglasComunes}`;
+
+  const contenido = modoTexto
+    ? [{ type: "text", text: promptTexto }]
+    : [
+        mime === "application/pdf"
+          ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: (dataUrl as string).includes(",") ? (dataUrl as string).split(",")[1] : dataUrl } }
+          : { type: "image", source: { type: "base64", media_type: mime, data: (dataUrl as string).includes(",") ? (dataUrl as string).split(",")[1] : dataUrl } },
+        { type: "text", text: promptDoc },
+      ];
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -69,7 +101,7 @@ Responde SOLO con JSON válido:
       body: JSON.stringify({
         model: "claude-sonnet-5",
         max_tokens: 700,
-        messages: [{ role: "user", content: [bloque, { type: "text", text: prompt }] }],
+        messages: [{ role: "user", content: contenido }],
       }),
     });
     if (!res.ok) throw new Error("anthropic api error");
@@ -85,14 +117,27 @@ Responde SOLO con JSON válido:
       area = lectura.frente_ft * lectura.fondo_ft;
     }
 
+    const ubicacion = {
+      direccion: lectura.direccion ?? null,
+      coordenadas: lectura.coordenadas ?? null,
+    };
+
     if (!area || area < AREA_MIN || area > AREA_MAX) {
+      const fueraDeRango = Boolean(area) && (area! < AREA_MIN || area! > AREA_MAX);
+      // Con ubicación pero sin medidas no se inventa el tamaño: se guarda la
+      // referencia y la UI pide las medidas a mano.
+      const soloUbicacion = !area && Boolean(ubicacion.direccion || ubicacion.coordenadas);
       return NextResponse.json(
         {
-          error: "sin_medidas",
-          detalle:
-            area && (area < AREA_MIN || area > AREA_MAX)
-              ? `El área leída (${Math.round(area)} ft²) está fuera del rango razonable para un lote residencial.`
-              : "No se pudieron leer las dimensiones del lote en este documento.",
+          error: soloUbicacion ? "solo_ubicacion" : "sin_medidas",
+          detalle: fueraDeRango
+            ? `El área leída (${Math.round(area!)} ft²) está fuera del rango razonable para un lote residencial.`
+            : soloUbicacion
+              ? "Guardamos la ubicación, pero una dirección no dice cuánto mide el lote. Captura el frente y el fondo para calcular el presupuesto."
+              : modoTexto
+                ? "No encontramos medidas en la descripción. Escribe el frente y el fondo, o captúralos abajo."
+                : "No se pudieron leer las dimensiones del lote en este documento.",
+          ubicacion,
           lectura,
         },
         { status: 422 },
@@ -109,7 +154,8 @@ Responde SOLO con JSON válido:
       factor: FACTOR_HABITABLE,
       confianza: lectura.confianza ?? "media",
       nota: lectura.nota ?? "",
-      fuente: nombre ?? "documento del usuario",
+      ...ubicacion,
+      fuente: nombre ?? (modoTexto ? "descripción del usuario" : "documento del usuario"),
     });
   } catch {
     return NextResponse.json({ error: "AI request failed" }, { status: 502 });

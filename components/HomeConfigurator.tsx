@@ -84,7 +84,16 @@ export default function HomeConfigurator() {
   const [loteAnalisis, setLoteAnalisis] = useState<{
     frente: number | null; fondo: number | null; areaLote: number;
     maxLiving: number; factor: number; confianza: string; nota: string; fuente: string;
+    direccion?: string | null; coordenadas?: string | null;
   } | null>(null);
+  // Tres maneras de traer un lote propio: plano (PDF o imagen), medidas a mano
+  // o una descripción con dirección/coordenadas.
+  const [loteModo, setLoteModo] = useState<'plano' | 'medidas' | 'texto'>('plano');
+  const [loteTexto, setLoteTexto] = useState('');
+  const [loteFrente, setLoteFrente] = useState('');
+  const [loteFondo, setLoteFondo] = useState('');
+  // Ubicación capturada cuando la descripción traía dirección pero no medidas.
+  const [loteUbicacion, setLoteUbicacion] = useState<{ direccion: string | null; coordenadas: string | null } | null>(null);
 
   // Reglas del lote activo. Sin lote todavía no se restringe nada.
   const reglas = lote ? REGLAS_LOTE[lote.tipo] : null;
@@ -340,56 +349,103 @@ export default function HomeConfigurator() {
     reader.onload = () => {
       const dataUrl = String(reader.result);
       setLoteFile({ nombre: file.name, dataUrl, mime: file.type });
-      analizarLote(dataUrl, file.type, file.name);
+      analizarLote({ dataUrl, mime: file.type, nombre: file.name });
     };
     reader.onerror = () => setLoteError('No se pudo leer el archivo.');
     reader.readAsDataURL(file);
   }
 
-  async function analizarLote(dataUrl: string, mime: string, nombre: string) {
+  // Lote propio: fuera de la subdivisión, así que no carga la restricción
+  // townhouse y se le abren los tres floorplans.
+  function aplicarLotePropio(data: {
+    frente: number | null; fondo: number | null; areaLote: number; maxLiving: number;
+    factor: number; confianza: string; nota: string; fuente: string;
+    direccion?: string | null; coordenadas?: string | null;
+  }) {
+    const propio: Lote = {
+      id: 'Tu lote',
+      x: 0, y: 0, w: 0, h: 0,
+      frente: data.frente ? `${data.frente} ft` : '—',
+      fondo: data.fondo ? `${data.fondo} ft` : '—',
+      orient: 'Por definir',
+      maxft: Math.round(data.areaLote),
+      maxLiving: data.maxLiving,
+      pisos: 'hasta 2 pisos',
+      tipo: 'libre',
+      status: 'disponible',
+      origen: 'usuario',
+      fuente: data.fuente,
+    };
+    setLotePropio(propio);
+    setLote(propio);
+    setLoteAnalisis(data);
+    setLoteUbicacion(
+      data.direccion || data.coordenadas
+        ? { direccion: data.direccion ?? null, coordenadas: data.coordenadas ?? null }
+        : null,
+    );
+  }
+
+  async function analizarLote(payload: { dataUrl?: string; mime?: string; nombre?: string; texto?: string }) {
     setLoteLoading(true);
     setLoteError(null);
     try {
       const res = await fetch('/api/analizar-lote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dataUrl, mime, nombre }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
+        // Si vino ubicación pero no medidas, la guardamos y mandamos al modo
+        // manual en vez de perder lo que el usuario ya escribió.
+        if (data?.error === 'solo_ubicacion' && data?.ubicacion) {
+          setLoteUbicacion(data.ubicacion);
+          setLoteModo('medidas');
+        }
         setLoteError(
           data?.detalle ??
             (res.status === 501
-              ? 'El análisis por IA no está configurado todavía. Puedes seguir con un lote del catálogo.'
-              : 'No se pudo analizar el documento. Revisa que se vean las cotas del lote.'),
+              ? 'El análisis por IA no está configurado todavía. Captura las medidas a mano o sigue con un lote del catálogo.'
+              : 'No se pudo analizar. Revisa que se vean las cotas del lote.'),
         );
         setLoteLoading(false);
         return;
       }
-      // Lote propio: fuera de la subdivisión, así que no carga la restricción
-      // townhouse y se le abren los tres floorplans.
-      const propio: Lote = {
-        id: 'Tu lote',
-        x: 0, y: 0, w: 0, h: 0,
-        frente: data.frente ? `${data.frente} ft` : '—',
-        fondo: data.fondo ? `${data.fondo} ft` : '—',
-        orient: 'Por definir',
-        maxft: Math.round(data.areaLote),
-        maxLiving: data.maxLiving,
-        pisos: 'hasta 2 pisos',
-        tipo: 'libre',
-        status: 'disponible',
-        origen: 'usuario',
-        fuente: data.fuente,
-      };
-      setLotePropio(propio);
-      setLote(propio);
-      setLoteAnalisis(data);
+      aplicarLotePropio(data);
       setLoteLoading(false);
     } catch {
-      setLoteError('No se pudo analizar el documento. Intenta de nuevo.');
+      setLoteError('No se pudo analizar. Intenta de nuevo.');
       setLoteLoading(false);
     }
+  }
+
+  // Captura manual: no pasa por la IA, así que es la vía más confiable y la
+  // única que funciona sin API key configurada.
+  function aplicarMedidasManuales() {
+    const f = parseFloat(loteFrente.replace(',', '.'));
+    const d = parseFloat(loteFondo.replace(',', '.'));
+    if (!Number.isFinite(f) || !Number.isFinite(d) || f <= 0 || d <= 0) {
+      setLoteError('Escribe el frente y el fondo en pies, con números mayores a cero.');
+      return;
+    }
+    const area = f * d;
+    if (area < 1200 || area > 40000) {
+      setLoteError(`Esas medidas dan ${Math.round(area).toLocaleString('es-MX')} ft², fuera del rango de un lote residencial (1,200 – 40,000 ft²). Revísalas.`);
+      return;
+    }
+    setLoteError(null);
+    aplicarLotePropio({
+      frente: f, fondo: d,
+      areaLote: Math.round(area),
+      maxLiving: Math.round((area * 0.5) / 5) * 5,
+      factor: 0.5,
+      confianza: 'alta',
+      nota: 'Medidas capturadas por ti, sin análisis automático.',
+      fuente: 'medidas capturadas a mano',
+      direccion: loteUbicacion?.direccion ?? null,
+      coordenadas: loteUbicacion?.coordenadas ?? null,
+    });
   }
 
   // El lote del usuario y los del catálogo son excluyentes: elegir uno del
@@ -403,9 +459,23 @@ export default function HomeConfigurator() {
     setLoteFile(null);
     setLoteAnalisis(null);
     setLoteError(null);
+    setLoteUbicacion(null);
+    setLoteTexto('');
+    setLoteFrente('');
+    setLoteFondo('');
     setLote(null);
     setPlan(null);
   }
+
+  const loteModos = [
+    { key: 'plano' as const, label: 'Plano o imagen' },
+    { key: 'medidas' as const, label: 'Medidas' },
+    { key: 'texto' as const, label: 'Dirección' },
+  ].map((m) => ({
+    ...m,
+    on: loteModo === m.key,
+    onClick: () => { setLoteModo(m.key); setLoteError(null); },
+  }));
 
   const mostrarVendidos = true;
   const visibles = mostrarVendidos ? LOTES : LOTES.filter((l) => l.status === 'disponible');
@@ -958,8 +1028,8 @@ export default function HomeConfigurator() {
               {/* ¿Ya tienes tu propio terreno? Sube el plano y lo analizamos. */}
               <div style={{marginTop: "34px", padding: "24px", background: "#fff", border: "1px solid #EAE7E3"}}>
                 <p style={{margin: "0 0 6px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>¿Ya tienes tu propio lote?</p>
-                <p style={{margin: "0 0 18px", maxWidth: "520px", fontSize: "13px", lineHeight: 1.6, color: "#8A8F91"}}>
-                  Sube el plano o el documento del terreno (imagen o PDF) y leemos sus dimensiones para calcular cuánta área habitable admite. Al ser un lote fuera de la subdivisión, se te abren los tres floorplans.
+                <p style={{margin: "0 0 18px", maxWidth: "540px", fontSize: "13px", lineHeight: 1.6, color: "#8A8F91"}}>
+                  Tráelo como puedas: el plano en PDF o foto, las medidas a mano, o la dirección del terreno. Con eso calculamos cuánta área habitable admite. Al ser un lote fuera de la subdivisión, se te abren los tres floorplans.
                 </p>
 
                 {lotePropio ? (
@@ -1007,8 +1077,16 @@ export default function HomeConfigurator() {
     </Fragment>
     ))}
                   </div>
+                  {loteAnalisis.direccion || loteAnalisis.coordenadas ? (
+    <Fragment>
+                  <div style={{marginTop: "14px", paddingTop: "14px", borderTop: "1px solid #E4E1DD"}}>
+                    <p style={{margin: "0 0 3px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Ubicación</p>
+                    <p style={{margin: 0, fontSize: "13px", lineHeight: 1.5, color: "#505759"}}>{[loteAnalisis.direccion, loteAnalisis.coordenadas].filter(Boolean).join(' · ')}</p>
+                  </div>
+    </Fragment>
+    ) : null}
                   <p style={{margin: "14px 0 0", fontSize: "11px", lineHeight: 1.6, color: "#8A8F91"}}>
-                    <strong style={{fontWeight: 600}}>Estimado automático</strong> — confianza {loteAnalisis.confianza}. El máximo habitable se calcula como {Math.round(loteAnalisis.factor * 100)}% del área del lote, proporción tomada del set arquitectónico del Lote 17. {loteAnalisis.nota} El arquitecto verifica las medidas reales en la cita.
+                    <strong style={{fontWeight: 600}}>{loteAnalisis.confianza === 'alta' && loteAnalisis.factor === 0.5 && loteAnalisis.fuente === 'medidas capturadas a mano' ? 'Medidas tuyas' : 'Estimado automático'}</strong> — confianza {loteAnalisis.confianza}. El máximo habitable se calcula como {Math.round(loteAnalisis.factor * 100)}% del área del lote, proporción tomada del set arquitectónico del Lote 17. {loteAnalisis.nota} El arquitecto verifica las medidas reales en la cita.
                   </p>
     </Fragment>
     ) : null}
@@ -1016,10 +1094,61 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : (
     <Fragment>
+                <div style={{display: "flex", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "18px", flexWrap: "wrap"}}>
+                  {loteModos.map((m) => (
+    <Fragment key={m.key}>
+                  <button onClick={m.onClick} style={{flex: "1 1 110px", padding: "10px 12px", border: 0, background: m.on ? "#1C1E1F" : "#fff", color: m.on ? "#FBFBFA" : "#8A8F91", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>{m.label}</button>
+    </Fragment>
+    ))}
+                </div>
+
+                {loteModo === 'plano' ? (
+    <Fragment>
                 <label style={{display: "inline-flex", alignItems: "center", gap: "10px", padding: "12px 18px", background: loteLoading ? "#F4F1ED" : "#1C1E1F", color: loteLoading ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: loteLoading ? "wait" : "pointer"}}>
-                  {loteLoading ? 'Analizando plano…' : '+ Subir plano de mi lote'}
+                  {loteLoading ? 'Analizando…' : '+ Subir plano o foto'}
                   <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={onLoteFile} disabled={loteLoading} style={{display: "none"}} />
                 </label>
+                <p style={{margin: "10px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.06em", color: "#B7BABB", textTransform: "uppercase"}}>PDF · JPG · PNG · WEBP — hasta 8 MB</p>
+    </Fragment>
+    ) : null}
+
+                {loteModo === 'medidas' ? (
+    <Fragment>
+                <div style={{display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "flex-end"}}>
+                  <label style={{flex: "1 1 120px"}}>
+                    <span style={{display: "block", marginBottom: "6px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Frente (ft)</span>
+                    <input value={loteFrente} onChange={(e) => setLoteFrente(e.target.value)} inputMode="decimal" placeholder="60" style={{width: "100%", padding: "11px 12px", border: "1px solid #E4E1DD", background: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "15px", color: "#1C1E1F"}} />
+                  </label>
+                  <label style={{flex: "1 1 120px"}}>
+                    <span style={{display: "block", marginBottom: "6px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Fondo (ft)</span>
+                    <input value={loteFondo} onChange={(e) => setLoteFondo(e.target.value)} inputMode="decimal" placeholder="120" style={{width: "100%", padding: "11px 12px", border: "1px solid #E4E1DD", background: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "15px", color: "#1C1E1F"}} />
+                  </label>
+                  <button onClick={aplicarMedidasManuales} className="lgp-hover-zoom" style={{flex: "none", padding: "12px 18px", background: "#1C1E1F", border: 0, color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Calcular</button>
+                </div>
+                <p style={{margin: "10px 0 0", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>La vía más confiable: no pasa por el análisis automático.</p>
+    </Fragment>
+    ) : null}
+
+                {loteModo === 'texto' ? (
+    <Fragment>
+                <textarea value={loteTexto} onChange={(e) => setLoteTexto(e.target.value)} rows={4} placeholder="Ej: Lote en Mission, TX, sobre la calle Los Ebanos. Mide 60 x 120 pies. Coordenadas 26.2159, -98.3253" style={{width: "100%", padding: "12px", border: "1px solid #E4E1DD", background: "#fff", fontFamily: "inherit", fontSize: "14px", lineHeight: 1.6, color: "#1C1E1F", resize: "vertical"}} />
+                <div style={{display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "12px"}}>
+                  <button onClick={() => analizarLote({ texto: loteTexto })} disabled={loteLoading || !loteTexto.trim()} className="lgp-hover-zoom" style={{padding: "12px 18px", background: (loteLoading || !loteTexto.trim()) ? "#F4F1ED" : "#1C1E1F", border: 0, color: (loteLoading || !loteTexto.trim()) ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: (loteLoading || !loteTexto.trim()) ? "not-allowed" : "pointer"}}>{loteLoading ? 'Analizando…' : 'Analizar descripción'}</button>
+                </div>
+                <p style={{margin: "10px 0 0", maxWidth: "480px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>
+                  Incluye las medidas si las sabes. Una dirección o unas coordenadas solas no dicen cuánto mide el lote, así que en ese caso guardamos la ubicación y te pedimos el frente y el fondo.
+                </p>
+    </Fragment>
+    ) : null}
+
+                {loteUbicacion && !lotePropio ? (
+    <Fragment>
+                <div style={{marginTop: "16px", padding: "12px 14px", background: "#F7F5F2", border: "1px solid #EAE7E3"}}>
+                  <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Ubicación guardada</p>
+                  <p style={{margin: 0, fontSize: "13px", lineHeight: 1.5, color: "#505759"}}>{[loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ')}</p>
+                </div>
+    </Fragment>
+    ) : null}
     </Fragment>
     )}
 
