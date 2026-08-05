@@ -78,7 +78,9 @@ export default function HomeConfigurator() {
   const [recamarasExtra, setRecamarasExtra] = useState(0);
   const [banosExtra, setBanosExtra] = useState(0);
   const [lotePropio, setLotePropio] = useState<Lote | null>(null);
-  const [loteFile, setLoteFile] = useState<{ nombre: string; dataUrl: string; mime: string } | null>(null);
+  const [loteFile, setLoteFile] = useState<{ nombre: string; dataUrl: string; mime: string; peso: number } | null>(null);
+  // Dirección que el usuario ya nos dio, aunque el análisis no haya corrido.
+  const [loteTextoCapturado, setLoteTextoCapturado] = useState<string | null>(null);
   const [loteLoading, setLoteLoading] = useState(false);
   const [loteError, setLoteError] = useState<string | null>(null);
   // 'info' = la vía manual sigue disponible (no pasó nada malo);
@@ -351,11 +353,19 @@ export default function HomeConfigurator() {
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = String(reader.result);
-      setLoteFile({ nombre: file.name, dataUrl, mime: file.type });
+      // El archivo se guarda antes de analizarlo: aunque el análisis falle,
+      // el usuario tiene que ver que su documento sí quedó cargado.
+      setLoteFile({ nombre: file.name, dataUrl, mime: file.type, peso: file.size });
       analizarLote({ dataUrl, mime: file.type, nombre: file.name });
     };
     reader.onerror = () => { setLoteErrorTipo('error'); setLoteError('No se pudo leer el archivo.'); };
     reader.readAsDataURL(file);
+  }
+
+  function pesoLegible(bytes: number) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   }
 
   // Lote propio: fuera de la subdivisión, así que no carga la restricción
@@ -467,6 +477,7 @@ export default function HomeConfigurator() {
     setLoteError(null);
     setLoteUbicacion(null);
     setLoteTexto('');
+    setLoteTextoCapturado(null);
     setLoteFrente('');
     setLoteFondo('');
     setLote(null);
@@ -796,6 +807,12 @@ export default function HomeConfigurator() {
     { k: 'Interior', v: interior ? (INTERIORES.find((i) => i.key === interior) || ({} as any)).nombre : 'Sin elegir' },
     { k: 'Módulos', v: modulos.length ? modulos.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).nombre).join(', ') : 'Ninguno' },
     { k: 'Tragaluces', v: tragaluces.length ? tragaluces.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).corto).join(', ') : 'Ninguno' },
+    // Lo que el usuario adjuntó de su propio lote viaja al resumen para que el
+    // arquitecto lo vea, aunque el análisis automático no haya corrido.
+    ...(loteFile ? [{ k: 'Plano adjunto', v: loteFile.nombre + ' · ' + pesoLegible(loteFile.peso) }] : []),
+    ...(loteUbicacion || loteTextoCapturado
+      ? [{ k: 'Ubicación del lote', v: loteUbicacion ? [loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ') : (loteTextoCapturado ?? '') }]
+      : []),
     { k: 'Brief', v: brief ? '“' + brief.slice(0, 150) + (brief.length > 150 ? '…' : '') + '”' : 'Sin brief' },
     { k: 'Contacto', v: (lead.nombre || '—') + (lead.correo ? ' · ' + lead.correo : '') + (lead.tel ? ' · ' + lead.tel : '') },
     { k: 'ft² habitables libres', v: ft2Rest + ' ft² dentro del límite' },
@@ -1147,7 +1164,7 @@ export default function HomeConfigurator() {
     <Fragment>
                 <textarea value={loteTexto} onChange={(e) => setLoteTexto(e.target.value)} rows={4} placeholder="Ej: Lote en Mission, TX, sobre la calle Los Ebanos. Mide 60 x 120 pies. Coordenadas 26.2159, -98.3253" style={{width: "100%", padding: "12px", border: "1px solid #E4E1DD", background: "#fff", fontFamily: "inherit", fontSize: "14px", lineHeight: 1.6, color: "#1C1E1F", resize: "vertical"}} />
                 <div style={{display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "12px"}}>
-                  <button onClick={() => analizarLote({ texto: loteTexto })} disabled={loteLoading || !loteTexto.trim()} className="lgp-hover-zoom" style={{padding: "12px 18px", background: (loteLoading || !loteTexto.trim()) ? "#F4F1ED" : "#1C1E1F", border: 0, color: (loteLoading || !loteTexto.trim()) ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: (loteLoading || !loteTexto.trim()) ? "not-allowed" : "pointer"}}>{loteLoading ? 'Analizando…' : 'Analizar descripción'}</button>
+                  <button onClick={() => { setLoteTextoCapturado(loteTexto.trim()); analizarLote({ texto: loteTexto }); }} disabled={loteLoading || !loteTexto.trim()} className="lgp-hover-zoom" style={{padding: "12px 18px", background: (loteLoading || !loteTexto.trim()) ? "#F4F1ED" : "#1C1E1F", border: 0, color: (loteLoading || !loteTexto.trim()) ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: (loteLoading || !loteTexto.trim()) ? "not-allowed" : "pointer"}}>{loteLoading ? 'Analizando…' : 'Analizar descripción'}</button>
                 </div>
                 <p style={{margin: "10px 0 0", maxWidth: "480px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>
                   Incluye las medidas si las sabes. Una dirección o unas coordenadas solas no dicen cuánto mide el lote, así que en ese caso guardamos la ubicación y te pedimos el frente y el fondo.
@@ -1155,11 +1172,43 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
 
-                {loteUbicacion && !lotePropio ? (
+                {/* Acuses de recibo. Van fuera de las pestañas para que sigan
+                    visibles aunque el usuario cambie de modo o falle el análisis. */}
+                {loteFile ? (
     <Fragment>
-                <div style={{marginTop: "16px", padding: "12px 14px", background: "#F7F5F2", border: "1px solid #EAE7E3"}}>
-                  <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Ubicación guardada</p>
-                  <p style={{margin: 0, fontSize: "13px", lineHeight: 1.5, color: "#505759"}}>{[loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ')}</p>
+                <div style={{display: "flex", alignItems: "center", gap: "13px", marginTop: "16px", padding: "12px 14px", background: "#F4FBF6", border: "1px solid #CFE8D8"}}>
+                  <span style={{flex: "none", width: "44px", height: "44px", borderRadius: "6px", overflow: "hidden", background: "#fff", border: "1px solid #DDE6E0", display: "flex", alignItems: "center", justifyContent: "center"}}>
+                    {loteFile.mime.startsWith('image/') ? (
+    <Fragment>
+    <img src={loteFile.dataUrl} alt={loteFile.nombre} style={{width: "100%", height: "100%", objectFit: "cover", display: "block"}} />
+    </Fragment>
+    ) : (
+    <Fragment>
+    <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", fontWeight: 700, color: "#8A8F91"}}>PDF</span>
+    </Fragment>
+    )}
+                  </span>
+                  <span style={{flex: 1, minWidth: 0}}>
+                    <span style={{display: "block", fontFamily: "Archivo, sans-serif", fontWeight: 700, fontSize: "13px", color: "#1C1E1F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>✓ {loteFile.nombre}</span>
+                    <span style={{display: "block", marginTop: "2px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#6B8F79", textTransform: "uppercase"}}>Archivo cargado · {pesoLegible(loteFile.peso)}</span>
+                  </span>
+                  <button onClick={() => { setLoteFile(null); setLoteError(null); }} style={{flex: "none", padding: "7px 11px", background: "transparent", border: "1px solid #CFE8D8", color: "#6B8F79", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Quitar</button>
+                </div>
+    </Fragment>
+    ) : null}
+
+                {loteUbicacion || loteTextoCapturado ? (
+    <Fragment>
+                <div style={{marginTop: "12px", padding: "12px 14px", background: "#F4FBF6", border: "1px solid #CFE8D8"}}>
+                  <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px"}}>
+                    <span style={{flex: 1, minWidth: 0}}>
+                      <span style={{display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#6B8F79", textTransform: "uppercase"}}>✓ Ubicación capturada</span>
+                      <span style={{display: "block", marginTop: "4px", fontSize: "13px", lineHeight: 1.5, color: "#1C1E1F"}}>
+                        {loteUbicacion ? [loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ') : loteTextoCapturado}
+                      </span>
+                    </span>
+                    <button onClick={() => { setLoteUbicacion(null); setLoteTextoCapturado(null); setLoteTexto(''); }} style={{flex: "none", padding: "7px 11px", background: "transparent", border: "1px solid #CFE8D8", color: "#6B8F79", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Quitar</button>
+                  </div>
                 </div>
     </Fragment>
     ) : null}
