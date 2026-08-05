@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# .env.example es una plantilla sin secretos: documenta qué llaves pide el
+# proyecto, así que sí se versiona.
+!.env.example
 
 # vercel
 .vercel
