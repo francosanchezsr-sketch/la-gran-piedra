@@ -330,7 +330,7 @@ export function livingDeModulo(m: Modulo): number {
 
 export const MODULOS: Modulo[] = [
   { key: 'office', nombre: 'Home office junto a la entrada', corto: 'Home office', rango: '10×12 – 12×14', area: '120–168', prop: '5:6', min: 120, nota: '' },
-  { key: 'bonus', nombre: 'Bonus / game room', corto: 'Bonus room', rango: '14×16 – 16×20', area: '224–320', prop: '4:5', min: 224, nota: '' },
+  { key: 'bonus', nombre: 'Game room', corto: 'Game room', rango: '14×16 – 16×20', area: '224–320', prop: '4:5', min: 224, nota: '' },
   { key: 'scullery', nombre: 'Walking pantry', corto: 'Walking pantry', rango: '8×10 – 10×12', area: '80–120', prop: '4:5', min: 80, nota: '' },
   { key: 'mudroom', nombre: 'Mudroom desde el garage', corto: 'Mudroom', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: '' },
   { key: 'rec2', nombre: 'Recámara secundaria', corto: 'Recámara 2', rango: '10’6×10’0 (real, set arquitectónico Lote 17)', area: '105', prop: '21:20', min: 105, nota: 'Recámara 2/3 reales del townhouse — ya no se infla a 132–168 ft²' },

@@ -61,6 +61,9 @@ export default function HomeConfigurator() {
   const bgRef = useRef<HTMLDivElement | null>(null);
   const wheelAtRef = useRef(0);
   const moduloWheelAtRef = useRef(0);
+  // Id del lote con el que se armó la configuración actual, para distinguir
+  // "cambió de lote" de "recalculó el mismo lote".
+  const loteAnteriorRef = useRef<string | null>(null);
 
   const [lotModal, setLotModal] = useState<Lote | null>(null);
   const [paso, setPaso] = useState(1);
@@ -269,6 +272,10 @@ export default function HomeConfigurator() {
   // Al cambiar de lote se reaplican las reglas de su subdivisión: se fija el
   // floorplan si el lote lo trae por default, se descarta el que ya no aplique
   // y se sueltan las zonas que el reglamento prohíbe en ese tipo de lote.
+  //
+  // Si además es OTRO lote (no el mismo recalculado), la configuración de
+  // zonas y cuartos arranca de cero: el presupuesto cambió por completo y
+  // arrastrar lo elegido antes se ve como si la app hubiera puesto zonas solas.
   useEffect(() => {
     if (!lote) return;
     const r = REGLAS_LOTE[lote.tipo];
@@ -277,9 +284,19 @@ export default function HomeConfigurator() {
     } else {
       setPlan((p) => (p && r.planes.includes(p) ? p : null));
     }
-    if (r.zonasBloqueadas.length) {
+
+    const cambioDeLote = loteAnteriorRef.current !== null && loteAnteriorRef.current !== lote.id;
+    loteAnteriorRef.current = lote.id;
+
+    if (cambioDeLote) {
+      setModulos([]);
+      setRecamarasExtra(0);
+      setBanosExtra(0);
+      setTragaluces([]);
+    } else if (r.zonasBloqueadas.length) {
       setModulos((prev) => prev.filter((k) => !r.zonasBloqueadas.includes(k)));
     }
+
     // El dimmer se recalibra: su rango depende del máximo habitable del lote.
     setPlanLivingSel(null);
     setSugeridos(null);
