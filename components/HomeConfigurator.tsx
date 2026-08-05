@@ -15,6 +15,7 @@ import {
   huellaConstruible,
   GARAGE_2_AUTOS,
   GARAGE_1_AUTO,
+  GARAGE_2_TOWNHOUSE,
   PORCHE,
   FAQS,
   NAV,
@@ -994,9 +995,11 @@ export default function HomeConfigurator() {
     return s + (m.living !== undefined ? m.min - m.living : 0);
   }, 0);
   const ft2ConstruidoTotal = ft2LivingTotal + planNoHabitable + ft2Exteriores;
+  // En lote propio manda lo que eligió el usuario; en un lote del catálogo
+  // manda el garage real del plano aprobado, no el estándar.
   const garageTexto = lote?.huella
     ? (garage2 ? `2 autos · ${GARAGE_2_AUTOS.toLocaleString('es-MX')} ft²` : `1 auto · ${GARAGE_1_AUTO.toLocaleString('es-MX')} ft²`)
-    : `2 autos · ${GARAGE_2_AUTOS.toLocaleString('es-MX')} ft²`;
+    : `2 autos · ${GARAGE_2_TOWNHOUSE.toLocaleString('es-MX')} ft² (del plano aprobado)`;
   const loteMedida = lote
     ? (lote.frenteFt && lote.fondoFt
         ? `${lote.frenteFt} × ${lote.fondoFt} ft · ${lote.maxft.toLocaleString('es-MX')} ft²`

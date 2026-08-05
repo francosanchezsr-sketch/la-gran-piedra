@@ -250,10 +250,16 @@ export const PLANES = {
   D:  { key: 'D',  nombre: '2 pisos',           living: 1780, total: 2394, rec: 4, banos: 3, pisos: 2, fijo: false, incluidas: [] as string[],                    recMin: 1, banosMin: 2 },
 } as const;
 
-// Componentes no habitables, con las medidas reales del set del Lote 17.
-// El garage es la pieza que más mueve el cálculo, por eso se elige aparte.
-export const GARAGE_2_AUTOS = 473;
-export const GARAGE_1_AUTO = 240;
+// Componentes no habitables. El garage es la pieza que más mueve el cálculo,
+// por eso se elige aparte.
+//
+// 500 ft² es el doble garage estándar que construye La Gran Piedra y el que se
+// usa en lote propio. El townhouse del Lote 17 NO usa este número: su set
+// aprobado trae un garage de 473 ft² (es una huella angosta), y ese valor sigue
+// dentro de PLANES.TH.total, así que ese plano no se ve afectado por este tope.
+export const GARAGE_2_AUTOS = 500;
+export const GARAGE_1_AUTO = 250;
+export const GARAGE_2_TOWNHOUSE = 473;
 export const PORCHE = 24;
 
 // Retiros (setbacks) por default. NO son el reglamento verificado de ninguna
