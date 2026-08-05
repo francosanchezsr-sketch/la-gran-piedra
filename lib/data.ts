@@ -36,6 +36,12 @@ export type Lote = {
   status: string;
   origen?: 'catalogo' | 'usuario';
   fuente?: string;
+  // Solo en lotes del usuario: de aquí sale el presupuesto en vez del factor
+  // de ocupación genérico. huella = planta baja construible tras los retiros.
+  frenteFt?: number;
+  fondoFt?: number;
+  retiros?: Retiros;
+  huella?: number;
 };
 
 // Reglas de construcción por tipo de lote. Son restricciones del reglamento de
@@ -234,12 +240,37 @@ export const PLAT_ENCLAVE107: PlatLot[] = [
 // `recMin`/`banosMin` son los cuartos y baños que no se pueden quitar. El
 // resto sí: liberarlos devuelve sus ft² al presupuesto, que es como el usuario
 // cambia una recámara por un game room o un walking closet.
+// Solo TH declara zonas incluidas, porque son las que el set arquitectónico del
+// Lote 17 realmente trae aprobadas (balcón del master y cocina abierta). B, C y
+// D se entregan como lienzo en blanco: el usuario arma sus zonas desde cero.
 export const PLANES = {
   TH: { key: 'TH', nombre: 'Townhouse 2 pisos', living: 1635, total: 2249, rec: 3, banos: 3, pisos: 2, fijo: true,  incluidas: ['masterbalcon', 'cocinaabierta'], recMin: 1, banosMin: 2 },
-  B:  { key: 'B',  nombre: 'Corredor en patio', living: 1575, total: 2168, rec: 3, banos: 3, pisos: 1, fijo: false, incluidas: ['cocinaabierta'],                 recMin: 1, banosMin: 2 },
-  C:  { key: 'C',  nombre: 'Patio central',     living: 1635, total: 2249, rec: 3, banos: 3, pisos: 1, fijo: false, incluidas: ['cocinaabierta'],                 recMin: 1, banosMin: 2 },
-  D:  { key: 'D',  nombre: '2 pisos',           living: 1780, total: 2394, rec: 4, banos: 3, pisos: 2, fijo: false, incluidas: ['cocinaabierta'],                 recMin: 1, banosMin: 2 },
+  B:  { key: 'B',  nombre: 'Corredor en patio', living: 1575, total: 2168, rec: 3, banos: 3, pisos: 1, fijo: false, incluidas: [] as string[],                    recMin: 1, banosMin: 2 },
+  C:  { key: 'C',  nombre: 'Patio central',     living: 1635, total: 2249, rec: 3, banos: 3, pisos: 1, fijo: false, incluidas: [] as string[],                    recMin: 1, banosMin: 2 },
+  D:  { key: 'D',  nombre: '2 pisos',           living: 1780, total: 2394, rec: 4, banos: 3, pisos: 2, fijo: false, incluidas: [] as string[],                    recMin: 1, banosMin: 2 },
 } as const;
+
+// Componentes no habitables, con las medidas reales del set del Lote 17.
+// El garage es la pieza que más mueve el cálculo, por eso se elige aparte.
+export const GARAGE_2_AUTOS = 473;
+export const GARAGE_1_AUTO = 240;
+export const PORCHE = 24;
+
+// Retiros (setbacks) por default. NO son el reglamento verificado de ninguna
+// ciudad: son valores de arranque razonables para lote residencial del Valle,
+// editables por el usuario en el paso 1. El cálculo de superficie construible
+// sale de aquí, así que si el municipio pide otros hay que capturarlos.
+export const RETIROS_DEFAULT = { frente: 25, fondo: 20, lados: 6 };
+
+export type Retiros = { frente: number; fondo: number; lados: number };
+
+// Huella construible en planta baja: el terreno menos los retiros. Es el tope
+// físico real de lo que se puede desplantar, y de ahí sale todo lo demás.
+export function huellaConstruible(frenteFt: number, fondoFt: number, r: Retiros) {
+  const ancho = Math.max(0, frenteFt - r.lados * 2);
+  const largo = Math.max(0, fondoFt - r.frente - r.fondo);
+  return Math.round(ancho * largo);
+}
 
 // Cuartos y baños que el usuario puede sumar o quitar en el paso 5. Las medidas
 // salen del set del Lote 17: recámara 2/3 = 10'6"×10'0" = 105 ft²; baño
@@ -279,6 +310,10 @@ type Modulo = {
   // cuando el módulo tiene las dos (p. ej. master + balcón).
   exterior?: boolean;
   living?: number;
+  // Compatibilidad con el floorplan: un balcón necesita planta alta, y un
+  // master abierto al patio necesita que el plano tenga patio.
+  minPisos?: number;
+  soloEnPlanes?: string[];
 };
 
 // Área habitable que consume un módulo. Las zonas exteriores no consumen.
@@ -297,8 +332,8 @@ export const MODULOS: Modulo[] = [
   // Variantes de floorplan (consumen del mismo presupuesto; algunas son mutuamente excluyentes o requieren otra zona)
   { key: 'cocinaabierta', nombre: 'Cocina concepto abierto', corto: 'Cocina abierta', rango: 'sin muros extra', area: '168', prop: '3:4', min: 168, nota: '', grupo: 'cocina' },
   { key: 'cocinacerrada', nombre: 'Cocina concepto cerrado', corto: 'Cocina cerrada', rango: '168 + 56 de muros', area: '224', prop: '3:4', min: 224, nota: 'Incluye muros y circulación extra', grupo: 'cocina' },
-  { key: 'masterpatio', nombre: 'Master con conexión al patio', corto: 'Master + patio', rango: 'recámara estándar', area: '224', prop: '—', min: 224, nota: 'Conexión directa al patio central del floorplan', grupo: 'master' },
-  { key: 'masterbalcon', nombre: 'Master con balcón', corto: 'Master + balcón', rango: 'balcón real 4’3×8’8 (37 ft²)', area: '261', prop: 'balcón 1:2', min: 261, living: 224, nota: 'Del total, 37 ft² son balcón: no consumen área habitable', grupo: 'master' },
+  { key: 'masterpatio', nombre: 'Master con conexión al patio', corto: 'Master + patio', rango: 'recámara estándar', area: '224', prop: '—', min: 224, nota: 'Se abre al patio del floorplan', grupo: 'master', soloEnPlanes: ['B', 'C'] },
+  { key: 'masterbalcon', nombre: 'Master con balcón', corto: 'Master + balcón', rango: 'balcón real 4’3×8’8 (37 ft²)', area: '261', prop: 'balcón 1:2', min: 261, living: 224, nota: 'Del total, 37 ft² son balcón: no consumen área habitable', grupo: 'master', minPisos: 2 },
 
   // Zonas opcionales (add-on sobre el presupuesto restante)
   { key: 'walkingcloset', nombre: 'Walking closet secundario', corto: 'Walking closet', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: 'El closet del master ya está incluido' },

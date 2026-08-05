@@ -11,6 +11,11 @@ import {
   INTERIORES,
   MODULOS,
   livingDeModulo,
+  RETIROS_DEFAULT,
+  huellaConstruible,
+  GARAGE_2_AUTOS,
+  GARAGE_1_AUTO,
+  PORCHE,
   FAQS,
   NAV,
   PASO_NOMBRES,
@@ -81,6 +86,7 @@ export default function HomeConfigurator() {
   // Dimmer del paso 2: área habitable objetivo del floorplan. null = el tamaño
   // de fábrica del plan. Solo aplica en lotes donde el plano no viene fijo.
   const [planLivingSel, setPlanLivingSel] = useState<number | null>(null);
+  const [dimmerModo, setDimmerModo] = useState<'living' | 'total'>('living');
   const [lotePropio, setLotePropio] = useState<Lote | null>(null);
   const [loteFile, setLoteFile] = useState<{ nombre: string; dataUrl: string; mime: string; peso: number } | null>(null);
   // Dirección que el usuario ya nos dio, aunque el análisis no haya corrido.
@@ -92,7 +98,8 @@ export default function HomeConfigurator() {
   const [loteErrorTipo, setLoteErrorTipo] = useState<'info' | 'error'>('error');
   const [loteAnalisis, setLoteAnalisis] = useState<{
     frente: number | null; fondo: number | null; areaLote: number;
-    maxLiving: number; factor: number; confianza: string; nota: string; fuente: string;
+    huella?: number; maxLiving?: number; factor?: number;
+    confianza: string; nota: string; fuente: string;
     direccion?: string | null; coordenadas?: string | null;
   } | null>(null);
   // Tres maneras de traer un lote propio: plano (PDF o imagen), medidas a mano
@@ -101,6 +108,11 @@ export default function HomeConfigurator() {
   const [loteTexto, setLoteTexto] = useState('');
   const [loteFrente, setLoteFrente] = useState('');
   const [loteFondo, setLoteFondo] = useState('');
+  // Retiros editables: el cálculo de superficie construible sale de aquí, y
+  // varían por municipio, así que el usuario los puede corregir.
+  const [retiros, setRetiros] = useState(RETIROS_DEFAULT);
+  // Garage de 2 autos: es la pieza no habitable que más mueve el cálculo.
+  const [garage2, setGarage2] = useState(true);
   // Ubicación capturada cuando la descripción traía dirección pero no medidas.
   const [loteUbicacion, setLoteUbicacion] = useState<{ direccion: string | null; coordenadas: string | null } | null>(null);
 
@@ -266,6 +278,20 @@ export default function HomeConfigurator() {
     setSugeridos(null);
   }, [lote]);
 
+  // Al cambiar de floorplan se sueltan las zonas que ya no le quedan: un balcón
+  // en una casa de un piso, o un master al patio en un plano que no lo tiene.
+  useEffect(() => {
+    if (!plan) return;
+    const p = PLANES[plan];
+    setModulos((prev) => prev.filter((k) => {
+      const m = MODULOS.find((x) => x.key === k);
+      if (!m) return false;
+      if (m.minPisos && p.pisos < m.minPisos) return false;
+      if (m.soloEnPlanes && !m.soloEnPlanes.includes(plan)) return false;
+      return true;
+    }));
+  }, [plan]);
+
   // ¿Otra zona del mismo grupo desplazó a la que el plano traía de fábrica?
   // (elegir cocina cerrada sustituye a la cocina abierta incluida)
   function grupoSustituido(key: string) {
@@ -321,9 +347,24 @@ export default function HomeConfigurator() {
     return recamarasExtra * EXTRAS.recamara.living + banosExtra * EXTRAS.bano.living;
   }
 
+  const garageFt = garage2 ? GARAGE_2_AUTOS : GARAGE_1_AUTO;
+
+  // Máximo habitable del lote. En un lote propio con huella calculada sale de
+  // la construcción real: huella x pisos del plan, menos garage y pórtico, que
+  // ocupan planta baja pero no son habitables. En los lotes del catálogo es el
+  // tope que fija la subdivisión.
+  function maxLivingLote() {
+    if (!lote) return 0;
+    if (lote.huella && plan) {
+      const pisos = PLANES[plan].pisos;
+      return Math.max(0, lote.huella * pisos - garageFt - PORCHE);
+    }
+    return lote.maxLiving;
+  }
+
   function ft2Restantes() {
     if (!lote) return 0;
-    return Math.max(0, lote.maxLiving - livingDelPlan() - livingDeZonas() - livingDeCuartos());
+    return Math.max(0, maxLivingLote() - livingDelPlan() - livingDeZonas() - livingDeCuartos());
   }
 
   async function runAI() {
@@ -390,10 +431,15 @@ export default function HomeConfigurator() {
   // Lote propio: fuera de la subdivisión, así que no carga la restricción
   // townhouse y se le abren los tres floorplans.
   function aplicarLotePropio(data: {
-    frente: number | null; fondo: number | null; areaLote: number; maxLiving: number;
-    factor: number; confianza: string; nota: string; fuente: string;
+    frente: number | null; fondo: number | null; areaLote: number;
+    huella?: number; maxLiving?: number;
+    confianza: string; nota: string; fuente: string;
     direccion?: string | null; coordenadas?: string | null;
   }) {
+    // Si tenemos frente y fondo calculamos la huella real con los retiros; si
+    // el análisis solo devolvió el área, caemos al factor de ocupación.
+    const huella = data.huella
+      ?? (data.frente && data.fondo ? huellaConstruible(data.frente, data.fondo, retiros) : undefined);
     const propio: Lote = {
       id: 'Tu lote',
       x: 0, y: 0, w: 0, h: 0,
@@ -401,12 +447,17 @@ export default function HomeConfigurator() {
       fondo: data.fondo ? `${data.fondo} ft` : '—',
       orient: 'Por definir',
       maxft: Math.round(data.areaLote),
-      maxLiving: data.maxLiving,
+      // maxLiving definitivo lo calcula el paso 2 con los pisos y el garage.
+      maxLiving: data.maxLiving ?? (huella ? huella : Math.round(data.areaLote * 0.5)),
       pisos: 'hasta 2 pisos',
       tipo: 'libre',
       status: 'disponible',
       origen: 'usuario',
       fuente: data.fuente,
+      frenteFt: data.frente ?? undefined,
+      fondoFt: data.fondo ?? undefined,
+      retiros: huella ? retiros : undefined,
+      huella,
     };
     setLotePropio(propio);
     setLote(propio);
@@ -469,14 +520,19 @@ export default function HomeConfigurator() {
       setLoteErrorTipo('error'); setLoteError(`Esas medidas dan ${Math.round(area).toLocaleString('es-MX')} ft², fuera del rango de un lote residencial (1,200 – 40,000 ft²). Revísalas.`);
       return;
     }
+    const huella = huellaConstruible(f, d, retiros);
+    if (huella < 400) {
+      setLoteErrorTipo('error');
+      setLoteError(`Con esos retiros solo quedan ${huella.toLocaleString('es-MX')} ft² construibles en planta baja — no alcanza para una casa. Revisa las medidas o los retiros.`);
+      return;
+    }
     setLoteError(null);
     aplicarLotePropio({
       frente: f, fondo: d,
       areaLote: Math.round(area),
-      maxLiving: Math.round((area * 0.5) / 5) * 5,
-      factor: 0.5,
+      huella,
       confianza: 'alta',
-      nota: 'Medidas capturadas por ti, sin análisis automático.',
+      nota: `Huella construible calculada con retiros de ${retiros.frente}' al frente, ${retiros.fondo}' al fondo y ${retiros.lados}' a cada lado.`,
       fuente: 'medidas capturadas a mano',
       direccion: loteUbicacion?.direccion ?? null,
       coordenadas: loteUbicacion?.coordenadas ?? null,
@@ -644,19 +700,35 @@ export default function HomeConfigurator() {
   // le alcance el lote, ya descontando las zonas y cuartos que lleva. Nunca
   // por debajo del plano diseñado: eso ya sería otro proyecto.
   const planBaseLiving = plan ? PLANES[plan].living : 0;
-  const planNoHabitable = plan ? PLANES[plan].total - PLANES[plan].living : 0;
+  // Lo que se construye pero no cuenta como habitable. En lote propio se arma
+  // con el garage que el usuario eligió; en el catálogo es el del plan.
+  const planNoHabitable = lote?.huella
+    ? garageFt + PORCHE
+    : (plan ? PLANES[plan].total - PLANES[plan].living : 0);
   const comprometidoFuera = livingDeZonas() + livingDeCuartos();
   const dimmerMin = planBaseLiving;
-  const dimmerMax = lote ? Math.max(planBaseLiving, lote.maxLiving - comprometidoFuera) : planBaseLiving;
+  const dimmerMax = lote ? Math.max(planBaseLiving, maxLivingLote() - comprometidoFuera) : planBaseLiving;
   const dimmerValor = Math.min(Math.max(livingDelPlan(), dimmerMin), dimmerMax);
   const dimmerActivo = Boolean(plan && lote && !planFijo && dimmerMax > dimmerMin);
   const dimmerTotal = dimmerValor + planNoHabitable;
   const dimmerPct = dimmerMax > dimmerMin ? ((dimmerValor - dimmerMin) / (dimmerMax - dimmerMin)) * 100 : 0;
+  // El usuario puede pensar en habitable o en área total construida; el slider
+  // trabaja en la unidad que elija y por dentro siempre guarda el habitable.
+  const enTotal = dimmerModo === 'total';
+  const sliderMin = enTotal ? dimmerMin + planNoHabitable : dimmerMin;
+  const sliderMax = enTotal ? dimmerMax + planNoHabitable : dimmerMax;
+  const sliderValor = enTotal ? dimmerValor + planNoHabitable : dimmerValor;
   const onDimmer = (e: ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) => {
     const v = parseInt(e.target.value, 10);
-    if (Number.isFinite(v)) setPlanLivingSel(Math.min(Math.max(v, dimmerMin), dimmerMax));
+    if (!Number.isFinite(v)) return;
+    const living = enTotal ? v - planNoHabitable : v;
+    setPlanLivingSel(Math.min(Math.max(living, dimmerMin), dimmerMax));
   };
   const resetDimmer = () => setPlanLivingSel(null);
+  const dimmerModos = ([
+    { key: 'living' as const, label: 'Habitable' },
+    { key: 'total' as const, label: 'Área total' },
+  ]).map((m) => ({ ...m, on: dimmerModo === m.key, onClick: () => setDimmerModo(m.key) }));
 
   // ---- Barra de presupuesto (pasos 2 a 5) --------------------------------
   const presupuestoSegmentos = [
@@ -687,18 +759,28 @@ export default function HomeConfigurator() {
     const on = incluida || modulos.indexOf(m.key) >= 0;
     // El reglamento de la subdivisión manda sobre todo lo demás.
     const bloqueadaPorReglamento = Boolean(reglas?.zonasBloqueadas.includes(m.key));
+    // Incompatibilidades con el floorplan elegido: un balcón necesita planta
+    // alta; un master abierto al patio necesita que el plano tenga patio.
+    const pisosPlan = plan ? PLANES[plan].pisos : 0;
+    const faltanPisos = Boolean(plan && m.minPisos && pisosPlan < m.minPisos);
+    const planIncompatible = Boolean(plan && m.soloEnPlanes && !m.soloEnPlanes.includes(plan));
+    const incompatible = faltanPisos || planIncompatible;
     const costoLiving = costoZona(m);
     const requiereFaltante = m.requiere && !modulos.includes(m.requiere);
     const sinPresupuesto = !on && costoLiving > ft2Rest;
-    const disabled = bloqueadaPorReglamento || (!on && (Boolean(requiereFaltante) || sinPresupuesto));
+    const disabled = bloqueadaPorReglamento || incompatible || (!on && (Boolean(requiereFaltante) || sinPresupuesto));
     const requeridoNombre = m.requiere ? (MODULOS.find((x) => x.key === m.requiere)?.corto ?? m.requiere) : null;
     const disabledReason = bloqueadaPorReglamento
       ? reglas!.motivo
-      : requiereFaltante
-        ? `Primero agrega: ${requeridoNombre}`
-        : sinPresupuesto
-          ? `No cabe en tu presupuesto restante (quedan ${ft2Rest} ft² habitables, esta zona necesita mínimo ${costoLiving} ft²)`
-          : null;
+      : faltanPisos
+        ? `${PLANES[plan!].nombre} es de un piso: un balcón necesita planta alta.`
+        : planIncompatible
+          ? `${PLANES[plan!].nombre} no tiene patio al que abrir el master.`
+          : requiereFaltante
+            ? `Primero agrega: ${requeridoNombre}`
+            : sinPresupuesto
+              ? `No cabe en tu presupuesto restante (quedan ${ft2Rest} ft² habitables, esta zona necesita mínimo ${costoLiving} ft²)`
+              : null;
     // Una zona que sustituye a otra incluida solo cobra la diferencia.
     const sustituyeA = !incluida && m.grupo
       ? MODULOS.find((x) => x.grupo === m.grupo && (plan ? (PLANES[plan].incluidas as readonly string[]).includes(x.key) : false))
@@ -846,7 +928,7 @@ export default function HomeConfigurator() {
   ];
 
   const resumen = [
-    { k: 'Lote', v: lote ? lote.id + ' · fachada al ' + lote.orient + ' · máx ' + lote.maxLiving + ' ft² habitables' : 'Sin elegir' },
+    { k: 'Lote', v: lote ? lote.id + ' · fachada al ' + lote.orient + ' · máx ' + maxLivingLote().toLocaleString('es-MX') + ' ft² habitables' : 'Sin elegir' },
     { k: 'Floorplan', v: plan
         ? PLANES[plan].nombre + ' · ' + livingDelPlan().toLocaleString('es-MX') + ' ft² habitables'
           + (planFijo ? ' (incluido en el lote)' : planLivingSel !== null ? ` (ajustado desde ${PLANES[plan].living.toLocaleString('es-MX')})` : '')
@@ -1031,7 +1113,7 @@ export default function HomeConfigurator() {
           {mostrarPresupuesto ? (
     <Fragment>
           <div style={{position: "sticky", top: "0", zIndex: 20, marginBottom: "30px", boxShadow: "0 8px 24px rgba(28,30,31,0.06)"}}>
-            <PresupuestoBar max={lote ? lote.maxLiving : 0} segmentos={presupuestoSegmentos} sinLote={!lote} />
+            <PresupuestoBar max={maxLivingLote()} segmentos={presupuestoSegmentos} sinLote={!lote} />
           </div>
     </Fragment>
     ) : null}
@@ -1149,7 +1231,9 @@ export default function HomeConfigurator() {
                       { k: 'Frente', v: loteAnalisis.frente ? loteAnalisis.frente + ' ft' : '—' },
                       { k: 'Fondo', v: loteAnalisis.fondo ? loteAnalisis.fondo + ' ft' : '—' },
                       { k: 'Área del lote', v: loteAnalisis.areaLote.toLocaleString('es-MX') + ' ft²' },
-                      { k: 'Máx habitable', v: loteAnalisis.maxLiving.toLocaleString('es-MX') + ' ft²' },
+                      loteAnalisis.huella
+                        ? { k: 'Huella construible', v: loteAnalisis.huella.toLocaleString('es-MX') + ' ft²' }
+                        : { k: 'Máx habitable', v: (loteAnalisis.maxLiving ?? 0).toLocaleString('es-MX') + ' ft²' },
                     ].map((d) => (
     <Fragment key={d.k}>
                     <div>
@@ -1168,7 +1252,8 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
                   <p style={{margin: "14px 0 0", fontSize: "11px", lineHeight: 1.6, color: "#8A8F91"}}>
-                    <strong style={{fontWeight: 600}}>{loteAnalisis.confianza === 'alta' && loteAnalisis.factor === 0.5 && loteAnalisis.fuente === 'medidas capturadas a mano' ? 'Medidas tuyas' : 'Estimado automático'}</strong> — confianza {loteAnalisis.confianza}. El máximo habitable se calcula como {Math.round(loteAnalisis.factor * 100)}% del área del lote, proporción tomada del set arquitectónico del Lote 17. {loteAnalisis.nota} El arquitecto verifica las medidas reales en la cita.
+                    <strong style={{fontWeight: 600}}>{loteAnalisis.fuente === 'medidas capturadas a mano' ? 'Medidas tuyas' : 'Estimado automático'}</strong> — confianza {loteAnalisis.confianza}. {loteAnalisis.nota}
+                    {loteAnalisis.huella ? ' El área habitable final depende del floorplan y del garage que elijas en el paso 2.' : ` Sin frente y fondo no se pueden aplicar retiros, así que el máximo sale del ${Math.round((loteAnalisis.factor ?? 0.5) * 100)}% del área del lote.`} El arquitecto verifica las medidas y los retiros reales en la cita.
                   </p>
     </Fragment>
     ) : null}
@@ -1215,7 +1300,37 @@ export default function HomeConfigurator() {
                   </label>
                   <button onClick={aplicarMedidasManuales} className="lgp-hover-zoom" style={{flex: "none", padding: "12px 18px", background: "#1C1E1F", border: 0, color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Calcular</button>
                 </div>
-                <p style={{margin: "10px 0 0", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>La vía más confiable: no pasa por el análisis automático.</p>
+
+                <div style={{marginTop: "18px", paddingTop: "16px", borderTop: "1px dashed #E4E1DD"}}>
+                  <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Retiros del terreno (ft)</p>
+                  <p style={{margin: "0 0 12px", maxWidth: "480px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>
+                    Lo que el municipio obliga a dejar libre. De aquí sale la superficie construible — si tu ciudad pide otros, corrígelos.
+                  </p>
+                  <div style={{display: "flex", gap: "10px", flexWrap: "wrap"}}>
+                    {([
+                      { k: 'frente' as const, label: 'Frente' },
+                      { k: 'fondo' as const, label: 'Fondo' },
+                      { k: 'lados' as const, label: 'Cada lado' },
+                    ]).map((r) => (
+    <Fragment key={r.k}>
+                    <label style={{flex: "1 1 90px"}}>
+                      <span style={{display: "block", marginBottom: "5px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>{r.label}</span>
+                      <input value={String(retiros[r.k])} inputMode="decimal" onChange={(e) => { const v = parseFloat(e.target.value.replace(',', '.')); setRetiros((prev) => ({ ...prev, [r.k]: Number.isFinite(v) && v >= 0 ? v : 0 })); }} style={{width: "100%", padding: "9px 10px", border: "1px solid #E4E1DD", background: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "14px", color: "#1C1E1F"}} />
+                    </label>
+    </Fragment>
+    ))}
+                  </div>
+                  {loteFrente && loteFondo && Number.isFinite(parseFloat(loteFrente)) && Number.isFinite(parseFloat(loteFondo)) ? (
+    <Fragment>
+                  <p style={{margin: "12px 0 0", fontSize: "12px", lineHeight: 1.5, color: "#505759"}}>
+                    Huella construible en planta baja: <strong style={{fontWeight: 700}}>{huellaConstruible(parseFloat(loteFrente), parseFloat(loteFondo), retiros).toLocaleString('es-MX')} ft²</strong>
+                    <span style={{color: "#B7BABB"}}> ({Math.max(0, parseFloat(loteFrente) - retiros.lados * 2)}&apos; × {Math.max(0, parseFloat(loteFondo) - retiros.frente - retiros.fondo)}&apos;)</span>
+                  </p>
+    </Fragment>
+    ) : null}
+                </div>
+
+                <p style={{margin: "14px 0 0", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>La vía más confiable: no pasa por el análisis automático.</p>
     </Fragment>
     ) : null}
 
@@ -1346,13 +1461,39 @@ export default function HomeConfigurator() {
                   </div>
                 </div>
 
+                {/* El garage no es habitable pero se come la planta baja, así
+                    que cambiar de 2 a 1 auto libera área para la casa. */}
+                {lote?.huella ? (
+    <Fragment>
+                <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "14px", flexWrap: "wrap", marginBottom: "18px", padding: "13px 15px", background: "#F7F5F2", border: "1px solid #EAE7E3"}}>
+                  <label style={{display: "flex", alignItems: "center", gap: "10px", cursor: "pointer"}}>
+                    <input type="checkbox" checked={garage2} onChange={(e) => setGarage2(e.target.checked)} style={{width: "17px", height: "17px", accentColor: "#F2004B", cursor: "pointer"}} />
+                    <span>
+                      <span style={{display: "block", fontFamily: "Archivo, sans-serif", fontWeight: 700, fontSize: "13px"}}>Garage para 2 autos</span>
+                      <span style={{display: "block", marginTop: "2px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#8A8F91", textTransform: "uppercase"}}>{garage2 ? `${GARAGE_2_AUTOS} ft² de la planta baja` : `1 auto · ${GARAGE_1_AUTO} ft²`}</span>
+                    </span>
+                  </label>
+                  <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#8A8F91", textTransform: "uppercase"}}>
+                    {garage2 ? `Quitarlo libera ${(GARAGE_2_AUTOS - GARAGE_1_AUTO).toLocaleString('es-MX')} ft²` : `Volver a 2 autos cuesta ${(GARAGE_2_AUTOS - GARAGE_1_AUTO).toLocaleString('es-MX')} ft²`}
+                  </span>
+                </div>
+    </Fragment>
+    ) : null}
+
                 {dimmerActivo ? (
     <Fragment>
-                <input type="range" min={dimmerMin} max={dimmerMax} step={5} value={dimmerValor} onChange={onDimmer} aria-label="Área habitable del floorplan" style={{width: "100%", accentColor: "#F2004B", cursor: "pointer"}} />
+                <div style={{display: "flex", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "14px", width: "fit-content"}}>
+                  {dimmerModos.map((m) => (
+    <Fragment key={m.key}>
+                  <button onClick={m.onClick} style={{padding: "7px 14px", border: 0, background: m.on ? "#1C1E1F" : "#fff", color: m.on ? "#FBFBFA" : "#8A8F91", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer"}}>{m.label}</button>
+    </Fragment>
+    ))}
+                </div>
+                <input type="range" min={sliderMin} max={sliderMax} step={5} value={sliderValor} onChange={onDimmer} aria-label={enTotal ? 'Área total construida' : 'Área habitable del floorplan'} style={{width: "100%", accentColor: "#F2004B", cursor: "pointer"}} />
                 <div style={{display: "flex", justifyContent: "space-between", gap: "12px", marginTop: "6px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>
-                  <span>Plano base {dimmerMin.toLocaleString('es-MX')}</span>
+                  <span>Plano base {sliderMin.toLocaleString('es-MX')}</span>
                   <span>{Math.round(dimmerPct)}% estirado</span>
-                  <span>Máximo del lote {dimmerMax.toLocaleString('es-MX')}</span>
+                  <span>Máximo del lote {sliderMax.toLocaleString('es-MX')}</span>
                 </div>
                 <p style={{margin: "12px 0 0", maxWidth: "560px", fontSize: "12px", lineHeight: 1.6, color: "#8A8F91"}}>
                   Mueve el control para estirar el plano dentro de lo que permite <strong style={{fontWeight: 600}}>{loteId}</strong>. El tope baja solo conforme agregues zonas y cuartos en el paso 5.
