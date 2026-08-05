@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const { brief, lote, plan, disponibles, catalogo } = body as {
     brief: string;
     lote: { id: string; orient: string; frente: string; fondo: string; maxft: number };
-    plan: { nombre: string; ft2: number } | null;
+    plan: { nombre: string; living: number } | null;
     disponibles: number;
     catalogo: Modulo[];
   };
@@ -30,14 +30,22 @@ export async function POST(request: Request) {
 
 Brief del cliente: "${brief || "sin brief; sugiere lo más habitual para una familia local"}"
 Lote: ${lote.id}, fachada frontal orientada al ${lote.orient}, ${lote.frente} x ${lote.fondo}, máximo ${lote.maxft} ft².
-Floorplan elegido: ${plan ? plan.nombre + " (" + plan.ft2 + " ft²)" : "ninguno aún"}.
-Pies cuadrados libres dentro del límite del lote: ${disponibles} ft².
+Floorplan elegido: ${plan ? plan.nombre + " (" + plan.living + " ft² habitables)" : "ninguno aún"}.
+Pies cuadrados habitables libres: ${disponibles} ft².
 
 Catálogo de módulos disponibles:
 ${catalogoTxt}
 
-Elige entre 3 y 5 módulos del catálogo que sean compatibles con la orientación y que quepan en los ft² libres. No inventes módulos fuera del catálogo. No propongas ubicaciones ni planos.
-Responde SOLO con JSON válido: [{"key":"<key del catálogo>","razon":"<una frase en español, máximo 18 palabras, que conecte con lo que pidió el cliente>"}]`;
+Tu trabajo tiene dos partes:
+
+1) "lectura": una o dos frases en español, en segunda persona, que le confirmen al cliente QUÉ ENTENDISTE de su brief. Menciona lo concreto que pidió. Si algo de lo que pidió no existe en el catálogo, dilo con claridad en vez de callarlo (ejemplo: "la pérgola no está en el catálogo de zonas, la anoto para el arquitecto").
+
+2) "zonas": entre 3 y 5 módulos del catálogo que respondan al brief, que sean compatibles con la orientación y que quepan en los ft² libres. No inventes módulos fuera del catálogo. No propongas ubicaciones ni planos.
+
+3) "impacto": la suma en ft² de los mínimos de las zonas que propusiste, como número.
+
+Responde SOLO con JSON válido:
+{"lectura":"<texto>","zonas":[{"key":"<key del catálogo>","razon":"<una frase en español, máximo 18 palabras>"}],"impacto":<número>}`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -56,9 +64,17 @@ Responde SOLO con JSON válido: [{"key":"<key del catálogo>","razon":"<una fras
     if (!res.ok) throw new Error("anthropic api error");
     const data = await res.json();
     const raw = data.content?.[0]?.text ?? "";
-    const match = raw.match(/\[[\s\S]*\]/);
-    const arr = JSON.parse(match ? match[0] : raw);
-    return NextResponse.json(arr);
+    const match = raw.match(/\{[\s\S]*\}/);
+    const out = JSON.parse(match ? match[0] : raw) as {
+      lectura?: string;
+      zonas?: { key: string; razon: string }[];
+      impacto?: number;
+    };
+    return NextResponse.json({
+      lectura: out.lectura ?? "",
+      zonas: Array.isArray(out.zonas) ? out.zonas : [],
+      impacto: typeof out.impacto === "number" ? out.impacto : null,
+    });
   } catch {
     return NextResponse.json({ error: "AI request failed" }, { status: 502 });
   }

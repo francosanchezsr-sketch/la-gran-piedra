@@ -71,6 +71,11 @@ export default function HomeConfigurator() {
   const [sugeridos, setSugeridos] = useState<Sugerencia[] | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  // Acuse de que el brief se leyó: qué entendió, qué zonas propone y cuánto
+  // presupuesto se llevarían.
+  const [briefLectura, setBriefLectura] = useState<{
+    texto: string; zonas: string[]; impacto: number; automatico: boolean;
+  } | null>(null);
   const [lead, setLead] = useState<Lead>({ nombre: '', correo: '', tel: '' });
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [enviado, setEnviado] = useState(false);
@@ -385,16 +390,30 @@ export default function HomeConfigurator() {
         }),
       });
       if (!res.ok) throw new Error('bad response');
-      const arr = (await res.json()) as Sugerencia[];
-      const val = arr.filter((x) => MODULOS.some((k) => k.key === x.key));
+      const data = (await res.json()) as { lectura?: string; zonas?: Sugerencia[]; impacto?: number | null };
+      const val = (data.zonas ?? []).filter((x) => MODULOS.some((k) => k.key === x.key));
       if (!val.length) throw new Error('vacio');
       setSugeridos(val);
+      // El acuse de lectura es lo que le confirma al cliente que su brief sí
+      // se analizó, en vez de dejarlo adivinando.
+      setBriefLectura({
+        texto: data.lectura ?? '',
+        zonas: val.map((z) => MODULOS.find((m) => m.key === z.key)?.corto ?? z.key),
+        impacto: typeof data.impacto === 'number' ? data.impacto : val.reduce((s, z) => s + (MODULOS.find((m) => m.key === z.key)?.min ?? 0), 0),
+        automatico: true,
+      });
       setAiLoading(false);
     } catch {
-      const fallback = MODULOS.filter((m) => m.min <= disponibles)
+      const fallback = MODULOS.filter((m) => livingDeModulo(m) <= disponibles)
         .slice(0, 4)
         .map((m) => ({ key: m.key, razon: 'Compatible con los ' + disponibles + ' ft² libres de tu lote.' }));
       setSugeridos(fallback);
+      setBriefLectura({
+        texto: 'No se pudo consultar el modelo, así que filtramos el catálogo por los ft² que te quedan y por la orientación de tu lote. Tu brief queda guardado tal cual para el arquitecto.',
+        zonas: fallback.map((z) => MODULOS.find((m) => m.key === z.key)?.corto ?? z.key),
+        impacto: fallback.reduce((s, z) => s + (MODULOS.find((m) => m.key === z.key)?.min ?? 0), 0),
+        automatico: false,
+      });
       setAiLoading(false);
       setAiError('No se pudo consultar el modelo ahora mismo — mostramos el filtro por metraje y orientación.');
     }
@@ -657,20 +676,44 @@ export default function HomeConfigurator() {
   const pasoNum = paso;
   const pasoNombre = PASO_NOMBRES[paso - 1];
   const pasoHint = PASO_HINTS[paso - 1];
-  const pasos = PASO_NOMBRES.map((nm, i) => ({
-    n: i + 1,
-    onClick: () => setPaso(i + 1),
-    style: {
-      flex: 1, padding: '11px 4px', border: 0, cursor: 'pointer',
-      background: paso === i + 1 ? '#1C1E1F' : paso > i + 1 ? '#F2004B' : '#fff',
-      color: paso >= i + 1 ? '#fff' : '#B7BABB',
-      fontFamily: 'Archivo, sans-serif', fontWeight: 700, fontSize: '10px', letterSpacing: '0.12em',
-    } as Record<string, any>,
-  }));
+
+  // Lo que la casa necesita definido antes de pedirle sus datos al cliente.
+  // Las zonas quedan fuera a propósito: una casa sin zonas extra es válida.
+  const faltantes = [
+    !lote ? { paso: 1, que: 'el lote' } : null,
+    !plan ? { paso: 2, que: 'el floorplan' } : null,
+    !fachada ? { paso: 3, que: 'la fachada' } : null,
+    !interior ? { paso: 5, que: 'los colores de interior' } : null,
+  ].filter(Boolean) as { paso: number; que: string }[];
+  const configCompleta = faltantes.length === 0;
+  // El bloqueo aplica de la 6 en adelante: ahí es donde se piden datos y se
+  // manda el resumen, y no tiene sentido mandarlo a medias.
+  const pasoPermitido = (n: number) => n <= 5 || configCompleta;
+
+  const pasos = PASO_NOMBRES.map((nm, i) => {
+    const n = i + 1;
+    const permitido = pasoPermitido(n);
+    return {
+      n,
+      permitido,
+      title: permitido ? undefined : `Antes elige ${faltantes.map((f) => f.que).join(', ')}`,
+      onClick: () => { if (permitido) setPaso(n); },
+      style: {
+        flex: 1, padding: '11px 4px', border: 0, cursor: permitido ? 'pointer' : 'not-allowed',
+        background: paso === n ? '#1C1E1F' : paso > n ? '#F2004B' : '#fff',
+        color: paso >= n ? '#fff' : permitido ? '#B7BABB' : '#DDD9D4',
+        fontFamily: 'Archivo, sans-serif', fontWeight: 700, fontSize: '10px', letterSpacing: '0.12em',
+      } as Record<string, any>,
+    };
+  });
   const esPaso1 = paso === 1, esPaso2 = paso === 2, esPaso3 = paso === 3, esPaso4 = paso === 4;
   const esPaso5 = paso === 5, esPaso6 = paso === 6, esPaso7 = paso === 7;
   const atras = () => setPaso((p) => Math.max(1, p - 1));
-  const siguiente = () => setPaso((p) => Math.min(PASO_NOMBRES.length, p + 1));
+  const siguiente = () => setPaso((p) => {
+    const n = Math.min(PASO_NOMBRES.length, p + 1);
+    return pasoPermitido(n) ? n : p;
+  });
+  const siguienteBloqueado = !pasoPermitido(Math.min(PASO_NOMBRES.length, paso + 1));
 
   const loteId = lote ? lote.id : 'tu lote';
 
@@ -753,7 +796,17 @@ export default function HomeConfigurator() {
   const onBrief = (e: ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) => setBrief(e.target.value);
 
   const ft2Rest = ft2Restantes();
-  const mods = (sugeridos || MODULOS.map((m) => ({ key: m.key, razon: null as string | null }))).map((sg) => {
+  // El análisis del brief RECOMIENDA zonas, no recorta el catálogo: se marcan
+  // y se suben al principio de la lista, pero el usuario sigue viendo todo.
+  const modsBase = MODULOS.map((m) => {
+    const sug = sugeridos?.find((s) => s.key === m.key) ?? null;
+    return { key: m.key, razon: sug ? sug.razon : null, sugerida: Boolean(sug) };
+  });
+  const modsOrdenados = sugeridos
+    ? [...modsBase].sort((a, b) => Number(b.sugerida) - Number(a.sugerida))
+    : modsBase;
+
+  const mods = modsOrdenados.map((sg) => {
     const m = MODULOS.find((x) => x.key === sg.key)!;
     const incluida = esIncluida(m.key);
     const on = incluida || modulos.indexOf(m.key) >= 0;
@@ -788,7 +841,7 @@ export default function HomeConfigurator() {
     return {
       iconKey: m.key, nombre: m.corto, rango: m.rango, area: m.area, prop: m.prop, min: m.min, razon: sg.razon,
       on, disabled, disabledReason, requiereFaltante: Boolean(requiereFaltante), bloqueadaPorReglamento,
-      incluida, costoLiving, sustituyeA: sustituyeA ? sustituyeA.corto : null,
+      incluida, costoLiving, sustituyeA: sustituyeA ? sustituyeA.corto : null, sugerida: sg.sugerida,
       box: on ? '#F2004B' : '#fff',
       cardStyle: cardStyle(on),
       onToggle: () => {
@@ -809,8 +862,8 @@ export default function HomeConfigurator() {
     const a = (i - moduloDrumIdx) * STEP;
     const far = Math.abs(a) > 76;
     return {
-      iconKey: m.iconKey, nombre: m.nombre, incluida: m.incluida,
-      dot: m.on ? '#F2004B' : '#D5D7D8',
+      iconKey: m.iconKey, nombre: m.nombre, incluida: m.incluida, sugerida: m.sugerida,
+      dot: m.on ? '#F2004B' : m.sugerida ? '#F4DA40' : '#D5D7D8',
       disabled: m.disabled, disabledReason: m.disabledReason,
       onClick: () => setModuloIdx(i),
       style: {
@@ -927,26 +980,50 @@ export default function HomeConfigurator() {
     },
   ];
 
+  // ---- Totales de la casa configurada -----------------------------------
+  // Living = plano + zonas habitables + cuartos extra.
+  // Total  = living + lo construido no habitable (garage, pórtico, patio,
+  //          balcón) + las zonas exteriores que el usuario agregó.
+  const ft2LivingTotal = livingDelPlan() + livingDeZonas() + livingDeCuartos();
+  const ft2Exteriores = modulos.reduce((s, k) => {
+    const m = MODULOS.find((x) => x.key === k);
+    if (!m) return s;
+    if (m.exterior) return s + m.min;
+    // Módulos mixtos (master + balcón): la parte que no es habitable.
+    return s + (m.living !== undefined ? m.min - m.living : 0);
+  }, 0);
+  const ft2ConstruidoTotal = ft2LivingTotal + planNoHabitable + ft2Exteriores;
+  const garageTexto = lote?.huella
+    ? (garage2 ? `2 autos · ${GARAGE_2_AUTOS.toLocaleString('es-MX')} ft²` : `1 auto · ${GARAGE_1_AUTO.toLocaleString('es-MX')} ft²`)
+    : `2 autos · ${GARAGE_2_AUTOS.toLocaleString('es-MX')} ft²`;
+  const loteMedida = lote
+    ? (lote.frenteFt && lote.fondoFt
+        ? `${lote.frenteFt} × ${lote.fondoFt} ft · ${lote.maxft.toLocaleString('es-MX')} ft²`
+        : `${lote.frente} × ${lote.fondo} · ${lote.maxft.toLocaleString('es-MX')} ft²`)
+    : 'Sin elegir';
+  const zonasTexto = modulos.length
+    ? modulos.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).corto).join(', ')
+    : 'Ninguna';
+
   const resumen = [
-    { k: 'Lote', v: lote ? lote.id + ' · fachada al ' + lote.orient + ' · máx ' + maxLivingLote().toLocaleString('es-MX') + ' ft² habitables' : 'Sin elegir' },
-    { k: 'Floorplan', v: plan
-        ? PLANES[plan].nombre + ' · ' + livingDelPlan().toLocaleString('es-MX') + ' ft² habitables'
-          + (planFijo ? ' (incluido en el lote)' : planLivingSel !== null ? ` (ajustado desde ${PLANES[plan].living.toLocaleString('es-MX')})` : '')
-        : 'Sin elegir' },
-    { k: 'Recámaras / baños', v: plan ? `${totalRec} rec · ${totalBanos} baños` + (recamarasExtra || banosExtra ? ` (+${recamarasExtra} rec, +${banosExtra} baños extra)` : '') : 'Sin elegir' },
+    { k: 'Medida del lote', v: loteMedida },
+    { k: 'Floorplan', v: plan ? PLANES[plan].nombre : 'Sin elegir' },
+    { k: 'Recámaras / baños', v: plan ? `${totalRec} recámaras · ${totalBanos} baños` : 'Sin elegir' },
     { k: 'Fachada', v: fachada ? (FACHADAS.find((f) => f.key === fachada) || ({} as any)).nombre : 'Sin elegir' },
-    { k: 'Interior', v: interior ? (INTERIORES.find((i) => i.key === interior) || ({} as any)).nombre : 'Sin elegir' },
-    { k: 'Módulos', v: modulos.length ? modulos.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).nombre).join(', ') : 'Ninguno' },
-    { k: 'Tragaluces', v: tragaluces.length ? tragaluces.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).corto).join(', ') : 'Ninguno' },
+    { k: 'Colores interior', v: interior ? (INTERIORES.find((i) => i.key === interior) || ({} as any)).nombre : 'Sin elegir' },
+    { k: 'Zonas', v: zonasTexto },
+    { k: 'Pies cuadrados living', v: ft2LivingTotal.toLocaleString('es-MX') + ' ft²' },
+    { k: 'Pies cuadrados totales', v: ft2ConstruidoTotal.toLocaleString('es-MX') + ' ft²' },
+    { k: 'Espacio de garage', v: garageTexto },
+    ...(tragaluces.length ? [{ k: 'Tragaluces', v: tragaluces.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).corto).join(', ') }] : []),
     // Lo que el usuario adjuntó de su propio lote viaja al resumen para que el
     // arquitecto lo vea, aunque el análisis automático no haya corrido.
     ...(loteFile ? [{ k: 'Plano adjunto', v: loteFile.nombre + ' · ' + pesoLegible(loteFile.peso) }] : []),
     ...(loteUbicacion || loteTextoCapturado
       ? [{ k: 'Ubicación del lote', v: loteUbicacion ? [loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ') : (loteTextoCapturado ?? '') }]
       : []),
-    { k: 'Brief', v: brief ? '“' + brief.slice(0, 150) + (brief.length > 150 ? '…' : '') + '”' : 'Sin brief' },
+    ...(brief ? [{ k: 'Brief', v: '“' + brief.slice(0, 150) + (brief.length > 150 ? '…' : '') + '”' }] : []),
     { k: 'Contacto', v: (lead.nombre || '—') + (lead.correo ? ' · ' + lead.correo : '') + (lead.tel ? ' · ' + lead.tel : '') },
-    { k: 'ft² habitables libres', v: ft2Rest + ' ft² dentro del límite' },
   ];
 
   const interiorSeleccionado = interior ? INTERIORES.find((i) => i.key === interior) ?? null : null;
@@ -1102,7 +1179,7 @@ export default function HomeConfigurator() {
             {pasos.map((p, _i) => (
     <Fragment key={_i}>
 
-              <button onClick={p.onClick} style={p.style} className="lgp-hover-zoom">{p.n}</button>
+              <button onClick={p.onClick} style={p.style} title={p.title} disabled={!p.permitido} className="lgp-hover-zoom">{p.n}</button>
 
     </Fragment>
     ))}
@@ -1560,13 +1637,54 @@ export default function HomeConfigurator() {
           {esPaso4 ? (
     <Fragment>
 
-            <div style={{maxWidth: "660px"}}>
-              <p style={{margin: "0 0 8px", fontSize: "clamp(19px,2.2vw,25px)", lineHeight: "1.35", letterSpacing: "-0.01em", textWrap: "pretty"}}>Cuéntanos, en tus palabras, cómo se siente vivir ahí.</p>
-              <p style={{margin: "0 0 22px", fontSize: "15px", lineHeight: "1.6", color: "#8A8F91"}}>Sin tecnicismos. Escribe como le contarías a un amigo: cuántos son, qué hacen en casa, qué odiaron de la casa anterior.</p>
-              <textarea value={brief} onChange={onBrief} placeholder="Somos cuatro, trabajo desde casa y necesito silencio real. Cocinamos mucho y odiamos que se vea el desorden de la cocina desde la sala. Queremos sombra al mediodía…" rows={9} style={{width: "100%", padding: "18px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "15px", lineHeight: "1.65", color: "#1C1E1F", outline: "none"}}></textarea>
+            <div style={{maxWidth: "700px"}}>
+              <p style={{margin: "0 0 8px", fontSize: "clamp(19px,2.2vw,25px)", lineHeight: "1.35", letterSpacing: "-0.01em", textWrap: "pretty"}}>¿Qué le quieres agregar o cambiar a tu combinación?</p>
+              <p style={{margin: "0 0 22px", fontSize: "15px", lineHeight: "1.6", color: "#8A8F91"}}>
+                Ya elegiste lote, floorplan y fachada. Descríbenos en tus palabras lo que te falta y lo analizamos para ajustar las zonas y el espacio que te queda. Ejemplo: <em style={{fontStyle: "italic"}}>“quiero un sunken lounge en mi patio y que esté techado con una pérgola”</em>.
+              </p>
+              <textarea value={brief} onChange={onBrief} placeholder="Quiero un sunken lounge en el patio, techado con pérgola. Cocinamos mucho y odiamos que se vea el desorden desde la sala…" rows={7} style={{width: "100%", padding: "18px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "15px", lineHeight: "1.65", color: "#1C1E1F", outline: "none"}}></textarea>
               <div style={{display: "flex", justifyContent: "space-between", marginTop: "10px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>
                 <span>Opcional, pero cambia todo</span><span>{briefLen} caracteres</span>
               </div>
+
+              <button onClick={runAI} disabled={aiLoading || !brief.trim()} className="lgp-hover-zoom" style={{marginTop: "16px", padding: "12px 18px", background: (aiLoading || !brief.trim()) ? "#F4F1ED" : "#1C1E1F", border: 0, color: (aiLoading || !brief.trim()) ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: (aiLoading || !brief.trim()) ? "not-allowed" : "pointer"}}>
+                {aiLoading ? 'Analizando tu brief…' : briefLectura ? 'Volver a analizar' : 'Analizar mi brief'}
+              </button>
+
+              {/* Acuse de lectura: le confirma al cliente qué se entendió y qué
+                  se llevaría de su presupuesto antes de llegar a las zonas. */}
+              {briefLectura ? (
+    <Fragment>
+              <div style={{marginTop: "20px", padding: "18px", background: briefLectura.automatico ? "#F4FBF6" : "#FEFCEC", border: "1px solid " + (briefLectura.automatico ? "#CFE8D8" : "#F0E4A8")}}>
+                <p style={{margin: "0 0 8px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: briefLectura.automatico ? "#6B8F79" : "#8A7A2A", textTransform: "uppercase"}}>
+                  {briefLectura.automatico ? '✓ Analizamos tu brief' : 'Filtro por metraje (sin análisis automático)'}
+                </p>
+                {briefLectura.texto ? (
+    <Fragment>
+                <p style={{margin: "0 0 14px", fontSize: "14px", lineHeight: 1.6, color: "#1C1E1F"}}>{briefLectura.texto}</p>
+    </Fragment>
+    ) : null}
+                <div style={{display: "flex", flexWrap: "wrap", gap: "7px", marginBottom: "12px"}}>
+                  {briefLectura.zonas.map((z) => (
+    <Fragment key={z}>
+                  <span style={{padding: "5px 10px", background: "#fff", border: "1px solid #E4E1DD", fontFamily: "Archivo, sans-serif", fontSize: "11px", fontWeight: 700}}>{z}</span>
+    </Fragment>
+    ))}
+                </div>
+                <p style={{margin: 0, fontSize: "12px", lineHeight: 1.6, color: "#505759"}}>
+                  Estas zonas se llevarían <strong style={{fontWeight: 700}}>{briefLectura.impacto.toLocaleString('es-MX')} ft²</strong> de tus {ft2Rest.toLocaleString('es-MX')} ft² habitables libres. Las dejamos marcadas al principio de la lista del paso 5 — ahí decides cuáles agregar, y el catálogo completo sigue disponible.
+                </p>
+              </div>
+    </Fragment>
+    ) : null}
+
+              {!lote || !plan ? (
+    <Fragment>
+              <p style={{margin: "16px 0 0", padding: "12px 14px", background: "#F7F5F2", borderLeft: "3px solid #B7BABB", fontSize: "13px", lineHeight: 1.6, color: "#6B6E70"}}>
+                Para analizar tu brief contra el espacio disponible necesitamos primero el lote y el floorplan.
+              </p>
+    </Fragment>
+    ) : null}
             </div>
 
     </Fragment>
@@ -1653,6 +1771,10 @@ export default function HomeConfigurator() {
                           {m.incluida ? (
     <Fragment>
     <span style={{flex: "none", padding: "2px 6px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", letterSpacing: "0.1em"}}>INCLUIDO</span>
+    </Fragment>
+    ) : m.sugerida ? (
+    <Fragment>
+    <span style={{flex: "none", padding: "2px 6px", background: "#FEFCEC", border: "1px solid #F0E4A8", color: "#8A7A2A", fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", letterSpacing: "0.1em"}}>DE TU BRIEF</span>
     </Fragment>
     ) : null}
                         </button>
@@ -1795,9 +1917,27 @@ export default function HomeConfigurator() {
 
           <div className="lgp-step-actions" style={{display: "flex", alignItems: "center", gap: "10px", marginTop: "40px", paddingTop: "22px", borderTop: "1px solid #F0EDE9"}}>
             <button onClick={atras} className="lgp-hover-zoom" style={{padding: "11px 17px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>← Atrás</button>
-            <button onClick={siguiente} className="lgp-hover-zoom" style={{padding: "11px 17px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Siguiente →</button>
+            <button onClick={siguiente} disabled={siguienteBloqueado} title={siguienteBloqueado ? `Antes elige ${faltantes.map((f) => f.que).join(', ')}` : undefined} className="lgp-hover-zoom" style={{padding: "11px 17px", background: siguienteBloqueado ? "#F4F1ED" : "#1C1E1F", border: "0", color: siguienteBloqueado ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: siguienteBloqueado ? "not-allowed" : "pointer"}}>Siguiente →</button>
             <span style={{marginLeft: "auto", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>{pasoHint}</span>
           </div>
+
+          {/* Qué falta para poder mandar el resumen. Solo estorba si de verdad falta algo. */}
+          {siguienteBloqueado ? (
+    <Fragment>
+          <div style={{marginTop: "16px", padding: "14px 16px", background: "#FEFCEC", borderLeft: "3px solid #F4DA40"}}>
+            <p style={{margin: "0 0 8px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>Falta por definir</p>
+            <div style={{display: "flex", flexWrap: "wrap", gap: "8px"}}>
+              {faltantes.map((f) => (
+    <Fragment key={f.que}>
+              <button onClick={() => setPaso(f.paso)} className="lgp-hover-zoom" style={{padding: "7px 12px", background: "#fff", border: "1px solid #E4E1DD", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", cursor: "pointer"}}>
+                Elegir {f.que} → paso {f.paso}
+              </button>
+    </Fragment>
+    ))}
+            </div>
+          </div>
+    </Fragment>
+    ) : null}
         </div>
       </section>
 
