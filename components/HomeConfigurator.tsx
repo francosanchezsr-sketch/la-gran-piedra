@@ -393,9 +393,13 @@ export default function HomeConfigurator() {
       });
       if (!res.ok) throw new Error('bad response');
       const data = (await res.json()) as { lectura?: string; zonas?: Sugerencia[]; impacto?: number | null };
-      const val = (data.zonas ?? []).filter((x) => MODULOS.some((k) => k.key === x.key));
-      if (!val.length) throw new Error('vacio');
-      setSugeridos(val);
+      // Una lista vacía es una respuesta válida: significa que su petición no
+      // pide zonas nuevas, sino que la escuche el arquitecto.
+      const val = (data.zonas ?? [])
+        .filter((x) => MODULOS.some((k) => k.key === x.key))
+        .filter((x) => !modulos.includes(x.key));
+      if (!data.lectura && !val.length) throw new Error('vacio');
+      if (val.length) setSugeridos(val);
       // El acuse de lectura es lo que le confirma al cliente que su brief sí
       // se analizó, en vez de dejarlo adivinando.
       setBriefLectura({
@@ -406,18 +410,15 @@ export default function HomeConfigurator() {
       });
       setAiLoading(false);
     } catch {
-      const fallback = MODULOS.filter((m) => livingDeModulo(m) <= disponibles)
-        .slice(0, 4)
-        .map((m) => ({ key: m.key, razon: 'Compatible con los ' + disponibles + ' ft² libres de tu lote.' }));
-      setSugeridos(fallback);
+      // Sin análisis no se inventan sugerencias: marcar zonas que el cliente
+      // nunca pidió sería peor que decirle que no se pudo analizar.
       setBriefLectura({
-        texto: 'No se pudo consultar el modelo, así que filtramos el catálogo por los ft² que te quedan y por la orientación de tu lote. Tu brief queda guardado tal cual para el arquitecto.',
-        zonas: fallback.map((z) => MODULOS.find((m) => m.key === z.key)?.corto ?? z.key),
-        impacto: fallback.reduce((s, z) => s + (MODULOS.find((m) => m.key === z.key)?.min ?? 0), 0),
+        texto: 'No se pudo analizar tu petición automáticamente ahora mismo. Queda guardada tal cual y el arquitecto la lee completa antes de la cita.',
+        zonas: [],
+        impacto: 0,
         automatico: false,
       });
       setAiLoading(false);
-      setAiError('No se pudo consultar el modelo ahora mismo — mostramos el filtro por metraje y orientación.');
     }
   }
 
@@ -685,7 +686,7 @@ export default function HomeConfigurator() {
     !lote ? { paso: 1, que: 'el lote' } : null,
     !plan ? { paso: 2, que: 'el floorplan' } : null,
     !fachada ? { paso: 3, que: 'la fachada' } : null,
-    !interior ? { paso: 5, que: 'los colores de interior' } : null,
+    !interior ? { paso: 4, que: 'los colores de interior' } : null,
   ].filter(Boolean) as { paso: number; que: string }[];
   const configCompleta = faltantes.length === 0;
   // El bloqueo aplica de la 6 en adelante: ahí es donde se piden datos y se
@@ -1654,62 +1655,6 @@ export default function HomeConfigurator() {
           {esPaso4 ? (
     <Fragment>
 
-            <div style={{maxWidth: "700px"}}>
-              <p style={{margin: "0 0 8px", fontSize: "clamp(19px,2.2vw,25px)", lineHeight: "1.35", letterSpacing: "-0.01em", textWrap: "pretty"}}>¿Qué le quieres agregar o cambiar a tu combinación?</p>
-              <p style={{margin: "0 0 22px", fontSize: "15px", lineHeight: "1.6", color: "#8A8F91"}}>
-                Ya elegiste lote, floorplan y fachada. Descríbenos en tus palabras lo que te falta y lo analizamos para ajustar las zonas y el espacio que te queda. Ejemplo: <em style={{fontStyle: "italic"}}>“quiero un sunken lounge en mi patio y que esté techado con una pérgola”</em>.
-              </p>
-              <textarea value={brief} onChange={onBrief} placeholder="Quiero un sunken lounge en el patio, techado con pérgola. Cocinamos mucho y odiamos que se vea el desorden desde la sala…" rows={7} style={{width: "100%", padding: "18px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "15px", lineHeight: "1.65", color: "#1C1E1F", outline: "none"}}></textarea>
-              <div style={{display: "flex", justifyContent: "space-between", marginTop: "10px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>
-                <span>Opcional, pero cambia todo</span><span>{briefLen} caracteres</span>
-              </div>
-
-              <button onClick={runAI} disabled={aiLoading || !brief.trim()} className="lgp-hover-zoom" style={{marginTop: "16px", padding: "12px 18px", background: (aiLoading || !brief.trim()) ? "#F4F1ED" : "#1C1E1F", border: 0, color: (aiLoading || !brief.trim()) ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: (aiLoading || !brief.trim()) ? "not-allowed" : "pointer"}}>
-                {aiLoading ? 'Analizando tu brief…' : briefLectura ? 'Volver a analizar' : 'Analizar mi brief'}
-              </button>
-
-              {/* Acuse de lectura: le confirma al cliente qué se entendió y qué
-                  se llevaría de su presupuesto antes de llegar a las zonas. */}
-              {briefLectura ? (
-    <Fragment>
-              <div style={{marginTop: "20px", padding: "18px", background: briefLectura.automatico ? "#F4FBF6" : "#FEFCEC", border: "1px solid " + (briefLectura.automatico ? "#CFE8D8" : "#F0E4A8")}}>
-                <p style={{margin: "0 0 8px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: briefLectura.automatico ? "#6B8F79" : "#8A7A2A", textTransform: "uppercase"}}>
-                  {briefLectura.automatico ? '✓ Analizamos tu brief' : 'Filtro por metraje (sin análisis automático)'}
-                </p>
-                {briefLectura.texto ? (
-    <Fragment>
-                <p style={{margin: "0 0 14px", fontSize: "14px", lineHeight: 1.6, color: "#1C1E1F"}}>{briefLectura.texto}</p>
-    </Fragment>
-    ) : null}
-                <div style={{display: "flex", flexWrap: "wrap", gap: "7px", marginBottom: "12px"}}>
-                  {briefLectura.zonas.map((z) => (
-    <Fragment key={z}>
-                  <span style={{padding: "5px 10px", background: "#fff", border: "1px solid #E4E1DD", fontFamily: "Archivo, sans-serif", fontSize: "11px", fontWeight: 700}}>{z}</span>
-    </Fragment>
-    ))}
-                </div>
-                <p style={{margin: 0, fontSize: "12px", lineHeight: 1.6, color: "#505759"}}>
-                  Estas zonas se llevarían <strong style={{fontWeight: 700}}>{briefLectura.impacto.toLocaleString('es-MX')} ft²</strong> de tus {ft2Rest.toLocaleString('es-MX')} ft² habitables libres. Las dejamos marcadas al principio de la lista del paso 5 — ahí decides cuáles agregar, y el catálogo completo sigue disponible.
-                </p>
-              </div>
-    </Fragment>
-    ) : null}
-
-              {!lote || !plan ? (
-    <Fragment>
-              <p style={{margin: "16px 0 0", padding: "12px 14px", background: "#F7F5F2", borderLeft: "3px solid #B7BABB", fontSize: "13px", lineHeight: 1.6, color: "#6B6E70"}}>
-                Para analizar tu brief contra el espacio disponible necesitamos primero el lote y el floorplan.
-              </p>
-    </Fragment>
-    ) : null}
-            </div>
-
-    </Fragment>
-    ) : null}
-
-          {esPaso5 ? (
-    <Fragment>
-
             <div>
               <div style={{display: "flex", alignItems: "center", gap: "18px", flexWrap: "wrap", marginBottom: "34px"}}>
                 <p style={{margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase", flex: "none"}}>Gama</p>
@@ -1856,6 +1801,99 @@ export default function HomeConfigurator() {
                 <button onClick={() => setPreviewOpen(true)} className="lgp-hover-zoom" style={{position: "absolute", top: "14px", right: "14px", padding: "8px 13px", background: "#fff", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", zIndex: 2}}>Pantalla completa ↗</button>
                 <MoodboardCollage planKey={plan} planNombre={planNombreSel} interior={interiorSeleccionado} modulosSeleccionados={modulosSeleccionados} compact />
               </div>
+            </div>
+
+    </Fragment>
+    ) : null}
+
+          {esPaso5 ? (
+    <Fragment>
+
+            <div style={{maxWidth: "700px"}}>
+              <p style={{margin: "0 0 8px", fontSize: "clamp(19px,2.2vw,25px)", lineHeight: "1.35", letterSpacing: "-0.01em", textWrap: "pretty"}}>¿Algo que quieras aclarar o pedir sobre lo que armaste?</p>
+              <p style={{margin: "0 0 20px", fontSize: "15px", lineHeight: "1.6", color: "#8A8F91"}}>
+                Tu combinación ya está completa. Aquí solo van los comentarios de personalización sobre lo que elegiste, o una petición especial que quieras que el arquitecto escuche en persona.
+              </p>
+
+              {/* El brief comenta sobre algo concreto, así que se muestra qué. */}
+              <div style={{display: "flex", flexWrap: "wrap", gap: "7px", marginBottom: "18px"}}>
+                {[plan ? PLANES[plan].nombre : null,
+                  fachada ? (FACHADAS.find((f) => f.key === fachada) || ({} as any)).nombre : null,
+                  interior ? (INTERIORES.find((i) => i.key === interior) || ({} as any)).nombre : null,
+                  `${totalRec} rec · ${totalBanos} baños`,
+                  ...modulos.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).corto),
+                ].filter(Boolean).map((chip, _i) => (
+    <Fragment key={_i}>
+                <span style={{padding: "5px 10px", background: "#F7F5F2", border: "1px solid #EAE7E3", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.04em", color: "#505759"}}>{chip as string}</span>
+    </Fragment>
+    ))}
+              </div>
+
+              {/* Si pidió el comodín room, aquí es donde dice para qué lo quiere. */}
+              {modulos.includes('comodin') ? (
+    <Fragment>
+              <div style={{marginBottom: "18px", padding: "14px 16px", background: "#FEFCEC", borderLeft: "3px solid #F4DA40"}}>
+                <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#8A7A2A", textTransform: "uppercase"}}>Elegiste un comodín room</p>
+                <p style={{margin: 0, fontSize: "13px", lineHeight: 1.6, color: "#6B6E70"}}>
+                  Es el cuarto que dejaste sin uso asignado. Cuéntanos aquí para qué lo quieres —gym, visitas, taller, estudio— y el arquitecto llega a la cita con esa idea ya leída.
+                </p>
+              </div>
+    </Fragment>
+    ) : null}
+
+              <textarea value={brief} onChange={onBrief} placeholder="El comodín room lo quiero como gym, con espejo de pared a pared. Y quisiera ver si la pérgola del patio se puede alargar hasta la cocina exterior…" rows={7} style={{width: "100%", padding: "18px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "15px", lineHeight: "1.65", color: "#1C1E1F", outline: "none"}}></textarea>
+              <div style={{display: "flex", justifyContent: "space-between", marginTop: "10px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>
+                <span>Opcional, pero cambia todo</span><span>{briefLen} caracteres</span>
+              </div>
+
+              <button onClick={runAI} disabled={aiLoading || !brief.trim()} className="lgp-hover-zoom" style={{marginTop: "16px", padding: "12px 18px", background: (aiLoading || !brief.trim()) ? "#F4F1ED" : "#1C1E1F", border: 0, color: (aiLoading || !brief.trim()) ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: (aiLoading || !brief.trim()) ? "not-allowed" : "pointer"}}>
+                {aiLoading ? 'Analizando tu brief…' : briefLectura ? 'Volver a analizar' : 'Analizar mi brief'}
+              </button>
+
+              {/* Acuse de lectura: le confirma al cliente qué se entendió y qué
+                  se llevaría de su presupuesto antes de llegar a las zonas. */}
+              {briefLectura ? (
+    <Fragment>
+              <div style={{marginTop: "20px", padding: "18px", background: briefLectura.automatico ? "#F4FBF6" : "#FEFCEC", border: "1px solid " + (briefLectura.automatico ? "#CFE8D8" : "#F0E4A8")}}>
+                <p style={{margin: "0 0 8px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: briefLectura.automatico ? "#6B8F79" : "#8A7A2A", textTransform: "uppercase"}}>
+                  {briefLectura.automatico ? '✓ Leímos tu petición' : 'No se pudo analizar automáticamente'}
+                </p>
+                {briefLectura.texto ? (
+    <Fragment>
+                <p style={{margin: "0 0 14px", fontSize: "14px", lineHeight: 1.6, color: "#1C1E1F"}}>{briefLectura.texto}</p>
+    </Fragment>
+    ) : null}
+                {briefLectura.zonas.length ? (
+    <Fragment>
+                <div style={{display: "flex", flexWrap: "wrap", gap: "7px", marginBottom: "12px"}}>
+                  {briefLectura.zonas.map((z) => (
+    <Fragment key={z}>
+                  <span style={{padding: "5px 10px", background: "#fff", border: "1px solid #E4E1DD", fontFamily: "Archivo, sans-serif", fontSize: "11px", fontWeight: 700}}>{z}</span>
+    </Fragment>
+    ))}
+                </div>
+                <p style={{margin: 0, fontSize: "12px", lineHeight: 1.6, color: "#505759"}}>
+                  Tu petición sugiere estas zonas, que no llevas todavía y se llevarían <strong style={{fontWeight: 700}}>{briefLectura.impacto.toLocaleString('es-MX')} ft²</strong> de tus {ft2Rest.toLocaleString('es-MX')} ft² libres. Quedan marcadas en el paso 4 por si las quieres agregar — o déjalo así y lo ves con el arquitecto.
+                </p>
+    </Fragment>
+    ) : (
+    <Fragment>
+                <p style={{margin: 0, fontSize: "12px", lineHeight: 1.6, color: "#505759"}}>
+                  Tu petición no requiere zonas nuevas: queda anotada tal cual para que el arquitecto la revise contigo en la cita.
+                </p>
+    </Fragment>
+    )}
+              </div>
+    </Fragment>
+    ) : null}
+
+              {!lote || !plan ? (
+    <Fragment>
+              <p style={{margin: "16px 0 0", padding: "12px 14px", background: "#F7F5F2", borderLeft: "3px solid #B7BABB", fontSize: "13px", lineHeight: 1.6, color: "#6B6E70"}}>
+                Para analizar tu brief contra el espacio disponible necesitamos primero el lote y el floorplan.
+              </p>
+    </Fragment>
+    ) : null}
             </div>
 
     </Fragment>

@@ -68,6 +68,15 @@ const MODULE_ICONS: Record<string, (p: IconProps) => ReactElement> = {
     </Squircle>
   ),
   rec2: Bed,
+  // Cuarto sin uso asignado: un recuadro vacío con un signo de interrogación,
+  // que es justamente lo que el cliente todavía no define.
+  comodin: ({ size, color }) => (
+    <Squircle size={size} color={color}>
+      <rect x="5.5" y="6" width="13" height="12" rx="1" fill="none" stroke="#fff" strokeWidth="1.4" strokeDasharray="2.6 2" />
+      <path d="M10.1 10.4a1.95 1.95 0 1 1 2.4 1.9v1.2" fill="none" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="12.5" cy="15.6" r="0.85" fill="#fff" />
+    </Squircle>
+  ),
   cocinaabierta: ({ size, color }) => (
     <Squircle size={size} color={color}>
       <path d="M6 18v-5.5A5.5 5.5 0 0 1 11.5 7H18v11z" fill="none" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" />

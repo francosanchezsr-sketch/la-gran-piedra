@@ -36,13 +36,15 @@ Pies cuadrados habitables libres: ${disponibles} ft².
 Catálogo de módulos disponibles:
 ${catalogoTxt}
 
-Tu trabajo tiene dos partes:
+El cliente YA TERMINÓ de armar su casa. Este texto son comentarios de personalización sobre lo que ya eligió, o una petición especial para el arquitecto. No es una lista de compras.
 
-1) "lectura": una o dos frases en español, en segunda persona, que le confirmen al cliente QUÉ ENTENDISTE de su brief. Menciona lo concreto que pidió. Si algo de lo que pidió no existe en el catálogo, dilo con claridad en vez de callarlo (ejemplo: "la pérgola no está en el catálogo de zonas, la anoto para el arquitecto").
+Tu trabajo:
 
-2) "zonas": entre 3 y 5 módulos del catálogo que respondan al brief, que sean compatibles con la orientación y que quepan en los ft² libres. No inventes módulos fuera del catálogo. No propongas ubicaciones ni planos.
+1) "lectura": dos o tres frases en español, en segunda persona, que le confirmen QUÉ ENTENDISTE de su petición. Sé concreto sobre lo que pidió. Si pidió algo que no existe en el catálogo de zonas (una pérgola, un acabado, una orientación específica), NO lo escondas: dile que queda anotado para que el arquitecto lo revise en la cita. Si mencionó para qué quiere el "Comodín room", confírmalo explícitamente.
 
-3) "impacto": la suma en ft² de los mínimos de las zonas que propusiste, como número.
+2) "zonas": SOLO las zonas del catálogo que el cliente todavía NO tiene y que su petición claramente implica. Puede ir vacío — si su petición ya está cubierta con lo que eligió, o es un tema de acabados y no de zonas, devuelve una lista vacía. No inventes módulos fuera del catálogo. No propongas ubicaciones ni planos. No rellenes por rellenar.
+
+3) "impacto": la suma en ft² de los mínimos de las zonas que hayas listado; 0 si la lista va vacía.
 
 Responde SOLO con JSON válido:
 {"lectura":"<texto>","zonas":[{"key":"<key del catálogo>","razon":"<una frase en español, máximo 18 palabras>"}],"impacto":<número>}`;

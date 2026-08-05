@@ -334,6 +334,11 @@ export const MODULOS: Modulo[] = [
   { key: 'scullery', nombre: 'Walking pantry', corto: 'Walking pantry', rango: '8×10 – 10×12', area: '80–120', prop: '4:5', min: 80, nota: '' },
   { key: 'mudroom', nombre: 'Mudroom desde el garage', corto: 'Mudroom', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: '' },
   { key: 'rec2', nombre: 'Recámara secundaria', corto: 'Recámara 2', rango: '10’6×10’0 (real, set arquitectónico Lote 17)', area: '105', prop: '21:20', min: 105, nota: 'Recámara 2/3 reales del townhouse — ya no se infla a 132–168 ft²' },
+  // Cuarto sin uso asignado: gym, visitas, taller, lo que el cliente decida.
+  // Se dimensiona al mínimo de un cuarto habitable (70 ft², 7 ft en cualquier
+  // dimensión) porque lo que importa aquí es cuánta área living se lleva; el
+  // uso final se define con el arquitecto a partir del brief.
+  { key: 'comodin', nombre: 'Comodín room', corto: 'Comodín room', rango: '7×10 mínimo — gym, visitas, taller, lo que decidas', area: '70+', prop: '7:10', min: 70, nota: 'Cuéntanos en el brief para qué lo quieres y el arquitecto lo aterriza contigo' },
 
   // Variantes de floorplan (consumen del mismo presupuesto; algunas son mutuamente excluyentes o requieren otra zona)
   { key: 'cocinaabierta', nombre: 'Cocina concepto abierto', corto: 'Cocina abierta', rango: 'sin muros extra', area: '168', prop: '3:4', min: 168, nota: '', grupo: 'cocina' },
@@ -369,13 +374,15 @@ export const NAV = [
   { label: 'Contacto', id: 'contacto' },
 ];
 
-export const PASO_NOMBRES = ['Lote', 'Floorplan', 'Fachada', 'Brief', 'Interior y módulos', 'Tus datos', 'Resumen'];
+// El brief va después de las zonas: solo tiene sentido comentar sobre una
+// combinación que el usuario ya armó.
+export const PASO_NOMBRES = ['Lote', 'Floorplan', 'Fachada', 'Interior y zonas', 'Brief', 'Tus datos', 'Resumen'];
 export const PASO_HINTS = [
   'Elige un lote disponible para continuar',
   'Variantes curadas para tu lote',
   'Selecciona un estilo de fachada',
-  'Escribe libremente, o sáltalo',
   'Elige tu paleta y arma tus zonas',
+  'Comenta o pide algo especial, o sáltalo',
   'Solo pedimos datos al final',
   'Revisa y envía',
 ];
