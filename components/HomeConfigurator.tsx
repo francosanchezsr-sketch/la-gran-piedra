@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, createElement, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, WheelEvent } from 'react';
+import type { ChangeEvent, PointerEvent as ReactPointerEvent, RefObject, WheelEvent } from 'react';
 import {
   LOTES,
   PLANES,
@@ -26,13 +26,15 @@ import {
 } from '@/lib/data';
 import type { SubdivisionKey, Lote } from '@/lib/data';
 import HeroLoopVideo from '@/components/HeroLoopVideo';
-import { ModuloIcon, FachadaIcon, TragaluzIcon } from '@/components/ConfigIcons';
+import { ModuloIcon, FachadaIcon } from '@/components/ConfigIcons';
 import MoodboardPreview from '@/components/MoodboardPreview';
 import MoodboardCollage from '@/components/MoodboardCollage';
 import SubdivisionOverview from '@/components/SubdivisionOverview';
 import PlanDiagram from '@/components/FloorplanDiagram';
 import PresupuestoBar from '@/components/PresupuestoBar';
 import RetirosDiagrama from '@/components/RetirosDiagrama';
+import ZonasGuiadas from '@/components/ZonasGuiadas';
+import { RENDER_PLAN, ICONO_ZONA, ICONO_TRAGALUZ } from '@/lib/assets';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
 
 type PlanKey = keyof typeof PLANES;
@@ -41,6 +43,67 @@ type Lead = { nombre: string; correo: string; tel: string };
 
 const STEP = 26;
 const R = 90;
+
+// --- Giro táctil de los cilindros -------------------------------------------
+// En escritorio el cilindro se mueve con la rueda y con las flechas ▲▼. En
+// táctil no hay ninguna de las dos, así que se gira arrastrando el dedo y se
+// avanza un paso tocando por encima o por debajo de la banda central.
+type DrumTouch = { y0: number; i0: number; movido: boolean } | null;
+
+// Píxeles de arrastre que equivalen a un paso del cilindro.
+const DRUM_PX_POR_PASO = 34;
+// Por debajo de este movimiento el gesto es un tap, no un arrastre.
+const DRUM_TAP_PX = 8;
+// Media altura de la banda central: tocar ahí no mueve nada.
+const DRUM_BANDA_PX = 22;
+
+function crearDrumTouch(
+  touchRef: RefObject<DrumTouch>,
+  clickOffRef: RefObject<boolean>,
+  getIdx: () => number,
+  go: (i: number) => void,
+) {
+  return {
+    onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => {
+      // El ratón ya tiene rueda y flechas; no le robamos el click.
+      if (e.pointerType === 'mouse') return;
+      touchRef.current = { y0: e.clientY, i0: getIdx(), movido: false };
+    },
+    onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => {
+      const d = touchRef.current;
+      if (!d) return;
+      // Arriba es avanzar, igual que la rueda: por eso y0 - clientY.
+      const dy = d.y0 - e.clientY;
+      if (Math.abs(dy) > DRUM_TAP_PX) d.movido = true;
+      const destino = d.i0 + Math.round(dy / DRUM_PX_POR_PASO);
+      if (destino !== getIdx()) go(destino);
+    },
+    onPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => {
+      const d = touchRef.current;
+      touchRef.current = null;
+      if (!d) return;
+      if (d.movido) {
+        // Al soltar, el navegador dispara un click sobre el item que quedó
+        // debajo del dedo. Sin esto, ese click deshace el giro.
+        clickOffRef.current = true;
+        return;
+      }
+      // Tap sobre un item: su propio onClick lo centra, no duplicamos.
+      if ((e.target as HTMLElement | null)?.closest('button')) return;
+      const r = e.currentTarget.getBoundingClientRect();
+      const dyCentro = e.clientY - (r.top + r.height / 2);
+      if (Math.abs(dyCentro) < DRUM_BANDA_PX) return;
+      go(getIdx() + (dyCentro > 0 ? 1 : -1));
+    },
+    onPointerCancel: () => { touchRef.current = null; },
+    onClickCapture: (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (!clickOffRef.current) return;
+      clickOffRef.current = false;
+      e.preventDefault();
+      e.stopPropagation();
+    },
+  };
+}
 
 function statusColor(s: string) {
   return s === 'disponible' ? '#F2004B' : s === 'reservado' ? '#F4DA40' : '#D5D7D8';
@@ -84,6 +147,17 @@ export default function HomeConfigurator() {
   const [lead, setLead] = useState<Lead>({ nombre: '', correo: '', tel: '' });
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [enviado, setEnviado] = useState(false);
+  // Cita rápida del header: es un camino aparte del configurador, porque quien
+  // pulsa "Agenda una cita" normalmente todavía no ha elegido lote ni floorplan.
+  const [citaEnviada, setCitaEnviada] = useState(false);
+  const [citaError, setCitaError] = useState<string | null>(null);
+  const citaNombreRef = useRef<HTMLInputElement | null>(null);
+  // Arrastre táctil de los cilindros. `movido` distingue un giro de un tap, y
+  // clickOff traga el click que el navegador dispara al soltar tras arrastrar.
+  const drumTouchRef = useRef<DrumTouch>(null);
+  const drumClickOffRef = useRef(false);
+  const moduloTouchRef = useRef<DrumTouch>(null);
+  const moduloClickOffRef = useRef(false);
   const [drumIdx, setDrumIdx] = useState(1);
   const [moduloIdx, setModuloIdx] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -97,6 +171,8 @@ export default function HomeConfigurator() {
   // de fábrica del plan. Solo aplica en lotes donde el plano no viene fijo.
   const [planLivingSel, setPlanLivingSel] = useState<number | null>(null);
   const [dimmerModo, setDimmerModo] = useState<'living' | 'total'>('living');
+  // Paso 4: preguntar una zona a la vez, o mostrar el catálogo completo.
+  const [verTodasZonas, setVerTodasZonas] = useState(false);
   const [lotePropio, setLotePropio] = useState<Lote | null>(null);
   const [loteFile, setLoteFile] = useState<{ nombre: string; dataUrl: string; mime: string; peso: number } | null>(null);
   // Dirección que el usuario ya nos dio, aunque el análisis no haya corrido.
@@ -676,6 +752,11 @@ export default function HomeConfigurator() {
     wheelAtRef.current = now;
     drumGo(di + (e.deltaY > 0 ? 1 : -1), visibles as unknown as Lote[]);
   };
+  const drumTouch = crearDrumTouch(
+    drumTouchRef, drumClickOffRef,
+    () => di,
+    (i) => drumGo(i, visibles as unknown as Lote[]),
+  );
 
   const focoId = foco ? foco.id : '—';
   const focoStatus = foco ? foco.status : '';
@@ -859,7 +940,8 @@ export default function HomeConfigurator() {
       ? MODULOS.find((x) => x.grupo === m.grupo && (plan ? (PLANES[plan].incluidas as readonly string[]).includes(x.key) : false))
       : undefined;
     return {
-      iconKey: m.key, nombre: m.corto, rango: m.rango, area: m.area, prop: m.prop, min: m.min, razon: sg.razon,
+      iconKey: m.key, nombre: m.corto, nombreLargo: m.nombre, nota: m.nota,
+      rango: m.rango, area: m.area, prop: m.prop, min: m.min, razon: sg.razon,
       on, disabled, disabledReason, requiereFaltante: Boolean(requiereFaltante), bloqueadaPorReglamento,
       incluida, costoLiving, sustituyeA: sustituyeA ? sustituyeA.corto : null, sugerida: sg.sugerida,
       box: on ? '#F2004B' : '#fff',
@@ -919,9 +1001,12 @@ export default function HomeConfigurator() {
     moduloWheelAtRef.current = now;
     setModuloIdx((i) => Math.max(0, Math.min(mods.length - 1, i + (e.deltaY > 0 ? 1 : -1))));
   };
+  const moduloTouch = crearDrumTouch(
+    moduloTouchRef, moduloClickOffRef,
+    () => moduloDrumIdx,
+    (i) => setModuloIdx(Math.max(0, Math.min(mods.length - 1, i))),
+  );
   const modulosAgregados = mods.filter((m) => m.on).map((m) => m.nombre).join(', ') || 'Ninguno aún';
-  const aiError_ = aiError;
-  const aiLabel = aiLoading ? 'Analizando…' : sugeridos ? 'Volver a analizar' : 'Analizar mi brief';
 
   const leadNombre = lead.nombre, leadCorreo = lead.correo, leadTel = lead.tel;
   const leadPrimerNombre = (lead.nombre || 'gracias').split(' ')[0];
@@ -1055,6 +1140,29 @@ export default function HomeConfigurator() {
   const noEnviado = !enviado;
   const enviar = () => setEnviado(true);
 
+  // El CTA del header lleva al formulario de cita y deja el cursor puesto en el
+  // primer campo. El scroll es suave, así que el foco espera a que termine:
+  // enfocar a media animación la cancela en iOS.
+  const irACita = () => {
+    const el = document.getElementById('contacto');
+    if (el) window.scrollTo({ top: el.offsetTop - 60, behavior: 'smooth' });
+    window.setTimeout(() => citaNombreRef.current?.focus({ preventScroll: true }), 520);
+  };
+  // Pedimos nombre y una sola vía de contacto: exigir las dos sobra para una
+  // primera llamada y cuesta conversiones.
+  const agendarCita = () => {
+    if (!lead.nombre.trim()) {
+      setCitaError('Escribe tu nombre para saber a quién buscamos.');
+      return;
+    }
+    if (!lead.correo.trim() && !lead.tel.trim()) {
+      setCitaError('Déjanos un correo o un teléfono, el que prefieras.');
+      return;
+    }
+    setCitaError(null);
+    setCitaEnviada(true);
+  };
+
   const chips = ['Casas custom', 'Spec homes', 'Escandinavo moderno', 'Farm moderno', 'Smart home', 'Lotes propios', 'Edinburg · McAllen · Mission'];
 
   const faqs = FAQS.map((f, i) => ({
@@ -1114,7 +1222,7 @@ export default function HomeConfigurator() {
           <a href="https://tiktok.com" title="TikTok" style={{display: "flex", alignItems: "center"}}><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#505759" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.2 3v11.4a3.9 3.9 0 1 1-3.2-3.84"></path><path d="M14.2 3c.3 2.6 1.9 4.2 4.5 4.5"></path></svg></a>
         </div>
 
-        <a href="#contacto" className="lgp-hover-zoom lgp-header-cta" style={{display: "flex", alignItems: "center", padding: "0 24px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", whiteSpace: "nowrap"}}>Agenda una cita</a>
+        <a href="#contacto" onClick={(e) => { e.preventDefault(); irACita(); }} className="lgp-hover-zoom lgp-header-cta" style={{display: "flex", alignItems: "center", padding: "0 24px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", whiteSpace: "nowrap"}}>Agenda una cita</a>
       </div>
 
       <section id="index" data-screen-label="Inicio" className="lgp-hero-height" style={{position: "relative", display: "flex", flexDirection: "column", justifyContent: "flex-end", padding: "110px 22px 24px", overflow: "hidden"}}>
@@ -1225,7 +1333,7 @@ export default function HomeConfigurator() {
               <div className="lgp-picker-grid" style={{display: "grid", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
 
                 <div style={{position: "relative", background: "#fff", padding: "0", overflow: "hidden"}}>
-                  <div onWheel={onDrumWheel} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
+                  <div onWheel={onDrumWheel} {...drumTouch} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
                     <div style={{position: "absolute", left: "0", right: "0", top: "50%", height: "44px", marginTop: "-22px", borderTop: "1px solid #F2004B", borderBottom: "1px solid #F2004B", pointerEvents: "none", zIndex: "2"}}></div>
                     <div style={{position: "absolute", left: "0", right: "0", top: "0", height: "74px", background: "linear-gradient(#fff 12%, rgba(255,255,255,0))", pointerEvents: "none", zIndex: "3"}}></div>
                     <div style={{position: "absolute", left: "0", right: "0", bottom: "0", height: "74px", background: "linear-gradient(rgba(255,255,255,0), #fff 88%)", pointerEvents: "none", zIndex: "3"}}></div>
@@ -1524,7 +1632,18 @@ export default function HomeConfigurator() {
                 {planesVista.map((p) => (
     <Fragment key={p.key}>
                 <button onClick={p.onSelect} disabled={Boolean(planFijo)} style={planFijo ? { ...p.cardStyle, cursor: "default" } : p.cardStyle} className={planFijo ? undefined : "lgp-hover-zoom"}>
+                  {/* Render isométrico si existe; si no, el diagrama SVG. */}
+                  {RENDER_PLAN[p.key] ? (
+    <Fragment>
+                  <span style={{display: "block", background: "#fff", overflow: "hidden"}}>
+                    <img src={RENDER_PLAN[p.key]} alt={`Isométrico de ${p.nombre}`} loading="lazy" style={{width: "100%", height: "auto", display: "block"}} />
+                  </span>
+    </Fragment>
+    ) : (
+    <Fragment>
                   <PlanDiagram planKey={p.key} />
+    </Fragment>
+    )}
                   <span style={{display: "flex", alignItems: "center", gap: "8px", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>
                     {p.nombre}
                     {planFijo ? (
@@ -1719,21 +1838,26 @@ export default function HomeConfigurator() {
                   <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Zonas</p>
                   <span title="Área habitable disponible dentro del límite de tu lote, ya restando el floorplan, los cuartos extra y las zonas que llevas" style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: ft2Rest > 0 ? "#F2004B" : "#B7BABB", textTransform: "uppercase"}}>{ft2Rest} ft² habitables disponibles</span>
                 </div>
-                <button onClick={runAI} className="lgp-hover-zoom" style={{padding: "9px 15px", background: "#1C1E1F", color: "#FBFBFA", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>{aiLabel}</button>
+                {/* El análisis del brief vive en el paso 5, después de que el
+                    usuario ya armó sus zonas. Aquí no hay brief que analizar. */}
               </div>
 
-              {aiError ? (
+              {/* Por defecto se pregunta una zona a la vez; el catálogo
+                  completo queda a un clic para quien lo prefiera navegar. */}
+              {!verTodasZonas ? (
     <Fragment>
-
-                <p style={{margin: "0 0 18px", padding: "12px 14px", borderLeft: "3px solid #F4DA40", background: "#FEFCEC", fontSize: "13px", color: "#6B6E70"}}>{aiError}</p>
-
+              <ZonasGuiadas mods={mods} ft2Rest={ft2Rest} verTodas={verTodasZonas} onVerTodas={setVerTodasZonas} />
     </Fragment>
-    ) : null}
+    ) : (
+    <Fragment>
+              <div style={{display: "flex", justifyContent: "flex-end", marginBottom: "12px"}}>
+                <button onClick={() => setVerTodasZonas(false)} style={{padding: "5px 10px", background: "transparent", border: "1px solid #E4E1DD", color: "#8A8F91", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer"}}>Ver una a la vez</button>
+              </div>
 
               <div className="lgp-picker-grid" style={{display: "grid", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
 
                 <div style={{position: "relative", background: "#fff", padding: "0", overflow: "hidden"}}>
-                  <div onWheel={onModuloDrumWheel} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
+                  <div onWheel={onModuloDrumWheel} {...moduloTouch} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
                     <div style={{position: "absolute", left: "0", right: "0", top: "50%", height: "44px", marginTop: "-22px", borderTop: "1px solid #F2004B", borderBottom: "1px solid #F2004B", pointerEvents: "none", zIndex: "2"}}></div>
                     <div style={{position: "absolute", left: "0", right: "0", top: "0", height: "74px", background: "linear-gradient(#fff 12%, rgba(255,255,255,0))", pointerEvents: "none", zIndex: "3"}}></div>
                     <div style={{position: "absolute", left: "0", right: "0", bottom: "0", height: "74px", background: "linear-gradient(rgba(255,255,255,0), #fff 88%)", pointerEvents: "none", zIndex: "3"}}></div>
@@ -1744,7 +1868,15 @@ export default function HomeConfigurator() {
                         <button onClick={m.onClick} style={m.style} className="lgp-hover-zoom" title={m.disabledReason ?? undefined}>
                           <span style={{display: "flex", alignItems: "center", gap: "10px", opacity: m.disabled ? 0.4 : 1}}>
                             <span style={{width: "7px", height: "7px", display: "block", flex: "none", background: m.dot}}></span>
-                            <ModuloIcon moduleKey={m.iconKey} size={16} />
+                            {ICONO_ZONA[m.iconKey] ? (
+    <Fragment>
+    <img src={ICONO_ZONA[m.iconKey]} alt="" aria-hidden="true" style={{width: "20px", height: "20px", objectFit: "contain", display: "block", flex: "none"}} />
+    </Fragment>
+    ) : (
+    <Fragment>
+    <ModuloIcon moduleKey={m.iconKey} size={16} />
+    </Fragment>
+    )}
                             <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.03em", textTransform: "uppercase"}}>{m.nombre}</span>
                           </span>
                           {m.incluida ? (
@@ -1772,7 +1904,11 @@ export default function HomeConfigurator() {
     <Fragment>
                 <div style={{background: "#fff", padding: "20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: "12px"}}>
                   <div style={{width: "72px", height: "72px", flex: "none", borderRadius: "10px", overflow: "hidden", background: "#F7F5F2", display: "flex", alignItems: "center", justifyContent: "center"}}>
-                    {PHOTO_BY_MODULE[focoModulo.iconKey] ? (
+                    {ICONO_ZONA[focoModulo.iconKey] ? (
+    <Fragment>
+    <img src={ICONO_ZONA[focoModulo.iconKey]} alt={focoModulo.nombre} style={{width: "78%", height: "78%", objectFit: "contain", display: "block"}} />
+    </Fragment>
+    ) : PHOTO_BY_MODULE[focoModulo.iconKey] ? (
     <Fragment>
     <img src={PHOTO_BY_MODULE[focoModulo.iconKey]} alt={focoModulo.nombre} style={{width: "100%", height: "100%", objectFit: "cover", display: "block"}} />
     </Fragment>
@@ -1805,7 +1941,7 @@ export default function HomeConfigurator() {
     )}
                   {focoModulo.on ? (
     <Fragment>
-                  <button onClick={toggleTragaluz} disabled={!focoTieneTragaluz && tragaluzLleno} className="lgp-hover-zoom" style={{display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: focoTieneTragaluz ? "#1C1E1F" : "transparent", border: "1px solid " + (focoTieneTragaluz ? "#1C1E1F" : "#DDD9D4"), color: focoTieneTragaluz ? "#fff" : (tragaluzLleno ? "#DDD9D4" : "#505759"), fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: (!focoTieneTragaluz && tragaluzLleno) ? "not-allowed" : "pointer"}}><TragaluzIcon size={13} color={focoTieneTragaluz ? "#fff" : (tragaluzLleno ? "#DDD9D4" : "#505759")} />{focoTieneTragaluz ? 'Con tragaluz' : 'Tragaluz'}</button>
+                  <button onClick={toggleTragaluz} disabled={!focoTieneTragaluz && tragaluzLleno} className="lgp-hover-zoom" style={{display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: focoTieneTragaluz ? "#1C1E1F" : "transparent", border: "1px solid " + (focoTieneTragaluz ? "#1C1E1F" : "#DDD9D4"), color: focoTieneTragaluz ? "#fff" : (tragaluzLleno ? "#DDD9D4" : "#505759"), fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: (!focoTieneTragaluz && tragaluzLleno) ? "not-allowed" : "pointer"}}><img src={ICONO_TRAGALUZ} alt="" aria-hidden="true" style={{width: "15px", height: "15px", objectFit: "contain", display: "block", flex: "none", filter: focoTieneTragaluz ? "invert(1)" : "none", opacity: (!focoTieneTragaluz && tragaluzLleno) ? 0.35 : 1}} />{focoTieneTragaluz ? 'Con tragaluz' : 'Tragaluz'}</button>
                   <p style={{margin: 0, maxWidth: "200px", fontSize: "10px", lineHeight: 1.5, color: "#B7BABB"}}>{tragaluzLleno && !focoTieneTragaluz ? 'Máximo 3 tragaluces a la vez.' : orientacionHint}</p>
     </Fragment>
     ) : null}
@@ -1813,6 +1949,8 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
               </div>
+    </Fragment>
+    )}
 
               <div style={{position: "relative", marginTop: "34px", padding: "26px 20px", background: "repeating-linear-gradient(135deg,#F3F1EE 0 6px,#FCFBFA 6px 12px)", border: "1px solid #EAE7E3"}}>
                 <button onClick={() => setPreviewOpen(true)} className="lgp-hover-zoom" style={{position: "absolute", top: "14px", right: "14px", padding: "8px 13px", background: "#fff", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", zIndex: 2}}>Pantalla completa ↗</button>
@@ -1866,6 +2004,14 @@ export default function HomeConfigurator() {
               <button onClick={runAI} disabled={aiLoading || !brief.trim()} className="lgp-hover-zoom" style={{marginTop: "16px", padding: "12px 18px", background: (aiLoading || !brief.trim()) ? "#F4F1ED" : "#1C1E1F", border: 0, color: (aiLoading || !brief.trim()) ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: (aiLoading || !brief.trim()) ? "not-allowed" : "pointer"}}>
                 {aiLoading ? 'Analizando tu brief…' : briefLectura ? 'Volver a analizar' : 'Analizar mi brief'}
               </button>
+
+              {/* El error se muestra donde se provocó: antes vivía en el paso 4
+                  y quien tocaba el botón nunca lo veía. */}
+              {aiError ? (
+    <Fragment>
+              <p style={{margin: "14px 0 0", padding: "12px 14px", borderLeft: "3px solid #F4DA40", background: "#FEFCEC", fontSize: "13px", lineHeight: 1.6, color: "#6B6E70"}}>{aiError}</p>
+    </Fragment>
+    ) : null}
 
               {/* Acuse de lectura: le confirma al cliente qué se entendió y qué
                   se llevaría de su presupuesto antes de llegar a las zonas. */}
@@ -2092,7 +2238,50 @@ export default function HomeConfigurator() {
         <div data-nofx="1" style={{maxWidth: "660px", margin: "0 auto", textAlign: "center"}}>
           <p style={{margin: "0 0 26px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", letterSpacing: "0.16em", color: "#A9ADAF", textTransform: "uppercase"}}>Contacto</p>
           <p style={{margin: "0 0 40px", fontSize: "clamp(20px,2.5vw,30px)", lineHeight: "1.34", letterSpacing: "-0.014em", textWrap: "pretty"}}>Trae tu idea a medio cocinar. La terminamos juntos en el lote.</p>
-          <a href="#personaliza" className="lgp-hover-zoom" style={{display: "inline-flex", alignItems: "center", justifyContent: "center", width: "88px", height: "88px", background: "#1C1E1F", color: "#FBFBFA", fontSize: "24px"}}>→</a>
+          {citaEnviada ? (
+    <Fragment>
+
+          <div style={{maxWidth: "460px", margin: "0 auto", padding: "30px 28px", border: "1px solid #EAE7E3", background: "#fff", textAlign: "left"}}>
+            <p style={{margin: "0 0 10px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.18em", color: "#F2004B", textTransform: "uppercase"}}>Cita solicitada</p>
+            <p style={{margin: "0 0 14px", fontSize: "clamp(18px,2.1vw,23px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Listo, {leadPrimerNombre}. Te buscamos en menos de 24 horas.</p>
+            <p style={{margin: "0", fontSize: "15px", lineHeight: "1.65", color: "#505759"}}>{configCompleta ? 'El arquitecto llega a la llamada con tu configuración ya revisada.' : 'Si mientras tanto quieres adelantar, arma tu casa en el configurador y llegamos con algo concreto que enseñarte.'}</p>
+            {configCompleta ? null : (
+    <Fragment>
+            <p style={{margin: "16px 0 0"}}><a href="#personaliza" style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#8A8F91", textTransform: "uppercase", borderBottom: "1px solid #E4E1DD"}}>Personalizar mi casa ↗</a></p>
+    </Fragment>
+    )}
+          </div>
+
+    </Fragment>
+    ) : (
+    <Fragment>
+
+          <div style={{maxWidth: "460px", margin: "0 auto", textAlign: "left"}}>
+            <div style={{display: "grid", gap: "14px"}}>
+              <label style={{display: "block"}}>
+                <span style={{display: "block", marginBottom: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>Nombre completo</span>
+                <input ref={citaNombreRef} value={leadNombre} onChange={onNombre} placeholder="María Elena Cavazos" style={{width: "100%", padding: "13px 14px", border: "1px solid #DDD9D4", background: "#fff", fontSize: "16px", outline: "none"}} />
+              </label>
+              <label style={{display: "block"}}>
+                <span style={{display: "block", marginBottom: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>Correo</span>
+                <input type="email" inputMode="email" autoComplete="email" value={leadCorreo} onChange={onCorreo} placeholder="maria@correo.com" style={{width: "100%", padding: "13px 14px", border: "1px solid #DDD9D4", background: "#fff", fontSize: "16px", outline: "none"}} />
+              </label>
+              <label style={{display: "block"}}>
+                <span style={{display: "block", marginBottom: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>Teléfono</span>
+                <input type="tel" inputMode="tel" autoComplete="tel" value={leadTel} onChange={onTel} placeholder="(956) 000 0000" style={{width: "100%", padding: "13px 14px", border: "1px solid #DDD9D4", background: "#fff", fontSize: "16px", outline: "none"}} />
+              </label>
+            </div>
+            {citaError ? (
+    <Fragment>
+            <p style={{margin: "14px 0 0", padding: "11px 13px", background: "#FEFCEC", borderLeft: "3px solid #F4DA40", fontSize: "13px", lineHeight: "1.5", color: "#505759"}}>{citaError}</p>
+    </Fragment>
+    ) : null}
+            <button onClick={agendarCita} className="lgp-hover-zoom" style={{width: "100%", marginTop: "18px", padding: "15px 20px", background: "#F2004B", color: "#fff", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Agendar mi cita →</button>
+            <p style={{margin: "12px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", lineHeight: "1.6", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>Con el correo o el teléfono basta · Prototipo — no se envía correo real</p>
+          </div>
+
+    </Fragment>
+    )}
           <div style={{display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "26px", marginTop: "46px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", letterSpacing: "0.08em", color: "#8A8F91"}}>
             <a href="tel:+19560000000">(956) 000 0000</a>
             <a href="mailto:hola@lagranpiedra.com">HOLA@LAGRANPIEDRA.COM</a>
