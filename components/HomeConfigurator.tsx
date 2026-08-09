@@ -1419,7 +1419,10 @@ export default function HomeConfigurator() {
         <div style={{position: "relative", zIndex: 2, maxWidth: "1240px", margin: "0 auto", width: "100%"}}>
           <div data-nofx="1" style={{maxWidth: "540px", animation: "lgpUp .9s ease both"}}>
             <p style={{margin: "0 0 16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "10px", letterSpacing: "0.2em", color: "#F2004B", textTransform: "uppercase"}}>Casas custom · Rio Grande Valley</p>
-            <p style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "clamp(30px,3.6vw,46px)", lineHeight: "1.1", letterSpacing: "-0.03em", textTransform: "uppercase", textWrap: "balance", color: "#fff"}}>Aquí el cliente firma el plano</p>
+            {/* El título de la página es este, no un <p>: es lo que leen los
+                buscadores y los lectores de pantalla para saber de qué va el
+                sitio. Los estilos son los mismos de antes. */}
+            <h1 style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "clamp(30px,3.6vw,46px)", lineHeight: "1.1", letterSpacing: "-0.03em", textTransform: "uppercase", textWrap: "balance", color: "#fff"}}>Aquí el cliente firma el plano</h1>
             <p style={{margin: "18px 0 0", maxWidth: "42ch", fontSize: "16px", lineHeight: "1.6", color: "rgba(255,255,255,0.82)", textWrap: "pretty"}}>Nadie más en el Valle te deja decidir cada módulo antes de mover un solo ladrillo.</p>
             <div style={{display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "34px"}}>
               <a href="#personaliza" className="lgp-hover-zoom" style={{padding: "13px 20px", background: "#F2004B", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Personaliza tu casa</a>
