@@ -34,6 +34,7 @@ import PlanDiagram from '@/components/FloorplanDiagram';
 import PresupuestoBar from '@/components/PresupuestoBar';
 import RetirosDiagrama from '@/components/RetirosDiagrama';
 import ZonasGuiadas from '@/components/ZonasGuiadas';
+import PasoDecision from '@/components/PasoDecision';
 import { RENDER_PLAN, ICONO_ZONA, ICONO_TRAGALUZ } from '@/lib/assets';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
 
@@ -839,6 +840,28 @@ export default function HomeConfigurator() {
     .filter((k) => !planesPermitidos.includes(k))
     .map((k) => ({ key: k, nombre: PLANES[k].nombre }));
 
+  // ---- Opciones para el esqueleto de decisión (pasos 2, 3 y gama) ---------
+  const DESC_PLAN: Record<string, string> = {
+    TH: 'Dos plantas en huella angosta, con garage al frente y balcón en la recámara principal.',
+    B: 'Un piso, con un corredor techado que cruza dos patios chicos entre las alas de la casa.',
+    C: 'Un piso, con patio interior entre las dos alas de la casa.',
+    D: 'Dos plantas, con escalera central y las recámaras arriba.',
+  };
+  const planesDecision = planesVista.map((p) => ({
+    key: p.key as string,
+    nombre: p.nombre,
+    descripcion: DESC_PLAN[p.key] ?? '',
+    meta: p.resumen,
+    imagen: RENDER_PLAN[p.key],
+    visual: RENDER_PLAN[p.key] ? undefined : <PlanDiagram planKey={p.key} />,
+    sigla: p.key === 'TH' ? '2P' : String(p.key),
+    on: p.on,
+    fija: Boolean(planFijo),
+    etiqueta: planFijo ? 'INCLUIDO' : undefined,
+    onSelect: p.onSelect,
+  }));
+
+
   // ---- Dimmer de superficie (paso 2) -------------------------------------
   // El plan trae un tamaño de fábrica; el usuario puede estirarlo hasta donde
   // le alcance el lote, ya descontando las zonas y cuartos que lleva. Nunca
@@ -891,6 +914,50 @@ export default function HomeConfigurator() {
     ...i, on: interior === i.key,
     cardStyle: cardStyle(interior === i.key),
     onSelect: () => setInterior(i.key),
+  }));
+
+  const fachadasDecision = fachadas.map((f) => ({
+    key: f.key,
+    nombre: f.nombre,
+    descripcion: f.desc,
+    visual: (
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '150px' }}>
+        <FachadaIcon styleKey={f.key} size={64} />
+      </span>
+    ),
+    miniatura: (
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <FachadaIcon styleKey={f.key} size={20} />
+      </span>
+    ),
+    sigla: f.nombre.slice(0, 2).toUpperCase(),
+    on: f.on,
+    onSelect: f.onSelect,
+  }));
+
+  const gamasDecision = interiores.map((i) => ({
+    key: i.key,
+    nombre: i.nombre,
+    descripcion: i.desc,
+    visual: (
+      <span style={{ display: 'flex', height: '150px' }}>
+        <span style={{ flex: 1, background: i.c1 }} />
+        <span style={{ flex: 1, background: i.c2 }} />
+        <span style={{ flex: 1, background: i.c3 }} />
+      </span>
+    ),
+    // En una decisión de color la miniatura ES la información: la sigla "PI" no
+    // dice nada de cómo se ve "Piedra cálida".
+    miniatura: (
+      <span style={{ display: 'flex', width: '100%', height: '100%' }}>
+        <span style={{ flex: 1, background: i.c1 }} />
+        <span style={{ flex: 1, background: i.c2 }} />
+        <span style={{ flex: 1, background: i.c3 }} />
+      </span>
+    ),
+    sigla: i.nombre.slice(0, 2).toUpperCase(),
+    on: i.on,
+    onSelect: i.onSelect,
   }));
 
   const briefLen = brief.length;
@@ -1084,6 +1151,21 @@ export default function HomeConfigurator() {
       },
     },
   ];
+
+  // Atajo para el caso real más común: el townhouse del catálogo usa los 1,635
+  // ft² completos, así que el paso de zonas arranca en cero. El único camino
+  // honesto es devolver superficie, y una recámara de más vale 105 ft² — que
+  // alcanza para casi cualquier zona del catálogo.
+  const liberarEspacio = plan && !motivoQuitar(totalRec, recMin, 'recámara')
+    ? {
+        etiqueta: 'Quitar una recámara',
+        ft2: EXTRAS.recamara.living,
+        onLiberar: () => {
+          if (motivoQuitar(totalRec, recMin, 'recámara')) return;
+          setRecamarasExtra(recamarasExtra - 1);
+        },
+      }
+    : null;
 
   // ---- Totales de la casa configurada -----------------------------------
   // Living = plano + zonas habitables + cuartos extra.
@@ -1628,120 +1710,13 @@ export default function HomeConfigurator() {
     </Fragment>
     )}
 
-              <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: "22px"}}>
-                {planesVista.map((p) => (
-    <Fragment key={p.key}>
-                <button onClick={p.onSelect} disabled={Boolean(planFijo)} style={planFijo ? { ...p.cardStyle, cursor: "default" } : p.cardStyle} className={planFijo ? undefined : "lgp-hover-zoom"}>
-                  {/* Render isométrico si existe; si no, el diagrama SVG. */}
-                  {RENDER_PLAN[p.key] ? (
-    <Fragment>
-                  <span style={{display: "block", background: "#fff", overflow: "hidden"}}>
-                    <img src={RENDER_PLAN[p.key]} alt={`Isométrico de ${p.nombre}`} loading="lazy" style={{width: "100%", height: "auto", display: "block"}} />
-                  </span>
-    </Fragment>
-    ) : (
-    <Fragment>
-                  <PlanDiagram planKey={p.key} />
-    </Fragment>
-    )}
-                  <span style={{display: "flex", alignItems: "center", gap: "8px", marginTop: "16px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "12px", letterSpacing: "0.16em", textTransform: "uppercase"}}>
-                    {p.nombre}
-                    {planFijo ? (
-    <Fragment>
-    <span style={{padding: "3px 7px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", fontWeight: "400", letterSpacing: "0.1em"}}>INCLUIDO</span>
-    </Fragment>
-    ) : null}
-                  </span>
-                  <span style={{display: "block", marginTop: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase"}}>{p.resumen}</span>
-                  <span style={{display: "block", marginTop: "5px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>{p.detalle}</span>
-                  {p.on && !planFijo ? (
-    <Fragment>
-    <span style={{display: "block", marginTop: "12px", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.16em", color: "#F2004B", textTransform: "uppercase"}}>✓ Seleccionado</span>
-    </Fragment>
-    ) : null}
-                </button>
-    </Fragment>
-    ))}
-              </div>
-
-              {/* Dimmer: estira el floorplan dentro de lo que permite el lote. */}
-              {plan && lote ? (
-    <Fragment>
-              <div style={{marginTop: "22px", padding: "20px", background: "#fff", border: "1px solid #EAE7E3"}}>
-                <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "14px", flexWrap: "wrap", marginBottom: "16px"}}>
-                  <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Ajusta la superficie</p>
-                  {planLivingSel !== null && dimmerActivo ? (
-    <Fragment>
-                  <button onClick={resetDimmer} style={{padding: "6px 11px", background: "transparent", border: "1px solid #E4E1DD", color: "#8A8F91", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer"}}>Volver al plano base</button>
-    </Fragment>
-    ) : null}
-                </div>
-
-                <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "18px"}}>
-                  <div style={{background: "#fff", padding: "13px 15px"}}>
-                    <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Habitable</p>
-                    <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "20px", letterSpacing: "-0.01em"}}>{dimmerValor.toLocaleString('es-MX')} <span style={{fontSize: "12px", fontWeight: 400, color: "#8A8F91"}}>ft²</span></p>
-                  </div>
-                  <div style={{background: "#fff", padding: "13px 15px"}}>
-                    <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Total construido</p>
-                    <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "20px", letterSpacing: "-0.01em", color: "#505759"}}>{dimmerTotal.toLocaleString('es-MX')} <span style={{fontSize: "12px", fontWeight: 400, color: "#8A8F91"}}>ft²</span></p>
-                  </div>
-                  <div style={{background: "#fff", padding: "13px 15px"}}>
-                    <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Te quedan</p>
-                    <p style={{margin: 0, fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "20px", letterSpacing: "-0.01em", color: ft2Rest > 0 ? "#F2004B" : "#B7BABB"}}>{ft2Rest.toLocaleString('es-MX')} <span style={{fontSize: "12px", fontWeight: 400, color: "#8A8F91"}}>ft²</span></p>
-                  </div>
-                </div>
-
-                {/* El garage no es habitable pero se come la planta baja, así
-                    que cambiar de 2 a 1 auto libera área para la casa. */}
-                {lote?.huella ? (
-    <Fragment>
-                <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "14px", flexWrap: "wrap", marginBottom: "18px", padding: "13px 15px", background: "#F7F5F2", border: "1px solid #EAE7E3"}}>
-                  <label style={{display: "flex", alignItems: "center", gap: "10px", cursor: "pointer"}}>
-                    <input type="checkbox" checked={garage2} onChange={(e) => setGarage2(e.target.checked)} style={{width: "17px", height: "17px", accentColor: "#F2004B", cursor: "pointer"}} />
-                    <span>
-                      <span style={{display: "block", fontFamily: "Archivo, sans-serif", fontWeight: 700, fontSize: "13px"}}>Garage para 2 autos</span>
-                      <span style={{display: "block", marginTop: "2px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#8A8F91", textTransform: "uppercase"}}>{garage2 ? `${GARAGE_2_AUTOS} ft² de la planta baja` : `1 auto · ${GARAGE_1_AUTO} ft²`}</span>
-                    </span>
-                  </label>
-                  <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#8A8F91", textTransform: "uppercase"}}>
-                    {garage2 ? `Quitarlo libera ${(GARAGE_2_AUTOS - GARAGE_1_AUTO).toLocaleString('es-MX')} ft²` : `Volver a 2 autos cuesta ${(GARAGE_2_AUTOS - GARAGE_1_AUTO).toLocaleString('es-MX')} ft²`}
-                  </span>
-                </div>
-    </Fragment>
-    ) : null}
-
-                {dimmerActivo ? (
-    <Fragment>
-                <div style={{display: "flex", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "14px", width: "fit-content"}}>
-                  {dimmerModos.map((m) => (
-    <Fragment key={m.key}>
-                  <button onClick={m.onClick} style={{padding: "7px 14px", border: 0, background: m.on ? "#1C1E1F" : "#fff", color: m.on ? "#FBFBFA" : "#8A8F91", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer"}}>{m.label}</button>
-    </Fragment>
-    ))}
-                </div>
-                <input type="range" min={sliderMin} max={sliderMax} step={5} value={sliderValor} onChange={onDimmer} aria-label={enTotal ? 'Área total construida' : 'Área habitable del floorplan'} style={{width: "100%", accentColor: "#F2004B", cursor: "pointer"}} />
-                <div style={{display: "flex", justifyContent: "space-between", gap: "12px", marginTop: "6px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>
-                  <span>Plano base {sliderMin.toLocaleString('es-MX')}</span>
-                  <span>{Math.round(dimmerPct)}% estirado</span>
-                  <span>Máximo del lote {sliderMax.toLocaleString('es-MX')}</span>
-                </div>
-                <p style={{margin: "12px 0 0", maxWidth: "560px", fontSize: "12px", lineHeight: 1.6, color: "#8A8F91"}}>
-                  Mueve el control para estirar el plano dentro de lo que permite <strong style={{fontWeight: 600}}>{loteId}</strong>. El tope baja solo conforme agregues zonas y cuartos en el paso 5.
-                </p>
-    </Fragment>
-    ) : (
-    <Fragment>
-                <p style={{margin: 0, maxWidth: "560px", fontSize: "12px", lineHeight: 1.6, color: "#8A8F91"}}>
-                  {planFijo
-                    ? 'Este lote entrega la casa ya diseñada y aprobada, así que su superficie no se ajusta. Lo que sí puedes mover son las zonas del paso 5.'
-                    : 'El plano base ya usa todo el presupuesto habitable de este lote, así que no hay margen para estirarlo.'}
-                </p>
-    </Fragment>
-    )}
-              </div>
-    </Fragment>
-    ) : null}
+              <PasoDecision
+                opciones={planesDecision}
+                etiquetaOtras="Otro plano"
+                accionPrimaria="Elegir este plano"
+                accionSecundaria={plan ? 'Ver a pantalla completa' : undefined}
+                onSecundaria={plan ? () => setPreviewOpen(true) : undefined}
+              />
 
               {planesExcluidos.length ? (
     <Fragment>
@@ -1763,26 +1738,11 @@ export default function HomeConfigurator() {
 
             <div>
               <p style={{margin: "0 0 26px", maxWidth: "560px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>La piel de la casa. Cuatro fachadas, todas geométricas, todas nuestras.</p>
-              <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3"}}>
-                {fachadas.map((f, _i) => (
-    <Fragment key={_i}>
-
-                  <button onClick={f.onSelect} style={f.cardStyle} className="lgp-hover-zoom">
-                    <span style={{display: "flex", alignItems: "center", justifyContent: "center", height: "92px", background: "#F7F5F2"}}>
-                      <FachadaIcon styleKey={f.key} size={38} />
-                    </span>
-                    <span style={{display: "block", marginTop: "14px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>{f.nombre}</span>
-                    <span style={{display: "block", marginTop: "7px", fontSize: "13px", lineHeight: "1.5", color: "#8A8F91"}}>{f.desc}</span>
-                    {f.on ? (
-    <Fragment>
-    <span style={{display: "block", marginTop: "12px", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.16em", color: "#F2004B", textTransform: "uppercase"}}>✓ Seleccionada</span>
-    </Fragment>
-    ) : null}
-                  </button>
-                
-    </Fragment>
-    ))}
-              </div>
+              <PasoDecision
+                opciones={fachadasDecision}
+                etiquetaOtras="Otras fachadas"
+                accionPrimaria="Elegir esta fachada"
+              />
             </div>
           
     </Fragment>
@@ -1792,20 +1752,13 @@ export default function HomeConfigurator() {
     <Fragment>
 
             <div>
-              <div style={{display: "flex", alignItems: "center", gap: "18px", flexWrap: "wrap", marginBottom: "34px"}}>
-                <p style={{margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase", flex: "none"}}>Gama</p>
-                <div style={{display: "flex", gap: "10px", flexWrap: "wrap"}}>
-                  {interiores.map((i, _i) => (
-    <Fragment key={_i}>
-
-                    <button onClick={i.onSelect} title={i.nombre} className="lgp-hover-zoom" style={{display: "flex", width: "46px", height: "30px", padding: 0, border: i.on ? "2px solid #F2004B" : "1px solid #E4E1DD", overflow: "hidden", cursor: "pointer"}}>
-                      <span style={{flex: "1", background: i.c1}}></span><span style={{flex: "1", background: i.c2}}></span><span style={{flex: "1", background: i.c3}}></span>
-                    </button>
-
-    </Fragment>
-    ))}
-                </div>
-                <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>{interiorSeleccionado ? interiorSeleccionado.nombre : 'Elige una'}</span>
+              <p style={{margin: "0 0 12px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Gama de interior</p>
+              <div style={{marginBottom: "34px"}}>
+                <PasoDecision
+                  opciones={gamasDecision}
+                  etiquetaOtras="Otras gamas"
+                  accionPrimaria="Elegir esta gama"
+                />
               </div>
 
               <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "22px"}}>
@@ -1846,7 +1799,7 @@ export default function HomeConfigurator() {
                   completo queda a un clic para quien lo prefiera navegar. */}
               {!verTodasZonas ? (
     <Fragment>
-              <ZonasGuiadas mods={mods} ft2Rest={ft2Rest} verTodas={verTodasZonas} onVerTodas={setVerTodasZonas} />
+              <ZonasGuiadas mods={mods} ft2Rest={ft2Rest} verTodas={verTodasZonas} onVerTodas={setVerTodasZonas} liberar={liberarEspacio} />
     </Fragment>
     ) : (
     <Fragment>
