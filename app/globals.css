@@ -278,10 +278,50 @@ textarea {
   grid-template-columns: minmax(230px, 300px) 1fr;
 }
 
+/* Invisible hasta que el teclado lo enfoca. */
+.lgp-skip {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 90;
+  padding: 12px 18px;
+  background: #1c1e1f;
+  color: #fbfbfa;
+  font-family: Archivo, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: top 0.18s ease;
+}
+
+.lgp-skip:focus {
+  top: 12px;
+  color: #fbfbfa;
+}
+
 .lgp-bottom-nav {
   max-width: calc(100vw - 44px);
   overflow-x: auto;
   scrollbar-width: none;
+  /* En móvil la barra se corta en "NOSOTR…" sin ninguna señal de que hay más.
+     El degradado del borde derecho es esa señal. */
+  -webkit-mask-image: linear-gradient(to right, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 88%, transparent 100%);
+}
+
+/* La barra flota fija sobre el borde inferior, así que tapaba el campo del
+   formulario justo mientras se escribía en él. Se aparta sola cuando hay un
+   campo con foco y vuelve al soltar: es cuando estorba y es cuando nadie está
+   navegando. */
+.lgp-bottom-nav-wrap {
+  transition: transform 0.25s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.2s ease;
+}
+
+body:has(input:focus, textarea:focus) .lgp-bottom-nav-wrap {
+  transform: translateY(130%);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .lgp-bottom-nav::-webkit-scrollbar {

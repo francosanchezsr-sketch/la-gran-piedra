@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, createElement, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, PointerEvent as ReactPointerEvent, RefObject, WheelEvent } from 'react';
 import {
   LOTES,
@@ -151,7 +151,7 @@ export default function HomeConfigurator() {
     texto: string; zonas: string[]; impacto: number; automatico: boolean;
   } | null>(null);
   const [lead, setLead] = useState<Lead>({ nombre: '', correo: '', tel: '' });
-  const [faqOpen, setFaqOpen] = useState<number | null>(null);
+  const [faqOpen, setFaqOpen] = useState<number[]>([]);
   const [enviado, setEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [envioError, setEnvioError] = useState<string | null>(null);
@@ -753,13 +753,34 @@ export default function HomeConfigurator() {
 
   const drumUp = () => drumGo(di - 1, visibles as unknown as Lote[]);
   const drumDown = () => drumGo(di + 1, visibles as unknown as Lote[]);
-  const onDrumWheel = (e: WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const now = Date.now();
-    if (wheelAtRef.current && now - wheelAtRef.current < 140) return;
-    wheelAtRef.current = now;
-    drumGo(di + (e.deltaY > 0 ? 1 : -1), visibles as unknown as Lote[]);
-  };
+  // El `onWheel` de React se registra como listener pasivo, así que su
+  // preventDefault() es un no-op: la rueda giraba el cilindro Y se llevaba la
+  // página 300 px al mismo tiempo. Hay que registrarlo a mano en el nodo con
+  // `passive: false` para poder frenar el scroll de verdad.
+  // `drumGo` solo usa sus argumentos y setters estables, así que capturarlo una
+  // vez es seguro; lo que sí cambia en cada render es el índice y la lista, y
+  // por eso viajan en refs.
+  //
+  // Va como callback ref y no como useEffect([]): el cilindro se desmonta al
+  // pasar al paso 2 y vuelve a montarse al regresar, con un nodo nuevo. Un
+  // efecto de montaje único habría dejado el listener colgado del nodo viejo.
+  const diRef = useRef(di);
+  const visiblesRef = useRef(visibles as unknown as Lote[]);
+  diRef.current = di;
+  visiblesRef.current = visibles as unknown as Lote[];
+  const drumRef = useCallback((nodo: HTMLDivElement | null) => {
+    if (!nodo) return;
+    const alRodar = (e: globalThis.WheelEvent) => {
+      e.preventDefault();
+      const now = Date.now();
+      if (wheelAtRef.current && now - wheelAtRef.current < 140) return;
+      wheelAtRef.current = now;
+      drumGo(diRef.current + (e.deltaY > 0 ? 1 : -1), visiblesRef.current);
+    };
+    nodo.addEventListener('wheel', alRodar, { passive: false });
+    return () => nodo.removeEventListener('wheel', alRodar);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const drumTouch = crearDrumTouch(
     drumTouchRef, drumClickOffRef,
     () => di,
@@ -1321,11 +1342,14 @@ export default function HomeConfigurator() {
 
   const chips = ['Casas custom', 'Spec homes', 'Escandinavo moderno', 'Farm moderno', 'Smart home', 'Lotes propios', 'Edinburg · McAllen · Mission'];
 
+  // Varias preguntas abiertas a la vez: quien compara financiamiento contra
+  // tiempo de obra necesita las dos en pantalla, y cerrar la anterior en
+  // silencio se siente como si la página le quitara algo.
   const faqs = FAQS.map((f, i) => ({
     q: f.q, a: f.a,
-    open: faqOpen === i,
-    icon: faqOpen === i ? '−' : '+',
-    onToggle: () => setFaqOpen((prev) => (prev === i ? null : i)),
+    open: faqOpen.includes(i),
+    icon: faqOpen.includes(i) ? '−' : '+',
+    onToggle: () => setFaqOpen((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : prev.concat([i]))),
   }));
 
   const nav = NAV.map((n) => ({
@@ -1360,6 +1384,10 @@ export default function HomeConfigurator() {
 
   return (
     <div style={{position: "relative", overflowX: "hidden", background: "#FBFBFA", paddingBottom: "74px"}}>
+
+      {/* Con 57 elementos enfocables en una sola página, quien navega con
+          teclado tenía que tabular por todo para llegar al configurador. */}
+      <a href="#personaliza" className="lgp-skip">Saltar al configurador</a>
 
       <div ref={bgRef} style={{position: "fixed", inset: "0", zIndex: "0", pointerEvents: "none", overflow: "hidden"}}></div>
 
@@ -1492,7 +1520,7 @@ export default function HomeConfigurator() {
               <div className="lgp-picker-grid" style={{display: "grid", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
 
                 <div style={{position: "relative", background: "#fff", padding: "0", overflow: "hidden"}}>
-                  <div onWheel={onDrumWheel} {...drumTouch} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
+                  <div ref={drumRef} {...drumTouch} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
                     <div style={{position: "absolute", left: "0", right: "0", top: "50%", height: "44px", marginTop: "-22px", borderTop: "1px solid #F2004B", borderBottom: "1px solid #F2004B", pointerEvents: "none", zIndex: "2"}}></div>
                     <div style={{position: "absolute", left: "0", right: "0", top: "0", height: "74px", background: "linear-gradient(#fff 12%, rgba(255,255,255,0))", pointerEvents: "none", zIndex: "3"}}></div>
                     <div style={{position: "absolute", left: "0", right: "0", bottom: "0", height: "74px", background: "linear-gradient(rgba(255,255,255,0), #fff 88%)", pointerEvents: "none", zIndex: "3"}}></div>
@@ -1553,7 +1581,8 @@ export default function HomeConfigurator() {
                   </div>
                 </div>
               </div>
-              <p style={{margin: "14px 0 0"}}><a href="#lugares" style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#8A8F91", textTransform: "uppercase", borderBottom: "1px solid #E4E1DD"}}>Ver el plano completo de la subdivisión ↗</a></p>
+              {/* Medía 14 px de alto: imposible de atinar con el pulgar. */}
+              <p style={{margin: "14px 0 0"}}><a href="#lugares" style={{display: "inline-flex", alignItems: "center", minHeight: "44px", padding: "0 2px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#8A8F91", textTransform: "uppercase"}}><span style={{borderBottom: "1px solid #E4E1DD"}}>Ver el plano completo de la subdivisión ↗</span></a></p>
 
               {/* ¿Ya tienes tu propio terreno? Sube el plano y lo analizamos. */}
               <div style={{marginTop: "34px", padding: "24px", background: "#fff", border: "1px solid #EAE7E3"}}>
@@ -2251,7 +2280,7 @@ export default function HomeConfigurator() {
         </div>
       </section>
 
-      <div data-nofx="1" style={{position: "fixed", bottom: "0", left: "0", right: "0", zIndex: "60", display: "flex", justifyContent: "center", padding: "14px 22px calc(18px + env(safe-area-inset-bottom))", pointerEvents: "none"}}>
+      <div data-nofx="1" className="lgp-bottom-nav-wrap" style={{position: "fixed", bottom: "0", left: "0", right: "0", zIndex: "60", display: "flex", justifyContent: "center", padding: "14px 22px calc(18px + env(safe-area-inset-bottom))", pointerEvents: "none"}}>
         <div className="lgp-bottom-nav" style={{display: "flex", gap: "20px", padding: "11px 20px", background: "#FBFBFA", boxShadow: "0 1px 0 rgba(28,30,31,0.06) inset, 0 6px 22px rgba(28,30,31,0.14)", pointerEvents: "auto"}}>
           {nav.map((n, _i) => (
     <Fragment key={_i}>
