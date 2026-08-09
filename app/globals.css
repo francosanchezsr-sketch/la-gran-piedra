@@ -82,6 +82,196 @@ textarea {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Lenguaje de movimiento del prototipo de Claude Design.
+   Los keyframes y las reglas de [data-opt-row] son los del prototipo, tal cual:
+   son la parte del diseño que no se puede describir con tokens de color.
+   --------------------------------------------------------------------------- */
+
+/* Entrada de cada paso: el contenido llega, no aparece de golpe. */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Barrido carmín que confirma una elección: la franja cruza y detrás queda el
+   texto nuevo. Dos nombres alternos (A/B) porque reusar el mismo no vuelve a
+   disparar la animación cuando solo cambia el contenido. */
+@keyframes fxSweepA {
+  0% { transform: translateX(-101%); }
+  52% { transform: translateX(0); }
+  100% { transform: translateX(101%); }
+}
+@keyframes fxSweepB {
+  0% { transform: translateX(-101%); }
+  52% { transform: translateX(0); }
+  100% { transform: translateX(101%); }
+}
+@keyframes fxTextA {
+  0%, 48% { opacity: 0; transform: translateY(7px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes fxTextB {
+  0%, 48% { opacity: 0; transform: translateY(7px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Cifra de ft² al pasar por una zona: entra, se pasa de largo y asienta. */
+@keyframes ftInA {
+  0% { opacity: 0; transform: translateX(-10px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes ftInB {
+  0% { opacity: 0; transform: translateX(-10px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes ftNumA {
+  0% { opacity: 0; transform: translateY(5px) scale(0.8); }
+  55% { opacity: 1; transform: translateY(0) scale(1.18); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ftNumB {
+  0% { opacity: 0; transform: translateY(5px) scale(0.8); }
+  55% { opacity: 1; transform: translateY(0) scale(1.18); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes ftRuleA {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+@keyframes ftRuleB {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+
+/* Fila de opción: al pasar el cursor, la franja carmín asoma por la derecha y
+   el "+" se recorre; al elegirla, la franja cubre la fila entera. */
+/* Los resets del botón viven aquí y no en el style inline a propósito: un
+   `background` en línea le gana a cualquier regla :hover de la hoja, y la fila
+   se quedaría sin su estado de hover. */
+[data-opt-row] {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 14px;
+  border: 0;
+  border-top: 1px solid #f0ede9;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+[data-opt-row]:hover,
+[data-opt-row]:focus-visible {
+  background: #f7f5f2;
+}
+
+[data-opt-row][aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+[data-zone-strip] {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f2004b;
+  transform: translateX(100%);
+  transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+[data-zone-strip][data-on='1'] {
+  transform: translateX(0);
+}
+
+[data-opt-row]:hover [data-zone-strip][data-on='0'][data-toggle='1'],
+[data-opt-row]:focus-visible [data-zone-strip][data-on='0'][data-toggle='1'] {
+  transform: translateX(50%);
+}
+
+[data-zone-glyph] {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  font-weight: 800;
+  font-size: 34px;
+  line-height: 1;
+  color: #fff;
+  transform: translate(-50%, -50%) rotate(var(--r, 0deg));
+  transition: transform 0.45s cubic-bezier(0.34, 1.7, 0.5, 1), left 0.3s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+[data-opt-row]:hover [data-zone-strip][data-on='0'][data-toggle='1'] [data-zone-glyph],
+[data-opt-row]:focus-visible [data-zone-strip][data-on='0'][data-toggle='1'] [data-zone-glyph] {
+  left: 25%;
+}
+
+[data-opt-row]:active [data-zone-glyph] {
+  transform: translate(-50%, -50%) rotate(var(--r, 0deg)) scale(0.62);
+  transition: transform 0.1s ease;
+}
+
+/* El icono de la fila elegida crece y se invierte a blanco sobre el carmín. */
+[data-zone-icon] {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), filter 0.35s ease 0.1s;
+}
+
+[data-zone-icon='1'] {
+  transform: scale(1.25);
+  filter: invert(1) brightness(3);
+}
+
+[data-zone-swatch] {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+}
+
+[data-zone-swatch='1'] {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* Quien pidió menos movimiento en su sistema no debería pelearse con esto: se
+   queda el diseño, se va la animación. */
+@media (prefers-reduced-motion: reduce) {
+  [data-zone-strip],
+  [data-zone-glyph],
+  [data-zone-icon],
+  [data-zone-swatch] {
+    transition-duration: 0.01ms;
+  }
+  .lgp-paso-anim,
+  .lgp-sweep,
+  .lgp-sweep-texto {
+    animation: none !important;
+  }
+}
+
 /* Responsive layout */
 
 .lgp-picker-grid {
@@ -107,11 +297,27 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  /* La tarjeta de decisión pasa a una columna: el render arriba y el texto
-     debajo, para que ninguno de los dos quede aplastado. */
+  /* La tarjeta de decisión pasa a una columna: el render arriba, el texto
+     debajo y el panel de "elegido" al final, para que ninguno quede aplastado.
+     El borde izquierdo del panel se vuelve superior — de separador vertical no
+     sirve cuando ya no hay dos columnas. */
   .lgp-decision-foco {
-    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
     gap: 16px !important;
+    padding: 18px !important;
+  }
+
+  .lgp-decision-visual {
+    width: 100% !important;
+    max-height: 300px;
+  }
+
+  .lgp-panel-elegido {
+    width: 100% !important;
+    border-left: 0 !important;
+    border-top: 1px solid #e4e1dd !important;
+    padding-left: 0 !important;
+    padding-top: 16px !important;
   }
 }
 

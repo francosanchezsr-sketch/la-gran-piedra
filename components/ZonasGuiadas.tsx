@@ -18,6 +18,8 @@ export type ZonaMod = {
   disabledReason: string | null;
   bloqueadaPorReglamento: boolean;
   sugerida: boolean;
+  /** Por qué la propuso el análisis del brief, cuando vino de ahí. */
+  razon: string | null;
   sustituyeA: string | null;
   onToggle: () => void;
 };

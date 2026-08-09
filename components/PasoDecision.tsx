@@ -1,6 +1,7 @@
 'use client';
 
-import { Fragment, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { FilaOpcion, PanelElegido } from '@/components/DecisionUI';
 
 export type OpcionDecision = {
   key: string;
@@ -11,10 +12,12 @@ export type OpcionDecision = {
   imagen?: string;
   /** Alternativa a `imagen`: un SVG o cualquier nodo. */
   visual?: ReactNode;
-  /** Miniatura de la fila compacta. Sin ella se cae a `imagen` y luego a la sigla. */
+  /** Miniatura de la fila. Sin ella se cae a `imagen` y luego a la sigla. */
   miniatura?: ReactNode;
-  /** Iniciales para la fila compacta cuando no hay imagen ni miniatura. */
+  /** Iniciales para la fila cuando no hay imagen ni miniatura. */
   sigla?: string;
+  /** Cómo reacciona la miniatura al quedar elegida. Ver `FilaOpcion`. */
+  visualTipo?: 'icono' | 'muestra';
   on: boolean;
   fija?: boolean;
   etiqueta?: string;
@@ -22,106 +25,172 @@ export type OpcionDecision = {
 };
 
 /**
- * Esqueleto común de los pasos de elección: una tarjeta enfocada con la opción
- * actual y el resto como filas compactas. Es el patrón del mockup — cambiar de
- * paso no debe sentirse como entrar a otra pantalla, y no hay que comparar seis
- * tarjetas a la vez para tomar una decisión.
+ * Esqueleto de los pasos de elección, calcado del prototipo de Claude Design:
+ * una tarjeta de detalle arriba, la columna de "lo que llevas elegido" a la
+ * derecha, y abajo la lista donde cada fila se elige sola — la franja carmín
+ * entra por la derecha al pasar el cursor y cubre la fila al elegirla.
+ *
+ * La tarjeta muestra la opción sobre la que está el cursor; si no hay ninguna,
+ * la elegida. Así se puede curiosear la lista sin cambiar nada.
  */
 export default function PasoDecision({
   opciones,
   etiquetaOtras,
+  tituloPanel,
+  vacioPanel,
   accionPrimaria,
   accionSecundaria,
   onSecundaria,
+  carrusel,
   nota,
 }: {
   opciones: OpcionDecision[];
   etiquetaOtras: string;
-  accionPrimaria: string;
+  tituloPanel: string;
+  vacioPanel: string;
+  /** Texto del botón de elegir; solo se usa en modo carrusel. */
+  accionPrimaria?: string;
   accionSecundaria?: string;
   onSecundaria?: () => void;
+  /**
+   * Modo carrusel: se pasa de una opción a otra con las flechas y se elige la
+   * que está a la vista. Es para cuando lo que decide es la imagen grande —un
+   * plano se compara viéndolo, no leyendo su nombre en una lista.
+   */
+  carrusel?: boolean;
   nota?: ReactNode;
 }) {
+  const [hover, setHover] = useState<string | null>(null);
+  const [idx, setIdx] = useState(0);
   if (!opciones.length) return null;
-  // La enfocada es la elegida; si no hay ninguna, la primera.
-  const foco = opciones.find((o) => o.on) ?? opciones[0];
-  const otras = opciones.filter((o) => o.key !== foco.key);
+
+  const elegida = opciones.find((o) => o.on) ?? null;
+  const iSeguro = Math.min(Math.max(idx, 0), opciones.length - 1);
+  const foco = carrusel
+    ? (opciones[iSeguro] ?? opciones[0])
+    : (opciones.find((o) => o.key === hover) ?? elegida ?? opciones[0]);
+  const mover = (paso: number) => setIdx((i) => (i + paso + opciones.length) % opciones.length);
+
+  // La miniatura va sin caja: el `invert()` de la fila elegida se aplica sobre
+  // lo que haya dentro, y un marco blanco se volvería un marco negro.
+  const mini = (o: OpcionDecision) =>
+    o.miniatura ?? (o.imagen ? (
+      <img src={o.imagen} alt="" aria-hidden="true" loading="lazy" style={{ width: '36px', height: '36px', objectFit: 'cover', display: 'block', border: '1px solid #EAE7E3' }} />
+    ) : (
+      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', fontWeight: 700, color: '#8A8F91' }}>{o.sigla ?? o.nombre.slice(0, 2).toUpperCase()}</span>
+    ));
+
+  const flecha = (dir: -1 | 1, etiqueta: string, glifo: string) => (
+    <button
+      onClick={() => mover(dir)}
+      aria-label={etiqueta}
+      className="lgp-flecha"
+      style={{ width: '38px', height: '38px', flex: 'none', borderRadius: '50%', border: '1px solid #DDD9D4', background: '#fff', cursor: 'pointer', fontSize: '17px', color: '#505759', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+    >
+      {glifo}
+    </button>
+  );
+
+  // En carrusel el visor tiene alto fijo, como en el prototipo: si cada plano
+  // define su propio alto, pasar de uno a otro da un brinco de layout.
+  const visualFoco = (
+    <div
+      className="lgp-decision-visual"
+      style={
+        carrusel
+          ? { flex: 1, minWidth: 0, height: '420px', background: '#fff', border: '1px solid #EAE7E3', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '14px' }
+          : { width: '230px', flex: 'none', background: '#fff', border: '1px solid #EAE7E3', overflow: 'hidden' }
+      }
+    >
+      {foco.imagen ? (
+        <img
+          src={foco.imagen}
+          alt={`Vista de ${foco.nombre}`}
+          loading="lazy"
+          style={carrusel ? { maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' } : { width: '100%', height: 'auto', display: 'block' }}
+        />
+      ) : (
+        foco.visual
+      )}
+    </div>
+  );
 
   return (
     <div>
-      <div style={{ background: '#fff', border: '1px solid ' + (foco.on ? '#F2004B' : '#EAE7E3'), boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
-        <div className="lgp-decision-foco" style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 300px) 1fr', gap: '22px', alignItems: 'center', padding: '20px' }}>
-          <div style={{ background: '#FBFBFA', border: '1px solid #F0EDE9', overflow: 'hidden' }}>
-            {foco.imagen ? (
-              <img src={foco.imagen} alt={`Vista de ${foco.nombre}`} loading="lazy" style={{ width: '100%', height: 'auto', display: 'block' }} />
-            ) : (
-              foco.visual
-            )}
+      {/* El carrusel va arriba, a todo lo ancho: el plano se decide viéndolo. */}
+      {carrusel ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
+          {opciones.length > 1 ? flecha(-1, 'Plano anterior', '‹') : null}
+          {visualFoco}
+          {opciones.length > 1 ? flecha(1, 'Plano siguiente', '›') : null}
+        </div>
+      ) : null}
+
+      <div className="lgp-decision-foco" style={{ border: '1px solid #EAE7E3', background: '#F7F5F2', padding: '26px', display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '20px' }}>
+        {carrusel ? null : visualFoco}
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '6px' }}>
+            <span style={{ fontWeight: 800, fontSize: '15px', letterSpacing: '0.02em', textTransform: 'uppercase', color: '#1C1E1F' }}>{foco.nombre}</span>
+            {foco.etiqueta ? (
+              <span style={{ padding: '3px 7px', background: '#1C1E1F', color: '#FBFBFA', fontFamily: "'IBM Plex Mono', monospace", fontSize: '8px', letterSpacing: '0.1em' }}>{foco.etiqueta}</span>
+            ) : null}
           </div>
-
-          <div>
-            <p style={{ display: 'flex', alignItems: 'center', gap: '9px', margin: '0 0 8px', fontFamily: 'Archivo, sans-serif', fontWeight: 800, fontSize: '17px', letterSpacing: '-0.005em' }}>
-              {foco.nombre}
-              {foco.etiqueta ? (
-                <span style={{ padding: '3px 7px', background: '#1C1E1F', color: '#FBFBFA', fontFamily: "'IBM Plex Mono', monospace", fontSize: '8px', fontWeight: 400, letterSpacing: '0.1em' }}>{foco.etiqueta}</span>
-              ) : null}
-            </p>
-            {foco.descripcion ? (
-              <p style={{ margin: '0 0 10px', maxWidth: '46ch', fontSize: '13.5px', lineHeight: 1.6, color: '#8A8F91' }}>{foco.descripcion}</p>
-            ) : null}
-            {foco.meta ? (
-              <p style={{ margin: '0 0 16px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.06em', color: '#505759', textTransform: 'uppercase' }}>{foco.meta}</p>
-            ) : null}
-
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {foco.fija ? (
-                <span style={{ padding: '13px 20px', background: '#F7F5F2', border: '1px solid #EAE7E3', color: '#8A8F91', fontFamily: 'Archivo, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
-                  Incluido en tu lote
+          {foco.descripcion ? (
+            <p style={{ margin: '0 0 12px', maxWidth: '46ch', fontSize: '13px', lineHeight: 1.6, color: '#505759' }}>{foco.descripcion}</p>
+          ) : null}
+          {foco.meta ? (
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.08em', color: '#8A8F91', textTransform: 'uppercase' }}>{foco.meta}</div>
+          ) : null}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '16px' }}>
+            {/* En carrusel no hay filas donde elegir, así que el botón va aquí. */}
+            {carrusel && !foco.fija ? (
+              foco.on ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 12px', border: '1px solid #EAE7E3', background: '#fff' }}>
+                  <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: '#F2004B', color: '#fff', fontSize: '9px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✓</span>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#8A8F91', textTransform: 'uppercase' }}>Plano elegido</span>
                 </span>
               ) : (
-                <button onClick={foco.onSelect} className="lgp-hover-zoom" style={{ padding: '13px 20px', background: foco.on ? '#F7F5F2' : '#F2004B', border: foco.on ? '1px solid #EAE7E3' : 0, color: foco.on ? '#8A8F91' : '#fff', fontFamily: 'Archivo, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', cursor: foco.on ? 'default' : 'pointer' }}>
-                  {foco.on ? '✓ Elegido' : accionPrimaria}
+                <button onClick={foco.onSelect} className="lgp-hover-zoom" style={{ padding: '10px 16px', background: '#F2004B', border: 0, color: '#fff', fontFamily: 'Archivo, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                  {accionPrimaria ?? 'Elegir'}
                 </button>
-              )}
-              {accionSecundaria && onSecundaria ? (
-                <button onClick={onSecundaria} className="lgp-hover-zoom" style={{ padding: '13px 20px', background: 'transparent', border: '1px solid #DDD9D4', color: '#505759', fontFamily: 'Archivo, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', cursor: 'pointer' }}>
-                  {accionSecundaria}
-                </button>
-              ) : null}
-            </div>
+              )
+            ) : null}
+            {accionSecundaria && onSecundaria ? (
+              <button onClick={onSecundaria} className="lgp-hover-zoom" style={{ padding: '9px 14px', background: '#fff', border: '1px solid #DDD9D4', color: '#505759', fontFamily: 'Archivo, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', cursor: 'pointer' }}>
+                {accionSecundaria}
+              </button>
+            ) : null}
           </div>
         </div>
 
-        {otras.length ? (
-          <div style={{ padding: '4px 20px 18px', borderTop: '1px solid #F0EDE9' }}>
-            <p style={{ margin: '14px 0 8px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.12em', color: '#A9ADAF', textTransform: 'uppercase' }}>{etiquetaOtras}</p>
-            {otras.map((o) => (
-    <Fragment key={o.key}>
-              <button onClick={o.onSelect} disabled={o.fija} className="lgp-hover-zoom" style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', padding: '10px 12px', marginBottom: '6px', background: '#FBFBFA', border: '1px solid #F0EDE9', textAlign: 'left', cursor: o.fija ? 'default' : 'pointer' }}>
-                <span style={{ width: '34px', height: '34px', flex: 'none', borderRadius: '6px', overflow: 'hidden', background: '#fff', border: '1px solid #EAE7E3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {o.miniatura ? (
-                    o.miniatura
-                  ) : o.imagen ? (
-                    <img src={o.imagen} alt="" aria-hidden="true" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                  ) : (
-                    <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', fontWeight: 700, color: '#8A8F91' }}>{o.sigla ?? o.nombre.slice(0, 2).toUpperCase()}</span>
-                  )}
-                </span>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontFamily: 'Archivo, sans-serif', fontWeight: 700, fontSize: '13.5px' }}>{o.nombre}</span>
-                  {o.meta ? (
-                    <span style={{ display: 'block', marginTop: '2px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.06em', color: '#B7BABB', textTransform: 'uppercase' }}>{o.meta}</span>
-                  ) : null}
-                </span>
-                {o.etiqueta ? (
-                  <span style={{ flex: 'none', fontFamily: "'IBM Plex Mono', monospace", fontSize: '8px', letterSpacing: '0.1em', color: '#8A8F91' }}>{o.etiqueta}</span>
-                ) : null}
-              </button>
-    </Fragment>
-    ))}
-          </div>
-        ) : null}
+        <PanelElegido titulo={tituloPanel} vacio={vacioPanel} clave={elegida ? elegida.key : null}>
+          <div style={{ fontWeight: 800, fontSize: '12.5px', textTransform: 'uppercase', letterSpacing: '0.02em', color: '#1C1E1F', marginBottom: '4px' }}>{elegida?.nombre}</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.08em', color: '#8A8F91', textTransform: 'uppercase' }}>{elegida?.meta ?? 'Sin costo extra'}</div>
+        </PanelElegido>
       </div>
+
+      {carrusel ? null : (
+    <>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#A9ADAF', textTransform: 'uppercase', marginBottom: '8px' }}>{etiquetaOtras}</div>
+      <div className="lgp-decision-lista" style={{ border: '1px solid #EAE7E3', maxWidth: '520px' }}>
+        {opciones.map((o) => (
+          <FilaOpcion
+            key={o.key}
+            icono={mini(o)}
+            tipoVisual={o.visualTipo ?? 'muestra'}
+            nombre={o.nombre}
+            estado={o.on ? (o.fija ? 'Incluido' : 'Elegido') : o.fija ? 'Incluido' : ''}
+            on={o.on}
+            disabled={o.fija}
+            onClick={o.onSelect}
+            onEnter={() => setHover(o.key)}
+            onLeave={() => setHover(null)}
+          />
+        ))}
+      </div>
+    </>
+      )}
 
       {nota ? <div style={{ marginTop: '16px' }}>{nota}</div> : null}
     </div>

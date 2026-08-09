@@ -35,6 +35,7 @@ import PlanDiagram from '@/components/FloorplanDiagram';
 import PresupuestoBar from '@/components/PresupuestoBar';
 import RetirosDiagrama from '@/components/RetirosDiagrama';
 import ZonasGuiadas from '@/components/ZonasGuiadas';
+import ZonasPanel from '@/components/ZonasPanel';
 import PasoDecision from '@/components/PasoDecision';
 import { RENDER_PLAN, ICONO_ZONA, ICONO_TRAGALUZ } from '@/lib/assets';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
@@ -45,6 +46,9 @@ type Lead = { nombre: string; correo: string; tel: string };
 
 const STEP = 26;
 const R = 90;
+
+// Tope de tragaluces en una misma casa.
+const MAX_TRAGALUCES = 3;
 
 // --- Giro táctil de los cilindros -------------------------------------------
 // En escritorio el cilindro se mueve con la rueda y con las flechas ▲▼. En
@@ -930,9 +934,10 @@ export default function HomeConfigurator() {
     ),
     miniatura: (
       <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <FachadaIcon styleKey={f.key} size={20} />
+        <FachadaIcon styleKey={f.key} size={26} />
       </span>
     ),
+    visualTipo: 'icono' as const,
     sigla: f.nombre.slice(0, 2).toUpperCase(),
     on: f.on,
     onSelect: f.onSelect,
@@ -952,12 +957,14 @@ export default function HomeConfigurator() {
     // En una decisión de color la miniatura ES la información: la sigla "PI" no
     // dice nada de cómo se ve "Piedra cálida".
     miniatura: (
-      <span style={{ display: 'flex', width: '100%', height: '100%' }}>
+      <span style={{ display: 'flex', width: '34px', height: '34px', border: '1px solid #EAE7E3' }}>
         <span style={{ flex: 1, background: i.c1 }} />
         <span style={{ flex: 1, background: i.c2 }} />
         <span style={{ flex: 1, background: i.c3 }} />
       </span>
     ),
+    // Una paleta no se invierte: invertida es otra paleta.
+    visualTipo: 'muestra' as const,
     sigla: i.nombre.slice(0, 2).toUpperCase(),
     on: i.on,
     onSelect: i.onSelect,
@@ -1029,53 +1036,18 @@ export default function HomeConfigurator() {
     };
   });
 
-  const moduloDrumIdx = Math.max(0, Math.min(mods.length - 1, moduloIdx));
-  const moduloDrum = mods.map((m, i) => {
-    const a = (i - moduloDrumIdx) * STEP;
-    const far = Math.abs(a) > 76;
-    return {
-      iconKey: m.iconKey, nombre: m.nombre, incluida: m.incluida, sugerida: m.sugerida,
-      dot: m.on ? '#F2004B' : m.sugerida ? '#F4DA40' : '#D5D7D8',
-      disabled: m.disabled, disabledReason: m.disabledReason,
-      onClick: () => setModuloIdx(i),
-      style: {
-        position: 'absolute', left: '20px', right: '20px', top: '50%', height: '42px', marginTop: '-21px',
-        display: far ? 'none' : 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: '12px', padding: '0 8px', border: 0, background: 'transparent',
-        font: 'inherit', color: i === moduloDrumIdx ? '#1C1E1F' : '#505759',
-        opacity: Math.max(0, 1 - Math.abs(a) / 88),
-        transform: 'rotateX(' + -a + 'deg) translateZ(' + R + 'px)',
-        transformOrigin: '50% 50%', backfaceVisibility: 'hidden',
-        cursor: 'pointer', transition: 'transform .28s cubic-bezier(.22,.61,.36,1), opacity .28s ease, color .2s ease',
-      } as Record<string, any>,
-    };
-  });
-  const focoModulo = mods[moduloDrumIdx] || null;
-  const focoTieneTragaluz = focoModulo ? tragaluces.includes(focoModulo.iconKey) : false;
-  const tragaluzLleno = tragaluces.length >= 3;
+  // El tragaluz es un atributo de una zona ya puesta: se prende desde la propia
+  // zona, con tope de MAX_TRAGALUCES en la misma casa.
   const orientacionHint = lote ? ((lote.orient as string) === 'Oeste' ? 'Esta zona da al poniente — no ideal para tragaluz.' : `Orientación al ${lote.orient} — buena para tragaluz.`) : '';
-  const toggleTragaluz = () => {
-    if (!focoModulo || !focoModulo.on) return;
+  const toggleTragaluz = (key: string) => {
+    const m = mods.find((x) => x.iconKey === key);
+    if (!m || !m.on) return;
     setTragaluces((prev) => {
-      if (prev.includes(focoModulo.iconKey)) return prev.filter((k) => k !== focoModulo.iconKey);
-      if (prev.length >= 3) return prev;
-      return prev.concat([focoModulo.iconKey]);
+      if (prev.includes(key)) return prev.filter((k) => k !== key);
+      if (prev.length >= MAX_TRAGALUCES) return prev;
+      return prev.concat([key]);
     });
   };
-  const moduloDrumUp = () => setModuloIdx((i) => Math.max(0, i - 1));
-  const moduloDrumDown = () => setModuloIdx((i) => Math.min(mods.length - 1, i + 1));
-  const onModuloDrumWheel = (e: WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const now = Date.now();
-    if (moduloWheelAtRef.current && now - moduloWheelAtRef.current < 140) return;
-    moduloWheelAtRef.current = now;
-    setModuloIdx((i) => Math.max(0, Math.min(mods.length - 1, i + (e.deltaY > 0 ? 1 : -1))));
-  };
-  const moduloTouch = crearDrumTouch(
-    moduloTouchRef, moduloClickOffRef,
-    () => moduloDrumIdx,
-    (i) => setModuloIdx(Math.max(0, Math.min(mods.length - 1, i))),
-  );
   const modulosAgregados = mods.filter((m) => m.on).map((m) => m.nombre).join(', ') || 'Ninguno aún';
 
   const leadNombre = lead.nombre, leadCorreo = lead.correo, leadTel = lead.tel;
@@ -1817,7 +1789,10 @@ export default function HomeConfigurator() {
 
               <PasoDecision
                 opciones={planesDecision}
-                etiquetaOtras="Otro plano"
+                carrusel
+                etiquetaOtras={planFijo ? 'Plano de este lote' : 'Planos disponibles'}
+                tituloPanel="Plano elegido"
+                vacioPanel="Ninguno elegido todavía."
                 accionPrimaria="Elegir este plano"
                 accionSecundaria={plan ? 'Ver a pantalla completa' : undefined}
                 onSecundaria={plan ? () => setPreviewOpen(true) : undefined}
@@ -1845,8 +1820,9 @@ export default function HomeConfigurator() {
               <p style={{margin: "0 0 26px", maxWidth: "560px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>La piel de la casa. Cuatro fachadas, todas geométricas, todas nuestras.</p>
               <PasoDecision
                 opciones={fachadasDecision}
-                etiquetaOtras="Otras fachadas"
-                accionPrimaria="Elegir esta fachada"
+                etiquetaOtras="Fachadas disponibles"
+                tituloPanel="Fachada elegida"
+                vacioPanel="Ninguna seleccionada. Elige una de la lista."
               />
             </div>
           
@@ -1861,8 +1837,9 @@ export default function HomeConfigurator() {
               <div style={{marginBottom: "34px"}}>
                 <PasoDecision
                   opciones={gamasDecision}
-                  etiquetaOtras="Otras gamas"
-                  accionPrimaria="Elegir esta gama"
+                  etiquetaOtras="Gamas disponibles"
+                  tituloPanel="Gama elegida"
+                  vacioPanel="Ninguna seleccionada. Elige una de la lista."
                 />
               </div>
 
@@ -1900,113 +1877,25 @@ export default function HomeConfigurator() {
                     usuario ya armó sus zonas. Aquí no hay brief que analizar. */}
               </div>
 
-              {/* Por defecto se pregunta una zona a la vez; el catálogo
-                  completo queda a un clic para quien lo prefiera navegar. */}
-              {!verTodasZonas ? (
+              {/* Por defecto, el panel de zonas del prototipo: detalle a la
+                  izquierda, lo que llevas a la derecha y la lista abajo. Quien
+                  prefiera que le pregunten una por una tiene el otro modo. */}
+              {verTodasZonas ? (
     <Fragment>
               <ZonasGuiadas mods={mods} ft2Rest={ft2Rest} verTodas={verTodasZonas} onVerTodas={setVerTodasZonas} liberar={liberarEspacio} />
     </Fragment>
     ) : (
     <Fragment>
-              <div style={{display: "flex", justifyContent: "flex-end", marginBottom: "12px"}}>
-                <button onClick={() => setVerTodasZonas(false)} style={{padding: "5px 10px", background: "transparent", border: "1px solid #E4E1DD", color: "#8A8F91", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer"}}>Ver una a la vez</button>
-              </div>
-
-              <div className="lgp-picker-grid" style={{display: "grid", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
-
-                <div style={{position: "relative", background: "#fff", padding: "0", overflow: "hidden"}}>
-                  <div onWheel={onModuloDrumWheel} {...moduloTouch} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
-                    <div style={{position: "absolute", left: "0", right: "0", top: "50%", height: "44px", marginTop: "-22px", borderTop: "1px solid #F2004B", borderBottom: "1px solid #F2004B", pointerEvents: "none", zIndex: "2"}}></div>
-                    <div style={{position: "absolute", left: "0", right: "0", top: "0", height: "74px", background: "linear-gradient(#fff 12%, rgba(255,255,255,0))", pointerEvents: "none", zIndex: "3"}}></div>
-                    <div style={{position: "absolute", left: "0", right: "0", bottom: "0", height: "74px", background: "linear-gradient(rgba(255,255,255,0), #fff 88%)", pointerEvents: "none", zIndex: "3"}}></div>
-                    <div style={{position: "absolute", inset: "0", transformStyle: "preserve-3d"}}>
-                      {moduloDrum.map((m, _i) => (
-    <Fragment key={_i}>
-
-                        <button onClick={m.onClick} style={m.style} className="lgp-hover-zoom" title={m.disabledReason ?? undefined}>
-                          <span style={{display: "flex", alignItems: "center", gap: "10px", opacity: m.disabled ? 0.4 : 1}}>
-                            <span style={{width: "7px", height: "7px", display: "block", flex: "none", background: m.dot}}></span>
-                            {ICONO_ZONA[m.iconKey] ? (
-    <Fragment>
-    <img src={ICONO_ZONA[m.iconKey]} alt="" aria-hidden="true" style={{width: "20px", height: "20px", objectFit: "contain", display: "block", flex: "none"}} />
-    </Fragment>
-    ) : (
-    <Fragment>
-    <ModuloIcon moduleKey={m.iconKey} size={16} />
-    </Fragment>
-    )}
-                            <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.03em", textTransform: "uppercase"}}>{m.nombre}</span>
-                          </span>
-                          {m.incluida ? (
-    <Fragment>
-    <span style={{flex: "none", padding: "2px 6px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", letterSpacing: "0.1em"}}>INCLUIDO</span>
-    </Fragment>
-    ) : m.sugerida ? (
-    <Fragment>
-    <span style={{flex: "none", padding: "2px 6px", background: "#FEFCEC", border: "1px solid #F0E4A8", color: "#8A7A2A", fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", letterSpacing: "0.1em"}}>DE TU BRIEF</span>
-    </Fragment>
-    ) : null}
-                        </button>
-
-    </Fragment>
-    ))}
-                    </div>
-                  </div>
-                  <div style={{display: "flex", borderTop: "1px solid #F0EDE9"}}>
-                    <button onClick={moduloDrumUp} className="lgp-hover-zoom" style={{flex: "1", padding: "9px 0", border: "0", borderRight: "1px solid #F0EDE9", background: "transparent", color: "#8A8F91", fontSize: "13px", cursor: "pointer"}}>▲</button>
-                    <button onClick={moduloDrumDown} className="lgp-hover-zoom" style={{flex: "1", padding: "9px 0", border: "0", background: "transparent", color: "#8A8F91", fontSize: "13px", cursor: "pointer"}}>▼</button>
-                  </div>
-                </div>
-
-                {focoModulo ? (
-    <Fragment>
-                <div style={{background: "#fff", padding: "20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", gap: "12px"}}>
-                  <div style={{width: "72px", height: "72px", flex: "none", borderRadius: "10px", overflow: "hidden", background: "#F7F5F2", display: "flex", alignItems: "center", justifyContent: "center"}}>
-                    {ICONO_ZONA[focoModulo.iconKey] ? (
-    <Fragment>
-    <img src={ICONO_ZONA[focoModulo.iconKey]} alt={focoModulo.nombre} style={{width: "78%", height: "78%", objectFit: "contain", display: "block"}} />
-    </Fragment>
-    ) : PHOTO_BY_MODULE[focoModulo.iconKey] ? (
-    <Fragment>
-    <img src={PHOTO_BY_MODULE[focoModulo.iconKey]} alt={focoModulo.nombre} style={{width: "100%", height: "100%", objectFit: "cover", display: "block"}} />
-    </Fragment>
-    ) : (
-    <Fragment>
-    <ModuloIcon moduleKey={focoModulo.iconKey} size={30} />
-    </Fragment>
-    )}
-                  </div>
-                  <span style={{fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.04em", textTransform: "uppercase"}}>{focoModulo.nombre}</span>
-                  {focoModulo.incluida ? (
-    <Fragment>
-                  <span style={{padding: "9px 15px", background: "#1C1E1F", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>✓ Incluido en el plano</span>
-                  <p style={{margin: 0, maxWidth: "230px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>Ya viene en el plano aprobado, no consume presupuesto. Para cambiarla, elige la alternativa de su mismo grupo.</p>
-    </Fragment>
-    ) : (
-    <Fragment>
-                  <button onClick={focoModulo.onToggle} disabled={focoModulo.disabled} title={focoModulo.disabledReason ?? undefined} className="lgp-hover-zoom" style={focoModulo.disabled ? {padding: "9px 15px", background: "#F4F1ED", border: "1px solid #E4E1DD", color: "#B7BABB", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "not-allowed"} : focoModulo.on ? {padding: "9px 15px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"} : {padding: "9px 15px", background: "#F2004B", border: "0", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>{focoModulo.on ? '✓ Agregado' : focoModulo.disabled ? (focoModulo.requiereFaltante ? 'Requiere zona' : 'No cabe') : '+ Agregar'}</button>
-                  {focoModulo.sustituyeA && !focoModulo.on ? (
-    <Fragment>
-                  <p style={{margin: 0, maxWidth: "230px", fontSize: "11px", lineHeight: 1.5, color: "#8A8F91"}}>Sustituye a <strong style={{fontWeight: 600}}>{focoModulo.sustituyeA}</strong> — solo cuesta la diferencia: {focoModulo.costoLiving} ft².</p>
-    </Fragment>
-    ) : null}
-                  {focoModulo.disabledReason ? (
-    <Fragment>
-                  <p style={{margin: 0, maxWidth: "220px", fontSize: "11px", lineHeight: 1.5, color: "#B7BABB"}}>{focoModulo.disabledReason}</p>
-    </Fragment>
-    ) : null}
-    </Fragment>
-    )}
-                  {focoModulo.on ? (
-    <Fragment>
-                  <button onClick={toggleTragaluz} disabled={!focoTieneTragaluz && tragaluzLleno} className="lgp-hover-zoom" style={{display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: focoTieneTragaluz ? "#1C1E1F" : "transparent", border: "1px solid " + (focoTieneTragaluz ? "#1C1E1F" : "#DDD9D4"), color: focoTieneTragaluz ? "#fff" : (tragaluzLleno ? "#DDD9D4" : "#505759"), fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", textTransform: "uppercase", cursor: (!focoTieneTragaluz && tragaluzLleno) ? "not-allowed" : "pointer"}}><img src={ICONO_TRAGALUZ} alt="" aria-hidden="true" style={{width: "15px", height: "15px", objectFit: "contain", display: "block", flex: "none", filter: focoTieneTragaluz ? "invert(1)" : "none", opacity: (!focoTieneTragaluz && tragaluzLleno) ? 0.35 : 1}} />{focoTieneTragaluz ? 'Con tragaluz' : 'Tragaluz'}</button>
-                  <p style={{margin: 0, maxWidth: "200px", fontSize: "10px", lineHeight: 1.5, color: "#B7BABB"}}>{tragaluzLleno && !focoTieneTragaluz ? 'Máximo 3 tragaluces a la vez.' : orientacionHint}</p>
-    </Fragment>
-    ) : null}
-                </div>
-    </Fragment>
-    ) : null}
-              </div>
+              <ZonasPanel
+                mods={mods}
+                ft2Rest={ft2Rest}
+                liberar={liberarEspacio}
+                tragaluces={tragaluces}
+                maxTragaluces={MAX_TRAGALUCES}
+                orientacionHint={orientacionHint}
+                onToggleTragaluz={toggleTragaluz}
+                onVerGuiado={() => setVerTodasZonas(true)}
+              />
     </Fragment>
     )}
 
