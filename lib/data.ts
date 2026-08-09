@@ -376,13 +376,16 @@ export const NAV = [
 
 // El brief va después de las zonas: solo tiene sentido comentar sobre una
 // combinación que el usuario ya armó.
-export const PASO_NOMBRES = ['Lote', 'Floorplan', 'Fachada', 'Interior y zonas', 'Brief', 'Tus datos', 'Resumen'];
+// El resumen va ANTES de pedir datos: el cliente ve lo que armó y decide si le
+// gusta, y solo entonces se le piden nombre y teléfono. Pedirlos antes de
+// enseñarle el resultado es cobrar por adelantado.
+export const PASO_NOMBRES = ['Lote', 'Floorplan', 'Fachada', 'Interior y zonas', 'Brief', 'Tu casa', 'Tus datos'];
 export const PASO_HINTS = [
   'Elige un lote disponible para continuar',
   'Variantes curadas para tu lote',
   'Selecciona un estilo de fachada',
   'Elige tu paleta y arma tus zonas',
   'Comenta o pide algo especial, o sáltalo',
+  'Así quedó tu casa',
   'Solo pedimos datos al final',
-  'Revisa y envía',
 ];

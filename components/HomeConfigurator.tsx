@@ -30,6 +30,8 @@ import HeroLoopVideo from '@/components/HeroLoopVideo';
 import { ModuloIcon, FachadaIcon } from '@/components/ConfigIcons';
 import MoodboardPreview from '@/components/MoodboardPreview';
 import MoodboardCollage from '@/components/MoodboardCollage';
+import MesaArquitecto from '@/components/MesaArquitecto';
+import VentanaEnfocada from '@/components/VentanaEnfocada';
 import SubdivisionOverview from '@/components/SubdivisionOverview';
 import PlanDiagram from '@/components/FloorplanDiagram';
 import PresupuestoBar from '@/components/PresupuestoBar';
@@ -169,6 +171,9 @@ export default function HomeConfigurator() {
   const [drumIdx, setDrumIdx] = useState(1);
   const [moduloIdx, setModuloIdx] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
+  // La ventana enfocada donde vive el configurador. La página de inicio solo
+  // decide con qué lote se entra.
+  const [ventanaAbierta, setVentanaAbierta] = useState(false);
   const [tragaluces, setTragaluces] = useState<string[]>([]);
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [subdivisionKey, setSubdivisionKey] = useState<SubdivisionKey>(SUBDIVISIONES[0].key);
@@ -1382,6 +1387,26 @@ export default function HomeConfigurator() {
   };
   const cerrarModal = () => setLotModal(null);
 
+  // --- Entrada y salida de la ventana enfocada -----------------------------
+  const lotesDisponibles = LOTES.filter((l) => l.status === 'disponible').length;
+  // Entrar por un lote del catálogo: se fija el lote y se arranca en floorplan,
+  // porque el paso 1 ya quedó resuelto en la página de inicio.
+  const abrirDesdeLote = (l: Lote) => {
+    const idx = visibles.findIndex((v) => v.id === l.id);
+    setLote(l);
+    setDrumIdx(idx < 0 ? 0 : idx);
+    setLotModal(null);
+    setPaso(2);
+    setVentanaAbierta(true);
+  };
+  // Entrar con lote propio: ahí sí hace falta el paso 1, que es donde se sube
+  // el plano o se capturan las medidas.
+  const abrirPropioLote = () => {
+    setPaso(1);
+    setVentanaAbierta(true);
+  };
+  const cerrarVentana = () => setVentanaAbierta(false);
+
   return (
     <div style={{position: "relative", overflowX: "hidden", background: "#FBFBFA", paddingBottom: "74px"}}>
 
@@ -1485,32 +1510,99 @@ export default function HomeConfigurator() {
         </div>
       </section>
 
+      {/* ================= INICIO: apartado de entrada =================
+          La pagina son dos zonas. Esta es la de inicio: aqui se ve donde
+          construimos y que lotes quedan. Elegir uno abre la otra zona. */}
       <section id="personaliza" data-screen-label="Personaliza tu casa" style={{position: "relative", padding: "100px 22px 120px", background: "rgba(255,255,255,0.68)", borderTop: "1px solid #F0EDE9", borderBottom: "1px solid #F0EDE9"}}>
         <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
-          <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "20px", flexWrap: "wrap", marginBottom: "12px"}}>
-            <h2 style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Personaliza tu casa</h2>
-            <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Paso {pasoNum} de {PASO_NOMBRES.length} — {pasoNombre}</span>
+          <h2 style={{margin: "0 0 12px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Personaliza tu casa</h2>
+          <p style={{margin: "0 0 8px", maxWidth: "700px", fontSize: "clamp(21px,2.6vw,32px)", lineHeight: "1.3", letterSpacing: "-0.015em", textWrap: "pretty"}}>Elige tu lote y arma tu casa encima de el.</p>
+          <p style={{margin: "0 0 40px", maxWidth: "620px", fontSize: "16px", lineHeight: "1.6", color: "#8A8F91"}}>
+            Cada lote tiene su propio maximo construible. Al elegir uno se abre el configurador con ese limite ya puesto, para que nada de lo que armes se caiga despues.
+          </p>
+
+          <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "18px", flexWrap: "wrap", marginBottom: "16px"}}>
+            <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>{subdivisionActiva.nombre} &middot; {lotesDisponibles} de {LOTES.length} disponibles</span>
+            <button onClick={() => setOverviewOpen(true)} className="lgp-hover-zoom" style={{minHeight: "44px", padding: "0 16px", background: "#fff", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Ver el plano de la subdivision</button>
           </div>
 
-          <div style={{display: "flex", gap: "1px", background: "#EAE7E3", marginBottom: mostrarPresupuesto ? "16px" : "34px"}}>
-            {pasos.map((p, _i) => (
+          <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: "14px", marginBottom: "44px"}}>
+            {LOTES.map((l) => {
+              const libre = l.status === 'disponible';
+              return (
+                <button
+                  key={l.id}
+                  onClick={() => libre && abrirDesdeLote(l as unknown as Lote)}
+                  disabled={!libre}
+                  title={libre ? `Armar mi casa en ${l.id}` : `${l.id} &mdash; ${l.status}`}
+                  className={libre ? 'lgp-hover-zoom lgp-lote-card' : 'lgp-lote-card'}
+                  style={{textAlign: "left", padding: "18px 18px 16px", background: libre ? "#fff" : "#F7F5F2", border: "1px solid " + (libre ? "#EAE7E3" : "#EFECE8"), cursor: libre ? "pointer" : "not-allowed", opacity: libre ? 1 : 0.6}}
+                >
+                  <span style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px"}}>
+                    <span style={{width: "9px", height: "9px", flex: "none", display: "block", background: statusColor(l.status)}}></span>
+                    <span style={{fontFamily: "Archivo, sans-serif", fontWeight: 800, fontSize: "19px", letterSpacing: "-0.01em"}}>{l.id}</span>
+                    <span style={{marginLeft: "auto", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>{l.status}</span>
+                  </span>
+                  <span style={{display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase", lineHeight: 1.7}}>
+                    {l.frente} &times; {l.fondo}<br />
+                    {l.maxLiving.toLocaleString('es-MX')} ft&sup2; habitables<br />
+                    Fachada al {l.orient}
+                  </span>
+                  {libre ? (
+                    <span className="lgp-lote-cta" style={{display: "block", marginTop: "14px", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#F2004B"}}>Armar aqui &rarr;</span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tu propio lote: el otro camino de entrada a la misma ventana */}
+          <div style={{border: "1px solid #EAE7E3", background: "#fff", padding: "clamp(22px,3vw,34px)"}}>
+            <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "26px", flexWrap: "wrap"}}>
+              <div style={{flex: "1 1 320px", minWidth: 0}}>
+                <p style={{margin: "0 0 8px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#F2004B", textTransform: "uppercase"}}>&iquest;Ya tienes tu propio lote?</p>
+                <p style={{margin: "0 0 10px", fontSize: "clamp(18px,2.1vw,24px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Traelo como lo tengas y calculamos cuanto cabe.</p>
+                <p style={{margin: "0", maxWidth: "52ch", fontSize: "15px", lineHeight: "1.6", color: "#8A8F91"}}>
+                  El plano en PDF o foto, las medidas a mano, o la direccion del terreno. Al ser un lote fuera de la subdivision se te abren los tres floorplans.
+                </p>
+              </div>
+              <button onClick={abrirPropioLote} className="lgp-hover-zoom" style={{flex: "none", minHeight: "48px", padding: "0 22px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Subir mi lote &rarr;</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ PERSONALIZA TU CASA: la ventana enfocada ============
+          Fuera del flujo de la pagina a proposito: mientras arma su casa no
+          hay hero, ni FAQ, ni barra de navegacion compitiendo. */}
+      <VentanaEnfocada
+        abierto={ventanaAbierta}
+        onCerrar={cerrarVentana}
+        etiqueta="Personaliza tu casa"
+        cabecera={
+          <div style={{maxWidth: "1080px", margin: "0 auto", padding: "12px 20px 0"}}>
+            <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "10px"}}>
+              <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Paso {pasoNum} de {PASO_NOMBRES.length} &mdash; {pasoNombre}</span>
+              <button onClick={cerrarVentana} className="lgp-hover-zoom" style={{minHeight: "44px", minWidth: "44px", padding: "0 14px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Cerrar &#10005;</button>
+            </div>
+            <div style={{display: "flex", gap: "1px", background: "#EAE7E3"}}>
+              {pasos.map((p, _i) => (
     <Fragment key={_i}>
-
               <button onClick={p.onClick} style={p.style} title={p.title} disabled={!p.permitido} className="lgp-hover-zoom">{p.n}</button>
-
     </Fragment>
     ))}
-          </div>
-
-          {/* Barra de presupuesto: visible del paso 2 al 5, pegada arriba para
-              que el usuario nunca pierda de vista cuánto le queda. */}
-          {mostrarPresupuesto ? (
+            </div>
+            {mostrarPresupuesto ? (
     <Fragment>
-          <div style={{position: "sticky", top: "0", zIndex: 20, marginBottom: "30px", boxShadow: "0 8px 24px rgba(28,30,31,0.06)"}}>
-            <PresupuestoBar max={maxLivingLote()} segmentos={presupuestoSegmentos} sinLote={!lote} />
-          </div>
+            <div style={{marginTop: "12px", marginBottom: "12px"}}>
+              <PresupuestoBar max={maxLivingLote()} segmentos={presupuestoSegmentos} sinLote={!lote} />
+            </div>
     </Fragment>
-    ) : null}
+    ) : <div style={{height: "12px"}}></div>}
+          </div>
+        }
+      >
+        <div style={{maxWidth: "1080px", margin: "0 auto", padding: "26px 20px 40px"}}>
 
           {esPaso1 ? (
     <Fragment>
@@ -1928,9 +2020,30 @@ export default function HomeConfigurator() {
     </Fragment>
     )}
 
-              <div style={{position: "relative", marginTop: "34px", padding: "26px 20px", background: "repeating-linear-gradient(135deg,#F3F1EE 0 6px,#FCFBFA 6px 12px)", border: "1px solid #EAE7E3"}}>
-                <button onClick={() => setPreviewOpen(true)} className="lgp-hover-zoom" style={{position: "absolute", top: "14px", right: "14px", padding: "8px 13px", background: "#fff", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer", zIndex: 2}}>Pantalla completa ↗</button>
-                <MoodboardCollage planKey={plan} planNombre={planNombreSel} interior={interiorSeleccionado} modulosSeleccionados={modulosSeleccionados} compact />
+              {/* Antes esto era un collage con un botón de "pantalla completa"
+                  que abría lo mismo, más grande. Ahora es la mesa del
+                  arquitecto: mientras arma sus zonas, va viendo cómo se le
+                  acumulan los papeles encima del escritorio. */}
+              <div style={{marginTop: "34px"}}>
+                <p style={{margin: "0 0 10px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Tu casa, por ahora</p>
+                <div style={{border: "1px solid #EAE7E3", boxShadow: "0 2px 10px rgba(28,30,31,0.07)"}}>
+                  <MesaArquitecto
+                    planKey={plan}
+                    planNombre={planNombreSel}
+                    planMeta={`${totalRec} rec · ${totalBanos} baños · ${garageTexto}`}
+                    loteId={lote ? lote.id : '—'}
+                    loteMedida={loteMedida}
+                    fachadaKey={fachada}
+                    fachadaNombre={fachada ? (FACHADAS.find((f) => f.key === fachada)?.nombre ?? '—') : '—'}
+                    interior={interiorSeleccionado}
+                    zonas={modulosSeleccionados}
+                    brief={brief}
+                    ft2Living={ft2LivingTotal}
+                    ft2Total={ft2ConstruidoTotal}
+                    recamaras={totalRec}
+                    banos={totalBanos}
+                  />
+                </div>
               </div>
             </div>
 
@@ -2038,31 +2151,55 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
 
+          {/* Paso 6 - TU CASA. Primero ve lo que armo; los datos se piden
+              hasta el paso 7. Ensenar el resultado antes de pedir el telefono
+              es la diferencia entre un regalo y un peaje. */}
           {esPaso6 ? (
     <Fragment>
 
-            <div style={{maxWidth: "520px"}}>
-              <p style={{margin: "0 0 8px", fontSize: "clamp(19px,2.2vw,25px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Ya está armada. ¿A quién se la mandamos?</p>
-              <p style={{margin: "0 0 26px", fontSize: "15px", lineHeight: "1.6", color: "#8A8F91"}}>Tus datos van directo al arquitecto que revisará esta configuración. Nada de call centers.</p>
-              <div style={{display: "grid", gap: "14px"}}>
-                <label style={{display: "block"}}>
-                  <span style={{display: "block", marginBottom: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>Nombre completo</span>
-                  <input value={leadNombre} onChange={onNombre} placeholder="María Elena Cavazos" style={{width: "100%", padding: "13px 14px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "15px", outline: "none"}} />
-                </label>
-                <label style={{display: "block"}}>
-                  <span style={{display: "block", marginBottom: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>Correo</span>
-                  <input value={leadCorreo} onChange={onCorreo} placeholder="maria@correo.com" style={{width: "100%", padding: "13px 14px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "15px", outline: "none"}} />
-                </label>
-                <label style={{display: "block"}}>
-                  <span style={{display: "block", marginBottom: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>Teléfono</span>
-                  <input value={leadTel} onChange={onTel} placeholder="(956) 000 0000" style={{width: "100%", padding: "13px 14px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "15px", outline: "none"}} />
-                </label>
+            <div>
+              <p style={{margin: "0 0 6px", fontSize: "clamp(19px,2.2vw,25px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Asi quedo tu casa, sobre la mesa.</p>
+              <p style={{margin: "0 0 22px", maxWidth: "620px", fontSize: "15px", lineHeight: "1.6", color: "#8A8F91"}}>
+                Esto es exactamente lo que le llega al arquitecto. Si algo no te cuadra, regresa y cambialo &mdash; todavia no has enviado nada.
+              </p>
+
+              <div style={{border: "1px solid #EAE7E3", boxShadow: "0 2px 10px rgba(28,30,31,0.07)", marginBottom: "26px"}}>
+                <MesaArquitecto
+                  planKey={plan}
+                  planNombre={planNombreSel}
+                  planMeta={`${totalRec} rec / ${totalBanos} banos / ${garageTexto}`}
+                  loteId={lote ? lote.id : '-'}
+                  loteMedida={loteMedida}
+                  fachadaKey={fachada}
+                  fachadaNombre={fachada ? (FACHADAS.find((f) => f.key === fachada)?.nombre ?? '-') : '-'}
+                  interior={interiorSeleccionado}
+                  zonas={modulosSeleccionados}
+                  brief={brief}
+                  ft2Living={ft2LivingTotal}
+                  ft2Total={ft2ConstruidoTotal}
+                  recamaras={totalRec}
+                  banos={totalBanos}
+                />
+              </div>
+
+              <div style={{border: "1px solid #EAE7E3", maxWidth: "640px"}}>
+                <div style={{padding: "14px 16px", borderBottom: "1px solid #EAE7E3", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase"}}>El detalle, en numeros</div>
+                {resumen.map((r, _i) => (
+    <Fragment key={_i}>
+                  <div style={{display: "flex", gap: "16px", justifyContent: "space-between", padding: "13px 16px", borderBottom: "1px solid #F4F1ED"}}>
+                    <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase", flex: "none"}}>{r.k}</span>
+                    <span style={{fontSize: "14px", lineHeight: "1.5", textAlign: "right", color: "#1C1E1F"}}>{r.v}</span>
+                  </div>
+    </Fragment>
+    ))}
               </div>
             </div>
 
     </Fragment>
     ) : null}
 
+          {/* Paso 7 - TUS DATOS. Ya vio su casa; ahora si se le piden los datos
+              y se manda. */}
           {esPaso7 ? (
     <Fragment>
 
@@ -2072,8 +2209,8 @@ export default function HomeConfigurator() {
 
                 <div style={{maxWidth: "560px", padding: "34px 30px", border: "1px solid #EAE7E3", background: "#FBFBFA"}}>
                   <p style={{margin: "0 0 10px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.18em", color: "#F2004B", textTransform: "uppercase"}}>Enviado</p>
-                  <p style={{margin: "0 0 16px", fontSize: "clamp(19px,2.2vw,24px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Tu configuración ya está con el arquitecto, {leadPrimerNombre}.</p>
-                  <p style={{margin: "0", fontSize: "15px", lineHeight: "1.65", color: "#505759"}}>Te escribimos dentro de las próximas 24 horas para agendar la visita al lote. Seguimiento a 24 h, 72 h y 7 días — luego te dejamos en paz.</p>
+                  <p style={{margin: "0 0 16px", fontSize: "clamp(19px,2.2vw,24px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Tu configuracion ya esta con el arquitecto, {leadPrimerNombre}.</p>
+                  <p style={{margin: "0", fontSize: "15px", lineHeight: "1.65", color: "#505759"}}>Te escribimos dentro de las proximas 24 horas para agendar la visita al lote. Seguimiento a 24 h, 72 h y 7 dias &mdash; luego te dejamos en paz.</p>
                 </div>
 
     </Fragment>
@@ -2081,30 +2218,36 @@ export default function HomeConfigurator() {
               {noEnviado ? (
     <Fragment>
 
-                <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: "26px"}}>
-                  <div style={{border: "1px solid #EAE7E3"}}>
-                    <div style={{padding: "14px 16px", borderBottom: "1px solid #EAE7E3", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase"}}>Resumen de tu casa</div>
-                    {resumen.map((r, _i) => (
-    <Fragment key={_i}>
-
-                      <div style={{display: "flex", gap: "16px", justifyContent: "space-between", padding: "13px 16px", borderBottom: "1px solid #F4F1ED"}}>
-                        <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase", flex: "none"}}>{r.k}</span>
-                        <span style={{fontSize: "14px", lineHeight: "1.5", textAlign: "right", color: "#1C1E1F"}}>{r.v}</span>
-                      </div>
-
-    </Fragment>
-    ))}
-                  </div>
+                <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: "30px", maxWidth: "820px"}}>
                   <div>
-                    <p style={{margin: "0 0 14px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Al enviar, el arquitecto recibe la ficha completa de tu configuración — con el desglose de pies cuadrados, el croquis de tu lote, tus zonas y tu petición tal cual la escribiste — y arrancamos el seguimiento para agendar tu cita presencial.</p>
+                    <p style={{margin: "0 0 8px", fontSize: "clamp(19px,2.2vw,25px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Ya esta armada. A quien se la mandamos?</p>
+                    <p style={{margin: "0 0 26px", fontSize: "15px", lineHeight: "1.6", color: "#8A8F91"}}>Tus datos van directo al arquitecto que revisara esta configuracion. Nada de call centers.</p>
+                    <div style={{display: "grid", gap: "14px"}}>
+                      <label style={{display: "block"}}>
+                        <span style={{display: "block", marginBottom: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>Nombre completo</span>
+                        <input value={leadNombre} onChange={onNombre} autoComplete="name" placeholder="Maria Elena Cavazos" style={{width: "100%", padding: "13px 14px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "16px", outline: "none"}} />
+                      </label>
+                      <label style={{display: "block"}}>
+                        <span style={{display: "block", marginBottom: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>Correo</span>
+                        <input value={leadCorreo} onChange={onCorreo} type="email" inputMode="email" autoComplete="email" placeholder="maria@correo.com" style={{width: "100%", padding: "13px 14px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "16px", outline: "none"}} />
+                      </label>
+                      <label style={{display: "block"}}>
+                        <span style={{display: "block", marginBottom: "7px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#8A8F91", textTransform: "uppercase"}}>Telefono</span>
+                        <input value={leadTel} onChange={onTel} type="tel" inputMode="tel" autoComplete="tel" placeholder="(956) 000 0000" style={{width: "100%", padding: "13px 14px", border: "1px solid #DDD9D4", background: "#FBFBFA", fontSize: "16px", outline: "none"}} />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p style={{margin: "0 0 14px", fontSize: "15px", lineHeight: "1.6", color: "#505759"}}>Al enviar, el arquitecto recibe la ficha completa de tu configuracion &mdash; con el desglose de pies cuadrados, el croquis de tu lote, tus zonas y tu peticion tal cual la escribiste &mdash; y arrancamos el seguimiento para agendar tu cita presencial.</p>
                     <button onClick={enviar} disabled={enviando} className="lgp-hover-zoom" style={{padding: "14px 20px", background: enviando ? "#F4F1ED" : "#F2004B", color: enviando ? "#B7BABB" : "#fff", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: enviando ? "wait" : "pointer"}}>
-                      {enviando ? 'Enviando…' : 'Enviar al arquitecto →'}
+                      {enviando ? 'Enviando...' : 'Enviar al arquitecto'}
                     </button>
                     {envioError ? (
     <Fragment>
                     <div style={{marginTop: "14px", padding: "13px 15px", background: "#FEFCEC", borderLeft: "3px solid #F4DA40"}}>
                       <p style={{margin: "0 0 10px", fontSize: "13px", lineHeight: "1.6", color: "#505759"}}>{envioError}</p>
-                      <button onClick={irACita} style={{padding: "8px 13px", background: "#fff", border: "1px solid #E4E1DD", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer"}}>Agendar mi cita →</button>
+                      <button onClick={irACita} style={{padding: "8px 13px", background: "#fff", border: "1px solid #E4E1DD", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer"}}>Agendar mi cita</button>
                     </div>
     </Fragment>
     ) : null}
@@ -2142,7 +2285,8 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
         </div>
-      </section>
+      </VentanaEnfocada>
+
 
       <section id="nosotros" data-screen-label="Por qué nosotros" style={{position: "relative", padding: "110px 22px 100px"}}>
         <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
