@@ -40,6 +40,12 @@ export default function VentanaEnfocada({
   // Distingue un cierre nuestro de uno provocado por el botón atrás, para no
   // sacar dos entradas del historial por el mismo cierre.
   const cerrandoPorHistorialRef = useRef(false);
+  // `onCerrar` suele llegar como función nueva en cada render. Si los efectos
+  // dependieran de ella, se desmontarían y volverían a montar constantemente —
+  // y como la limpieza del efecto de historial llama a `history.back()`, la
+  // ventana se cerraba sola al primer re-render.
+  const onCerrarRef = useRef(onCerrar);
+  onCerrarRef.current = onCerrar;
 
   // --- Bloqueo del scroll de fondo -----------------------------------------
   useEffect(() => {
@@ -60,7 +66,7 @@ export default function VentanaEnfocada({
     window.history.pushState({ lgpVentana: true }, '');
     const alVolver = () => {
       cerrandoPorHistorialRef.current = true;
-      onCerrar();
+      onCerrarRef.current();
     };
     window.addEventListener('popstate', alVolver);
     return () => {
@@ -74,7 +80,7 @@ export default function VentanaEnfocada({
         window.history.back();
       }
     };
-  }, [abierto, onCerrar]);
+  }, [abierto]);
 
   // --- Escape, trampa de foco y devolución del foco ------------------------
   useEffect(() => {
@@ -95,7 +101,7 @@ export default function VentanaEnfocada({
     const alTeclear = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onCerrar();
+        onCerrarRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -118,7 +124,7 @@ export default function VentanaEnfocada({
       document.removeEventListener('keydown', alTeclear);
       focoPrevioRef.current?.focus?.();
     };
-  }, [abierto, onCerrar]);
+  }, [abierto]);
 
   if (!abierto) return null;
 

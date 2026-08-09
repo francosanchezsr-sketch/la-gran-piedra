@@ -51,7 +51,7 @@ function Hoja({
 
 function Rotulo({ children, tam = '1.15cqw' }: { children: React.ReactNode; tam?: string }) {
   return (
-    <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: tam, letterSpacing: '0.12em', color: '#A9ADAF', textTransform: 'uppercase' }}>
+    <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: tam, letterSpacing: '0.12em', color: '#A9ADAF', textTransform: 'uppercase', lineHeight: 1.5 }}>
       {children}
     </div>
   );
@@ -227,7 +227,8 @@ export default function MesaArquitecto({
         </div>
       ) : null}
 
-      <div style={{ position: 'absolute', left: '2.5%', bottom: '2%', zIndex: 50 }}>
+      {/* Se recorta al ancho libre: sin tope se salía del escritorio. */}
+      <div style={{ position: 'absolute', left: '2.5%', bottom: '2%', maxWidth: sobran > 0 ? '62%' : '86%', zIndex: 50 }}>
         <Rotulo tam="1.05cqw">{planMeta}</Rotulo>
       </div>
     </div>
