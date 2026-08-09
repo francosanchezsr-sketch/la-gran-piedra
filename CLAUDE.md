@@ -46,8 +46,11 @@ del 473 real del townhouse.
 
 - Falta `ANTHROPIC_API_KEY` en Vercel: sin ella el análisis de plano y de
   dirección del paso 1 responde 501 y solo funciona la captura manual de medidas.
-- El "Enviar al arquitecto" del paso 7 es prototipo: no manda correo ni guarda
-  nada. Los archivos que sube el cliente viven solo en memoria del navegador.
+- El "Enviar al arquitecto" del paso 7 ya manda la ficha por correo, pero
+  necesita `RESEND_API_KEY`, `LGP_CORREO_ARQUITECTOS` y `LGP_CORREO_REMITENTE`
+  (ver `.env.example`). Sin ellas responde 501 y la UI lo dice: nunca se le
+  confirma al cliente un envío que no salió. Los archivos que sube el cliente
+  siguen viviendo solo en memoria del navegador — no viajan en el correo.
 - El sitio está solo en español y asume contexto local (pies, retiros de Texas,
   lada 956, cita presencial). Para el cliente internacional falta idioma,
   unidades, moneda y agenda remota.

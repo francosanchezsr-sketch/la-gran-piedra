@@ -25,6 +25,7 @@ import {
   PLAT_ENCLAVE107,
 } from '@/lib/data';
 import type { SubdivisionKey, Lote } from '@/lib/data';
+import type { Ficha } from '@/lib/ficha';
 import HeroLoopVideo from '@/components/HeroLoopVideo';
 import { ModuloIcon, FachadaIcon } from '@/components/ConfigIcons';
 import MoodboardPreview from '@/components/MoodboardPreview';
@@ -148,6 +149,8 @@ export default function HomeConfigurator() {
   const [lead, setLead] = useState<Lead>({ nombre: '', correo: '', tel: '' });
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
   const [enviado, setEnviado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [envioError, setEnvioError] = useState<string | null>(null);
   // Cita rápida del header: es un camino aparte del configurador, porque quien
   // pulsa "Agenda una cita" normalmente todavía no ha elegido lote ni floorplan.
   const [citaEnviada, setCitaEnviada] = useState(false);
@@ -1220,7 +1223,106 @@ export default function HomeConfigurator() {
   const planNombreSel = plan ? PLANES[plan].nombre : 'Sin floorplan elegido';
 
   const noEnviado = !enviado;
-  const enviar = () => setEnviado(true);
+
+  // La ficha que recibe el arquitecto: todo lo que el cliente decidió, con el
+  // desglose del presupuesto y el croquis del lote. Vive solo en el correo —
+  // en el sitio el cliente ve el resumen corto de arriba.
+  function armarFicha(): Ficha {
+    const zonas = mods
+      .filter((m) => m.on)
+      .map((m) => {
+        const def = MODULOS.find((x) => x.key === m.iconKey);
+        return {
+          nombre: m.nombreLargo,
+          rango: def?.rango ?? '',
+          ft2: m.costoLiving,
+          exterior: Boolean(def?.exterior),
+          incluida: m.incluida,
+        };
+      });
+    return {
+      cliente: { nombre: lead.nombre.trim(), correo: lead.correo.trim(), tel: lead.tel.trim() },
+      lote: {
+        id: lote?.id ?? '—',
+        origen: lote?.origen === 'usuario' ? 'usuario' : 'catalogo',
+        medida: loteMedida,
+        maxft: lote?.maxft ?? 0,
+        orientacion: lote?.orient ?? '—',
+        tipo: lote?.tipo ?? '—',
+        retiros: lote?.retiros ?? null,
+        huella: lote?.huella ?? null,
+        adjunto: loteFile ? `${loteFile.nombre} · ${pesoLegible(loteFile.peso)}` : null,
+        ubicacion: loteUbicacion
+          ? [loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ')
+          : loteTextoCapturado,
+      },
+      plan: {
+        nombre: plan ? PLANES[plan].nombre : '—',
+        pisos: plan ? PLANES[plan].pisos : 0,
+        livingBase: plan ? PLANES[plan].living : 0,
+        livingElegido: livingDelPlan(),
+      },
+      cuartos: {
+        recamaras: totalRec,
+        banos: totalBanos,
+        recBase: plan ? PLANES[plan].rec : 0,
+        banosBase: plan ? PLANES[plan].banos : 0,
+      },
+      fachada: fachada ? (FACHADAS.find((f) => f.key === fachada)?.nombre ?? '—') : '—',
+      interior: {
+        nombre: interiorSeleccionado?.nombre ?? '—',
+        colores: interiorSeleccionado ? [interiorSeleccionado.c1, interiorSeleccionado.c2, interiorSeleccionado.c3] : [],
+      },
+      zonas,
+      tragaluces: tragaluces.map((k) => MODULOS.find((m) => m.key === k)?.corto ?? k),
+      presupuesto: {
+        maxLiving: maxLivingLote(),
+        plan: livingDelPlan(),
+        cuartos: livingDeCuartos(),
+        zonas: livingDeZonas(),
+        libre: ft2Rest,
+      },
+      garage: garageTexto,
+      totales: { living: ft2LivingTotal, construido: ft2ConstruidoTotal },
+      brief,
+    };
+  }
+
+  const enviar = async () => {
+    if (enviando) return;
+    if (!lead.nombre.trim()) {
+      setEnvioError('Escribe tu nombre en el paso 6 para saber a quién buscamos.');
+      return;
+    }
+    if (!lead.correo.trim() && !lead.tel.trim()) {
+      setEnvioError('Déjanos un correo o un teléfono en el paso 6, el que prefieras.');
+      return;
+    }
+    setEnviando(true);
+    setEnvioError(null);
+    try {
+      const res = await fetch('/api/enviar-resumen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(armarFicha()),
+      });
+      if (res.ok) {
+        setEnviado(true);
+        return;
+      }
+      // Nunca se confirma un envío que no salió: si el correo no está
+      // configurado o falló, el cliente se entera y se le da otra vía.
+      setEnvioError(
+        res.status === 501
+          ? 'El envío automático todavía no está activo. Escríbenos o agenda tu cita aquí abajo y llevamos tu configuración a la cita.'
+          : 'No pudimos mandarla en este momento. Vuelve a intentar, o agenda tu cita aquí abajo.',
+      );
+    } catch {
+      setEnvioError('No pudimos mandarla: revisa tu conexión y vuelve a intentar.');
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   // El CTA del header lleva al formulario de cita y deja el cursor puesto en el
   // primer campo. El scroll es suave, así que el foco espera a que termine:
@@ -2073,9 +2175,18 @@ export default function HomeConfigurator() {
     ))}
                   </div>
                   <div>
-                    <p style={{margin: "0 0 14px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Al enviar, el arquitecto recibe este resumen completo y arrancamos el seguimiento para agendar tu cita presencial en el lote.</p>
-                    <button onClick={enviar} className="lgp-hover-zoom" style={{padding: "14px 20px", background: "#F2004B", color: "#fff", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Enviar al arquitecto →</button>
-                    <p style={{margin: "14px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>Prototipo — no se envía correo real</p>
+                    <p style={{margin: "0 0 14px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Al enviar, el arquitecto recibe la ficha completa de tu configuración — con el desglose de pies cuadrados, el croquis de tu lote, tus zonas y tu petición tal cual la escribiste — y arrancamos el seguimiento para agendar tu cita presencial.</p>
+                    <button onClick={enviar} disabled={enviando} className="lgp-hover-zoom" style={{padding: "14px 20px", background: enviando ? "#F4F1ED" : "#F2004B", color: enviando ? "#B7BABB" : "#fff", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: enviando ? "wait" : "pointer"}}>
+                      {enviando ? 'Enviando…' : 'Enviar al arquitecto →'}
+                    </button>
+                    {envioError ? (
+    <Fragment>
+                    <div style={{marginTop: "14px", padding: "13px 15px", background: "#FEFCEC", borderLeft: "3px solid #F4DA40"}}>
+                      <p style={{margin: "0 0 10px", fontSize: "13px", lineHeight: "1.6", color: "#505759"}}>{envioError}</p>
+                      <button onClick={irACita} style={{padding: "8px 13px", background: "#fff", border: "1px solid #E4E1DD", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", cursor: "pointer"}}>Agendar mi cita →</button>
+                    </div>
+    </Fragment>
+    ) : null}
                   </div>
                 </div>
 
