@@ -342,13 +342,16 @@ textarea {
   overflow-y: auto;
 }
 
-/* Mientras la guía va en curso, el paso 4 no se recorre: lo que sigue está
-   apagado y no hay nada que ver ahí abajo. La pantalla se mueve sola hasta la
-   etapa que toca — `scrollIntoView` sí funciona con overflow oculto, que es
-   exactamente lo que se busca: lo mueve el sitio, no el cliente. Al terminar la
-   última etapa la clase desaparece y ya puede subir y bajar para corregir. */
-.lgp-ventana-cuerpo:has(.lgp-paso4-guiado) {
-  overflow-y: hidden;
+/* El scroll NO se bloquea durante la guía. Se intentó y fue un error: la gama
+   y las zonas son más altas que la ventana, así que al bloquearlo el cliente se
+   quedaba sin poder ver lo mismo que se le estaba pidiendo elegir.
+   Lo que mantiene el foco es que las etapas siguientes están apagadas y no se
+   pueden tocar, más el desplazamiento automático a la etapa que toca. */
+
+/* Al llevar la pantalla a una etapa, que no quede pegada bajo la cabecera. */
+.lgp-paso4-guiado > * {
+  scroll-margin-top: 18px;
+  scroll-margin-bottom: 18px;
 }
 
 @media (prefers-reduced-motion: reduce) {

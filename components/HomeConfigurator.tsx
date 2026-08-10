@@ -1124,9 +1124,10 @@ export default function HomeConfigurator() {
     if (paso !== 4 || etapaGuia === 'libre') return;
     const destino = etapaGuia === 'gama' ? refGama.current : etapaGuia === 'cuartos' ? refCuartos.current : refZonas.current;
     if (!destino) return;
-    // El cuerpo de la ventana tiene overflow oculto durante la guía: el usuario
-    // no puede desplazarlo, pero esto sí — que es justo la intención.
-    destino.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // 'start' y no 'center': centrar una etapa más alta que la ventana le corta
+    // la cabeza, y el cliente empieza a leerla por la mitad. Desde arriba ve el
+    // bloque completo y baja él si necesita más.
+    destino.scrollIntoView({ block: 'start', behavior: 'smooth' });
     const t = window.setTimeout(() => {
       const primero = destino.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled])');
       primero?.focus({ preventScroll: true });
