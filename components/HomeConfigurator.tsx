@@ -1375,22 +1375,18 @@ export default function HomeConfigurator() {
     { k: 'Máx construible', v: modal.maxft + ' ft²' },
     { k: 'Pisos permitidos', v: modal.pisos },
   ] : [];
+  // El lote se elige tocándolo en el plano de la subdivisión: ahí se ve dónde
+  // queda, con qué colinda y hacia dónde da. Antes esto solo fijaba el lote y
+  // hacía scroll a una sección que ya no elige nada.
   const modalElegir = () => {
     if (!modal) return;
-    const idx = visibles.findIndex((v) => v.id === modal.id);
-    setLote(modal);
-    setLotModal(null);
-    setPaso(2);
-    setDrumIdx(idx < 0 ? 0 : idx);
-    const el = document.getElementById('personaliza');
-    if (el) window.scrollTo({ top: el.offsetTop - 60, behavior: 'smooth' });
+    abrirDesdeLote(modal);
   };
   const cerrarModal = () => setLotModal(null);
 
   // --- Entrada y salida de la ventana enfocada -----------------------------
-  const lotesDisponibles = LOTES.filter((l) => l.status === 'disponible').length;
   // Entrar por un lote del catálogo: se fija el lote y se arranca en floorplan,
-  // porque el paso 1 ya quedó resuelto en la página de inicio.
+  // porque el lote ya quedó resuelto en el plano.
   const abrirDesdeLote = (l: Lote) => {
     const idx = visibles.findIndex((v) => v.id === l.id);
     setLote(l);
@@ -1450,8 +1446,10 @@ export default function HomeConfigurator() {
             <h1 style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "clamp(30px,3.6vw,46px)", lineHeight: "1.1", letterSpacing: "-0.03em", textTransform: "uppercase", textWrap: "balance", color: "#fff"}}>Aquí el cliente firma el plano</h1>
             <p style={{margin: "18px 0 0", maxWidth: "42ch", fontSize: "16px", lineHeight: "1.6", color: "rgba(255,255,255,0.82)", textWrap: "pretty"}}>Nadie más en el Valle te deja decidir cada módulo antes de mover un solo ladrillo.</p>
             <div style={{display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "34px"}}>
-              <a href="#personaliza" className="lgp-hover-zoom" style={{padding: "13px 20px", background: "#F2004B", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Personaliza tu casa</a>
-              <a href="#lugares" className="lgp-hover-zoom" style={{padding: "13px 20px", border: "1px solid rgba(255,255,255,0.45)", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Ver lotes disponibles</a>
+              {/* Ambos CTA llevaban a sitios distintos para hacer lo mismo. El
+                  camino es uno: el plano, que es donde se elige el lote. */}
+              <a href="#lugares" className="lgp-hover-zoom" style={{padding: "13px 20px", background: "#F2004B", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Elegir mi lote</a>
+              <a href="#personaliza" className="lgp-hover-zoom" style={{padding: "13px 20px", border: "1px solid rgba(255,255,255,0.45)", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase"}}>Ya tengo mi lote</a>
             </div>
           </div>
         </div>
@@ -1493,8 +1491,12 @@ export default function HomeConfigurator() {
               <p style={{margin: "10px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#8A8F91", textTransform: "uppercase"}}>{subdivisionActiva.zona} · {subdivisionActiva.direccion}</p>
             </div>
             <div style={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px"}}>
-              <button onClick={() => setOverviewOpen(true)} className="lgp-hover-zoom" style={{padding: "10px 16px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>Ver mapa completo ↗</button>
-              <p style={{margin: "0", maxWidth: "300px", fontSize: "13px", lineHeight: "1.5", color: "#8A8F91", textAlign: "right"}}>Toca un lote para ver frente, orientación y máximo construible.</p>
+              <button onClick={() => setOverviewOpen(true)} className="lgp-hover-zoom" style={{minHeight: "44px", padding: "0 16px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>Ver mapa completo ↗</button>
+              {/* Aquí se elige el lote, no solo se mira: el plano es el
+                  selector, y hay que decirlo. */}
+              <p style={{margin: "0", maxWidth: "310px", fontSize: "13px", lineHeight: "1.5", color: "#8A8F91", textAlign: "right"}}>
+                <strong style={{fontWeight: 600, color: "#1C1E1F"}}>Aquí empieza tu casa.</strong> Toca un lote para ver su frente, su orientación y cuánto admite — y para armar la tuya encima.
+              </p>
             </div>
           </div>
 
@@ -1510,51 +1512,13 @@ export default function HomeConfigurator() {
         </div>
       </section>
 
-      {/* ================= INICIO: apartado de entrada =================
-          La pagina son dos zonas. Esta es la de inicio: aqui se ve donde
-          construimos y que lotes quedan. Elegir uno abre la otra zona. */}
-      <section id="personaliza" data-screen-label="Personaliza tu casa" style={{position: "relative", padding: "100px 22px 120px", background: "rgba(255,255,255,0.68)", borderTop: "1px solid #F0EDE9", borderBottom: "1px solid #F0EDE9"}}>
+      {/* ============== INICIO: la otra puerta al configurador ==============
+          El lote del catalogo se elige tocandolo en el plano de la subdivision,
+          arriba. Aqui solo queda el camino de quien ya trae terreno propio:
+          repetir el inventario en tarjetas era ensenar lo mismo dos veces. */}
+      <section id="personaliza" data-screen-label="Personaliza tu casa" style={{position: "relative", padding: "clamp(70px,9vw,100px) 22px clamp(80px,10vw,120px)", background: "rgba(255,255,255,0.68)", borderTop: "1px solid #F0EDE9", borderBottom: "1px solid #F0EDE9"}}>
         <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
           <h2 style={{margin: "0 0 12px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Personaliza tu casa</h2>
-          <p style={{margin: "0 0 8px", maxWidth: "700px", fontSize: "clamp(21px,2.6vw,32px)", lineHeight: "1.3", letterSpacing: "-0.015em", textWrap: "pretty"}}>Elige tu lote y arma tu casa encima de el.</p>
-          <p style={{margin: "0 0 40px", maxWidth: "620px", fontSize: "16px", lineHeight: "1.6", color: "#8A8F91"}}>
-            Cada lote tiene su propio maximo construible. Al elegir uno se abre el configurador con ese limite ya puesto, para que nada de lo que armes se caiga despues.
-          </p>
-
-          <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "18px", flexWrap: "wrap", marginBottom: "16px"}}>
-            <span style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>{subdivisionActiva.nombre} &middot; {lotesDisponibles} de {LOTES.length} disponibles</span>
-            <button onClick={() => setOverviewOpen(true)} className="lgp-hover-zoom" style={{minHeight: "44px", padding: "0 16px", background: "#fff", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Ver el plano de la subdivision</button>
-          </div>
-
-          <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: "14px", marginBottom: "44px"}}>
-            {LOTES.map((l) => {
-              const libre = l.status === 'disponible';
-              return (
-                <button
-                  key={l.id}
-                  onClick={() => libre && abrirDesdeLote(l as unknown as Lote)}
-                  disabled={!libre}
-                  title={libre ? `Armar mi casa en ${l.id}` : `${l.id} &mdash; ${l.status}`}
-                  className={libre ? 'lgp-hover-zoom lgp-lote-card' : 'lgp-lote-card'}
-                  style={{textAlign: "left", padding: "18px 18px 16px", background: libre ? "#fff" : "#F7F5F2", border: "1px solid " + (libre ? "#EAE7E3" : "#EFECE8"), cursor: libre ? "pointer" : "not-allowed", opacity: libre ? 1 : 0.6}}
-                >
-                  <span style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px"}}>
-                    <span style={{width: "9px", height: "9px", flex: "none", display: "block", background: statusColor(l.status)}}></span>
-                    <span style={{fontFamily: "Archivo, sans-serif", fontWeight: 800, fontSize: "19px", letterSpacing: "-0.01em"}}>{l.id}</span>
-                    <span style={{marginLeft: "auto", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>{l.status}</span>
-                  </span>
-                  <span style={{display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#8A8F91", textTransform: "uppercase", lineHeight: 1.7}}>
-                    {l.frente} &times; {l.fondo}<br />
-                    {l.maxLiving.toLocaleString('es-MX')} ft&sup2; habitables<br />
-                    Fachada al {l.orient}
-                  </span>
-                  {libre ? (
-                    <span className="lgp-lote-cta" style={{display: "block", marginTop: "14px", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#F2004B"}}>Armar aqui &rarr;</span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
 
           {/* Tu propio lote: el otro camino de entrada a la misma ventana */}
           <div style={{border: "1px solid #EAE7E3", background: "#fff", padding: "clamp(22px,3vw,34px)"}}>
