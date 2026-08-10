@@ -175,6 +175,9 @@ export default function HomeConfigurator() {
   // La ventana enfocada donde vive el configurador. La página de inicio solo
   // decide con qué lote se entra.
   const [ventanaAbierta, setVentanaAbierta] = useState(false);
+  // Quién abrió la ventana: quien llega por "ya tengo mi lote" no quiere ver
+  // primero el catálogo de la subdivisión, quiere subir su plano.
+  const [entradaPropia, setEntradaPropia] = useState(false);
   const [tragaluces, setTragaluces] = useState<string[]>([]);
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [subdivisionKey, setSubdivisionKey] = useState<SubdivisionKey>(SUBDIVISIONES[0].key);
@@ -756,10 +759,28 @@ export default function HomeConfigurator() {
     setPlan(null);
   }
 
+  // Tres formas de traer el lote, pero no valen lo mismo: el plat trae las
+  // medidas y los retiros reales; la dirección sola no da ninguna de las dos.
+  // Presentarlas como tres pestañas iguales dejaba al cliente adivinando.
   const loteModos = [
-    { key: 'plano' as const, label: 'Plano o imagen' },
-    { key: 'medidas' as const, label: 'Medidas' },
-    { key: 'texto' as const, label: 'Dirección' },
+    {
+      key: 'plano' as const,
+      label: 'Tengo el plano',
+      desc: 'PDF o foto del plat. Es lo más exacto: de ahí salen medidas y retiros.',
+      sello: 'Lo mejor',
+    },
+    {
+      key: 'medidas' as const,
+      label: 'Sé las medidas',
+      desc: 'Frente y fondo en pies. Con eso basta para calcular tu superficie.',
+      sello: null,
+    },
+    {
+      key: 'texto' as const,
+      label: 'Solo la dirección',
+      desc: 'Nos ubica el terreno, pero las medidas te las vamos a pedir igual.',
+      sello: null,
+    },
   ].map((m) => ({
     ...m,
     on: loteModo === m.key,
@@ -1462,12 +1483,14 @@ export default function HomeConfigurator() {
     setDrumIdx(idx < 0 ? 0 : idx);
     setLotModal(null);
     setPaso(2);
+    setEntradaPropia(false);
     setVentanaAbierta(true);
   };
   // Entrar con lote propio: ahí sí hace falta el paso 1, que es donde se sube
   // el plano o se capturan las medidas.
   const abrirPropioLote = () => {
     setPaso(1);
+    setEntradaPropia(true);
     setVentanaAbierta(true);
   };
   const cerrarVentana = () => setVentanaAbierta(false);
@@ -1716,9 +1739,18 @@ export default function HomeConfigurator() {
           {esPaso1 ? (
     <Fragment>
 
-            <div>
-              <p style={{margin: "0 0 24px", maxWidth: "560px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>Empieza por el terreno. Gira el selector hasta el lote que te interese — solo los disponibles se pueden elegir.</p>
-              <div className="lgp-picker-grid" style={{display: "grid", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
+            <div style={{display: "flex", flexDirection: "column"}}>
+              {/* Quien entró por "ya tengo mi lote" ve su bloque arriba y el
+                  catálogo debajo; quien llegó por el plano, al revés. Enseñarle
+                  el catálogo a quien ya tiene terreno es hacerle buscar lo suyo
+                  entre lo que no le sirve. Se ordena con `order` para no
+                  duplicar el marcado de ninguno de los dos. */}
+              <p style={{order: 0, margin: "0 0 24px", maxWidth: "560px", fontSize: "16px", lineHeight: "1.6", color: "#505759"}}>
+                {entradaPropia
+                  ? 'Traes tu propio terreno. Dinos cuánto mide y calculamos cuánta casa admite — abajo queda el catálogo de la subdivisión por si prefieres uno nuestro.'
+                  : 'Empieza por el terreno. Gira el selector hasta el lote que te interese — solo los disponibles se pueden elegir.'}
+              </p>
+              <div className="lgp-picker-grid" style={{order: entradaPropia ? 3 : 1, display: "grid", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
 
                 <div style={{position: "relative", background: "#fff", padding: "0", overflow: "hidden"}}>
                   <div ref={drumRef} {...drumTouch} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
@@ -1786,8 +1818,8 @@ export default function HomeConfigurator() {
               <p style={{margin: "14px 0 0"}}><a href="#lugares" style={{display: "inline-flex", alignItems: "center", minHeight: "44px", padding: "0 2px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#8A8F91", textTransform: "uppercase"}}><span style={{borderBottom: "1px solid #E4E1DD"}}>Ver el plano completo de la subdivisión ↗</span></a></p>
 
               {/* ¿Ya tienes tu propio terreno? Sube el plano y lo analizamos. */}
-              <div style={{marginTop: "34px", padding: "24px", background: "#fff", border: "1px solid #EAE7E3"}}>
-                <p style={{margin: "0 0 6px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>¿Ya tienes tu propio lote?</p>
+              <div style={{order: entradaPropia ? 1 : 3, marginTop: entradaPropia ? "0" : "34px", marginBottom: entradaPropia ? "34px" : "0", padding: entradaPropia ? "clamp(20px,3vw,30px)" : "24px", background: "#fff", border: "1px solid " + (entradaPropia ? "#F2004B" : "#EAE7E3"), boxShadow: entradaPropia ? "0 2px 12px rgba(28,30,31,0.07)" : "none"}}>
+                <p style={{margin: "0 0 6px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: entradaPropia ? "13px" : "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>{entradaPropia ? 'Tu lote' : '¿Ya tienes tu propio lote?'}</p>
                 <p style={{margin: "0 0 18px", maxWidth: "540px", fontSize: "13px", lineHeight: 1.6, color: "#8A8F91"}}>
                   Tráelo como puedas: el plano en PDF o foto, las medidas a mano, o la dirección del terreno. Con eso calculamos cuánta área habitable admite. Al ser un lote fuera de la subdivisión, se te abren los tres floorplans.
                 </p>
@@ -1857,10 +1889,21 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : (
     <Fragment>
-                <div style={{display: "flex", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "18px", flexWrap: "wrap"}}>
+                {/* Tarjetas, no pestañas: cada camino dice qué pide y qué da,
+                    y el que sirve mejor lleva sello. */}
+                <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: "10px", marginBottom: "20px"}}>
                   {loteModos.map((m) => (
     <Fragment key={m.key}>
-                  <button onClick={m.onClick} style={{flex: "1 1 110px", padding: "10px 12px", border: 0, background: m.on ? "#1C1E1F" : "#fff", color: m.on ? "#FBFBFA" : "#8A8F91", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>{m.label}</button>
+                  <button onClick={m.onClick} aria-pressed={m.on} className="lgp-hover-zoom" style={{textAlign: "left", padding: "15px 16px 16px", background: m.on ? "#1C1E1F" : "#fff", border: "1px solid " + (m.on ? "#1C1E1F" : "#E4E1DD"), cursor: "pointer"}}>
+                    <span style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "7px"}}>
+                      <span style={{width: "13px", height: "13px", flex: "none", borderRadius: "50%", border: "2px solid " + (m.on ? "#F2004B" : "#DDD9D4"), background: m.on ? "#F2004B" : "transparent", boxShadow: m.on ? "inset 0 0 0 2px #1C1E1F" : "none"}}></span>
+                      <span style={{fontFamily: "Archivo, sans-serif", fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: m.on ? "#FBFBFA" : "#1C1E1F"}}>{m.label}</span>
+                      {m.sello ? (
+                        <span style={{marginLeft: "auto", flex: "none", padding: "3px 6px", background: m.on ? "#F2004B" : "#FFF7F9", color: m.on ? "#fff" : "#8A2249", fontFamily: "'IBM Plex Mono', monospace", fontSize: "8px", letterSpacing: "0.1em", textTransform: "uppercase"}}>{m.sello}</span>
+                      ) : null}
+                    </span>
+                    <span style={{display: "block", fontSize: "12.5px", lineHeight: 1.55, color: m.on ? "#B7BABB" : "#8A8F91"}}>{m.desc}</span>
+                  </button>
     </Fragment>
     ))}
                 </div>
@@ -1898,13 +1941,25 @@ export default function HomeConfigurator() {
                 </div>
 
                 <div style={{marginTop: "18px", paddingTop: "16px", borderTop: "1px dashed #E4E1DD"}}>
+                  {/* La explicación larga estorbaba antes de dejar capturar.
+                      Queda a un clic para quien no sepa qué es un retiro, y el
+                      aviso de que son un supuesto se queda siempre a la vista:
+                      eso no se puede esconder. */}
                   <p style={{margin: "0 0 6px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Retiros del terreno (ft)</p>
-                  <p style={{margin: "0 0 6px", maxWidth: "520px", fontSize: "12px", lineHeight: 1.6, color: "#505759"}}>
-                    Un <strong style={{fontWeight: 600}}>retiro</strong> es la franja que el municipio obliga a dejar libre entre la casa y el límite del terreno. Ahí no se puede construir, así que lo que sobra es tu superficie construible.
+                  <p style={{margin: "0 0 10px", maxWidth: "520px", fontSize: "12px", lineHeight: 1.6, color: "#505759"}}>
+                    Son un arranque común en el Valle, <strong style={{fontWeight: 600}}>no el reglamento de tu ciudad</strong>. Si los tuyos son otros, cámbialos y el cálculo se ajusta solo.
                   </p>
-                  <p style={{margin: "0 0 14px", maxWidth: "520px", fontSize: "11px", lineHeight: 1.6, color: "#B7BABB"}}>
-                    ¿Dónde vienen los tuyos? En el plat del terreno aparecen como línea punteada marcada <em style={{fontStyle: "italic"}}>“building setback line”</em> o B.S.L., y si no, los da el departamento de desarrollo urbano del municipio. Los valores de abajo son un arranque común en el Valle, <strong style={{fontWeight: 600}}>no el reglamento de tu ciudad</strong> — si los tuyos son otros, cámbialos y el cálculo se ajusta solo.
-                  </p>
+                  <details style={{marginBottom: "14px"}}>
+                    <summary style={{display: "inline-flex", alignItems: "center", minHeight: "32px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#8A8F91", textTransform: "uppercase", cursor: "pointer"}}>¿Qué es un retiro y dónde veo el mío?</summary>
+                    <div style={{marginTop: "8px", paddingLeft: "12px", borderLeft: "2px solid #EAE7E3"}}>
+                      <p style={{margin: "0 0 8px", maxWidth: "520px", fontSize: "12px", lineHeight: 1.6, color: "#505759"}}>
+                        Es la franja que el municipio obliga a dejar libre entre la casa y el límite del terreno. Ahí no se puede construir, así que lo que sobra es tu superficie construible.
+                      </p>
+                      <p style={{margin: "0", maxWidth: "520px", fontSize: "12px", lineHeight: 1.6, color: "#8A8F91"}}>
+                        En el plat del terreno aparecen como línea punteada marcada <em style={{fontStyle: "italic"}}>“building setback line”</em> o B.S.L. Si no lo tienes, los da el departamento de desarrollo urbano del municipio.
+                      </p>
+                    </div>
+                  </details>
                   <div style={{display: "flex", gap: "10px", flexWrap: "wrap"}}>
                     {([
                       { k: 'frente' as const, label: 'Frente' },
