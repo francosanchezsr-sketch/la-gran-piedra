@@ -278,6 +278,25 @@ textarea {
   grid-template-columns: minmax(230px, 300px) 1fr;
 }
 
+/* La tira de obra: mucho más grande que antes (230 px de alto se leía como
+   miniatura de galería, no como prueba). Se encoge en pantallas chicas para que
+   siga cabiendo más de una pieza a la vista y se entienda que hay que deslizar. */
+.lgp-obra-pieza {
+  height: clamp(260px, 34vw, 440px);
+  width: clamp(300px, 46vw, 620px);
+}
+
+.lgp-obra-tira {
+  scroll-padding-left: 22px;
+}
+
+@media (max-width: 640px) {
+  .lgp-obra-pieza {
+    height: 300px;
+    width: 82vw;
+  }
+}
+
 /* Invisible hasta que el teclado lo enfoca. */
 .lgp-skip {
   position: absolute;

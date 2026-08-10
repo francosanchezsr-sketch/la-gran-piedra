@@ -26,6 +26,7 @@ import {
 } from '@/lib/data';
 import type { SubdivisionKey, Lote } from '@/lib/data';
 import type { Ficha } from '@/lib/ficha';
+import { leerGuardado, escribirGuardado, borrarGuardado, valeLaPenaRetomar, type ConfigGuardada } from '@/lib/guardado';
 import HeroLoopVideo from '@/components/HeroLoopVideo';
 import { ModuloIcon, FachadaIcon } from '@/components/ConfigIcons';
 import MoodboardPreview from '@/components/MoodboardPreview';
@@ -214,6 +215,74 @@ export default function HomeConfigurator() {
   const [garage2, setGarage2] = useState(true);
   // Ubicación capturada cuando la descripción traía dirección pero no medidas.
   const [loteUbicacion, setLoteUbicacion] = useState<{ direccion: string | null; coordenadas: string | null } | null>(null);
+
+  // --- Guardado de la configuración ---------------------------------------
+  // `hidratado` evita que el primer render, con todo vacío, pise lo que el
+  // cliente traía guardado de su visita anterior.
+  const [hidratado, setHidratado] = useState(false);
+  const [retomable, setRetomable] = useState<ConfigGuardada | null>(null);
+
+  useEffect(() => {
+    const g = leerGuardado();
+    if (valeLaPenaRetomar(g)) setRetomable(g);
+    setHidratado(true);
+  }, []);
+
+  useEffect(() => {
+    if (!hidratado) return;
+    escribirGuardado({
+      paso,
+      loteId: lote && lote.origen !== 'usuario' ? lote.id : null,
+      lotePropio,
+      plan,
+      fachada,
+      interior,
+      modulos,
+      tragaluces,
+      recamarasExtra,
+      banosExtra,
+      planLivingSel,
+      garage2,
+      brief,
+      lead,
+    });
+  }, [hidratado, paso, lote, lotePropio, plan, fachada, interior, modulos, tragaluces, recamarasExtra, banosExtra, planLivingSel, garage2, brief, lead]);
+
+  // Retomar es decisión del cliente, no del sitio: restaurarle solo la
+  // configuración sin avisar es tan desconcertante como haberla perdido.
+  const retomar = () => {
+    const g = retomable;
+    if (!g) return;
+    const delCatalogo = g.loteId ? (LOTES.find((l) => l.id === g.loteId) as unknown as Lote | undefined) : undefined;
+    const suyo = g.lotePropio ?? null;
+    const restaurado = suyo ?? delCatalogo ?? null;
+    if (suyo) setLotePropio(suyo);
+    setLote(restaurado);
+    // El cilindro también se repone: si se queda en su índice por default, el
+    // paso 1 enseña un lote distinto del que manda en el presupuesto.
+    if (restaurado) {
+      const idx = visibles.findIndex((v) => v.id === restaurado.id);
+      if (idx >= 0) setDrumIdx(idx);
+    }
+    setPlan((g.plan as PlanKey | null) ?? null);
+    setFachada(g.fachada);
+    setInterior(g.interior);
+    setModulos(g.modulos ?? []);
+    setTragaluces(g.tragaluces ?? []);
+    setRecamarasExtra(g.recamarasExtra ?? 0);
+    setBanosExtra(g.banosExtra ?? 0);
+    setPlanLivingSel(g.planLivingSel ?? null);
+    setGarage2(g.garage2 ?? true);
+    setBrief(g.brief ?? '');
+    setLead(g.lead ?? { nombre: '', correo: '', tel: '' });
+    setPaso(g.paso && g.paso >= 1 && g.paso <= 7 ? g.paso : 2);
+    setRetomable(null);
+    setVentanaAbierta(true);
+  };
+  const descartarGuardado = () => {
+    borrarGuardado();
+    setRetomable(null);
+  };
 
   // Reglas del lote activo. Sin lote todavía no se restringe nada.
   const reglas = lote ? REGLAS_LOTE[lote.tipo] : null;
@@ -1472,6 +1541,64 @@ export default function HomeConfigurator() {
         </div>
       </section>
 
+      <section id="nosotros" data-screen-label="Por qué nosotros" style={{position: "relative", padding: "110px 22px 100px"}}>
+        <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
+          <h2 style={{margin: "0 0 34px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Por qué nosotros</h2>
+          <p style={{margin: "0 0 44px", maxWidth: "660px", fontSize: "clamp(19px,2.3vw,28px)", lineHeight: "1.36", letterSpacing: "-0.012em", textWrap: "pretty"}}>El Valle está lleno de casas que se parecen. Nosotros construimos <em style={{fontStyle: "italic"}}>pocas</em>, y el cliente ve cada decisión antes de que se vacíe el concreto.</p>
+          <div style={{display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "56px"}}>
+            {chips.map((c, _i) => (
+    <Fragment key={_i}>
+
+              <span style={{padding: "9px 14px", border: "1px solid #E4E1DD", background: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "600", letterSpacing: "0.14em", color: "#505759", textTransform: "uppercase"}}>{c}</span>
+            
+    </Fragment>
+    ))}
+          </div>
+          <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "56px"}}>
+            <div style={{background: "rgba(251,251,250,0.82)", padding: "24px 22px 26px"}}>
+              <div style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#F2004B", textTransform: "uppercase"}}>01</div>
+              <div style={{marginTop: "14px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Proceso a la vista</div>
+              <p style={{margin: "10px 0 0", fontSize: "14px", lineHeight: "1.6", color: "#8A8F91"}}>Cada semana recibes fotos, avance y el costo real acumulado. Sin cambios de orden sorpresa.</p>
+            </div>
+            <div style={{background: "rgba(251,251,250,0.82)", padding: "24px 22px 26px"}}>
+              <div style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#F2004B", textTransform: "uppercase"}}>02</div>
+              <div style={{marginTop: "14px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Diseño modular curado</div>
+              <p style={{margin: "10px 0 0", fontSize: "14px", lineHeight: "1.6", color: "#8A8F91"}}>Combinas módulos reales con proporciones probadas. Libertad, pero dentro de lo que sí funciona.</p>
+            </div>
+            <div style={{background: "rgba(251,251,250,0.82)", padding: "24px 22px 26px"}}>
+              <div style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#F2004B", textTransform: "uppercase"}}>03</div>
+              <div style={{marginTop: "14px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Smart home de fábrica</div>
+              <p style={{margin: "10px 0 0", fontSize: "14px", lineHeight: "1.6", color: "#8A8F91"}}>Clima, accesos, riego e iluminación cableados desde obra gris. No parches después.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* La obra, en grande y arriba: es lo unico de esta pagina que no es
+          promesa. Va antes de pedirle nada al cliente. Las cuatro placas con
+          rotulo son marcadores a la espera de las fotos reales. */}
+      <section data-screen-label="La obra" style={{position: "relative", padding: "clamp(60px,7vw,84px) 0 clamp(50px,6vw,70px)"}}>
+        <div style={{maxWidth: "1080px", margin: "0 auto 26px", padding: "0 22px"}}>
+          <h2 style={{margin: "0 0 12px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>La obra</h2>
+          <p style={{margin: "0", maxWidth: "620px", fontSize: "clamp(19px,2.3vw,27px)", lineHeight: "1.35", letterSpacing: "-0.012em", textWrap: "pretty"}}>Casas nuestras, terminadas y en obra. Sin render que prometa lo que no se entrega.</p>
+        </div>
+        <div className="lgp-obra-tira" style={{display: "flex", gap: "18px", overflowX: "auto", padding: "0 22px 16px", scrollSnapType: "x mandatory", scrollbarWidth: "thin"}}>
+          <img src="/finished-house.jpg" alt="Casa terminada en Edinburg" className="lgp-obra-pieza" style={{width: "auto", flex: "none", objectFit: "cover", display: "block", scrollSnapAlign: "start"}} />
+          {[
+            'Foto — obra gris semana 9',
+            'Foto — cocina con tragaluz',
+            'Foto — patio central',
+            'Drone — subdivision',
+          ].map((rotulo, i) => (
+    <Fragment key={i}>
+          <div className="lgp-obra-pieza" style={{flex: "none", background: "repeating-linear-gradient(135deg,#F3F1EE 0 8px,#FCFBFA 8px 16px)", position: "relative", border: "1px solid #EAE7E3", scrollSnapAlign: "start"}}>
+            <span style={{position: "absolute", left: "16px", bottom: "14px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>{rotulo}</span>
+          </div>
+    </Fragment>
+    ))}
+        </div>
+      </section>
+
       <section id="lugares" data-screen-label="Lugares disponibles" style={{position: "relative", padding: "110px 22px 120px"}}>
         <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
           <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "20px", flexWrap: "wrap", marginBottom: "18px"}}>
@@ -1519,6 +1646,24 @@ export default function HomeConfigurator() {
       <section id="personaliza" data-screen-label="Personaliza tu casa" style={{position: "relative", padding: "clamp(70px,9vw,100px) 22px clamp(80px,10vw,120px)", background: "rgba(255,255,255,0.68)", borderTop: "1px solid #F0EDE9", borderBottom: "1px solid #F0EDE9"}}>
         <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
           <h2 style={{margin: "0 0 12px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Personaliza tu casa</h2>
+
+          {/* Volvió y tenía algo a medias. Se le ofrece, no se le impone. */}
+          {retomable ? (
+    <Fragment>
+          <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "20px", flexWrap: "wrap", marginBottom: "30px", padding: "18px 20px", background: "#FFF7F9", border: "1px solid #F8C9D6"}}>
+            <div style={{flex: "1 1 300px", minWidth: 0}}>
+              <p style={{margin: "0 0 4px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.12em", color: "#8A2249", textTransform: "uppercase"}}>Dejaste una casa a medias</p>
+              <p style={{margin: "0", fontSize: "15px", lineHeight: "1.5", color: "#1C1E1F"}}>
+                {(retomable.lotePropio?.id ?? retomable.loteId ?? 'Tu lote')} · paso {retomable.paso} de {PASO_NOMBRES.length}. La guardamos en este navegador.
+              </p>
+            </div>
+            <div style={{display: "flex", gap: "8px", flexWrap: "wrap"}}>
+              <button onClick={retomar} className="lgp-hover-zoom" style={{minHeight: "44px", padding: "0 18px", background: "#F2004B", border: "0", color: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>Continuar</button>
+              <button onClick={descartarGuardado} style={{minHeight: "44px", padding: "0 16px", background: "transparent", border: "1px solid #F8C9D6", color: "#8A2249", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>Empezar de cero</button>
+            </div>
+          </div>
+    </Fragment>
+    ) : null}
 
           {/* Tu propio lote: el otro camino de entrada a la misma ventana */}
           <div style={{border: "1px solid #EAE7E3", background: "#fff", padding: "clamp(22px,3vw,34px)"}}>
@@ -2252,53 +2397,6 @@ export default function HomeConfigurator() {
       </VentanaEnfocada>
 
 
-      <section id="nosotros" data-screen-label="Por qué nosotros" style={{position: "relative", padding: "110px 22px 100px"}}>
-        <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
-          <h2 style={{margin: "0 0 34px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Por qué nosotros</h2>
-          <p style={{margin: "0 0 44px", maxWidth: "660px", fontSize: "clamp(19px,2.3vw,28px)", lineHeight: "1.36", letterSpacing: "-0.012em", textWrap: "pretty"}}>El Valle está lleno de casas que se parecen. Nosotros construimos <em style={{fontStyle: "italic"}}>pocas</em>, y el cliente ve cada decisión antes de que se vacíe el concreto.</p>
-          <div style={{display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "56px"}}>
-            {chips.map((c, _i) => (
-    <Fragment key={_i}>
-
-              <span style={{padding: "9px 14px", border: "1px solid #E4E1DD", background: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "600", letterSpacing: "0.14em", color: "#505759", textTransform: "uppercase"}}>{c}</span>
-            
-    </Fragment>
-    ))}
-          </div>
-          <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "56px"}}>
-            <div style={{background: "rgba(251,251,250,0.82)", padding: "24px 22px 26px"}}>
-              <div style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#F2004B", textTransform: "uppercase"}}>01</div>
-              <div style={{marginTop: "14px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Proceso a la vista</div>
-              <p style={{margin: "10px 0 0", fontSize: "14px", lineHeight: "1.6", color: "#8A8F91"}}>Cada semana recibes fotos, avance y el costo real acumulado. Sin cambios de orden sorpresa.</p>
-            </div>
-            <div style={{background: "rgba(251,251,250,0.82)", padding: "24px 22px 26px"}}>
-              <div style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#F2004B", textTransform: "uppercase"}}>02</div>
-              <div style={{marginTop: "14px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Diseño modular curado</div>
-              <p style={{margin: "10px 0 0", fontSize: "14px", lineHeight: "1.6", color: "#8A8F91"}}>Combinas módulos reales con proporciones probadas. Libertad, pero dentro de lo que sí funciona.</p>
-            </div>
-            <div style={{background: "rgba(251,251,250,0.82)", padding: "24px 22px 26px"}}>
-              <div style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#F2004B", textTransform: "uppercase"}}>03</div>
-              <div style={{marginTop: "14px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.16em", textTransform: "uppercase"}}>Smart home de fábrica</div>
-              <p style={{margin: "10px 0 0", fontSize: "14px", lineHeight: "1.6", color: "#8A8F91"}}>Clima, accesos, riego e iluminación cableados desde obra gris. No parches después.</p>
-            </div>
-          </div>
-        </div>
-        <div data-nofx="1" style={{display: "flex", gap: "14px", overflowX: "auto", padding: "0 22px 10px", scrollbarWidth: "thin"}}>
-          <img src="/finished-house.jpg" alt="Casa terminada en Edinburg" style={{height: "230px", width: "auto", flex: "none", objectFit: "cover", display: "block"}} />
-          <div style={{height: "230px", width: "300px", flex: "none", background: "repeating-linear-gradient(135deg,#F3F1EE 0 6px,#FCFBFA 6px 12px)", position: "relative"}}>
-            <span style={{position: "absolute", left: "12px", bottom: "11px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>FOTO — OBRA GRIS SEMANA 9</span>
-          </div>
-          <div style={{height: "230px", width: "300px", flex: "none", background: "repeating-linear-gradient(135deg,#F3F1EE 0 6px,#FCFBFA 6px 12px)", position: "relative"}}>
-            <span style={{position: "absolute", left: "12px", bottom: "11px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>FOTO — COCINA CON TRAGALUZ</span>
-          </div>
-          <div style={{height: "230px", width: "230px", flex: "none", background: "repeating-linear-gradient(135deg,#F3F1EE 0 6px,#FCFBFA 6px 12px)", position: "relative"}}>
-            <span style={{position: "absolute", left: "12px", bottom: "11px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>FOTO — PATIO CENTRAL</span>
-          </div>
-          <div style={{height: "230px", width: "300px", flex: "none", background: "repeating-linear-gradient(135deg,#F3F1EE 0 6px,#FCFBFA 6px 12px)", position: "relative"}}>
-            <span style={{position: "absolute", left: "12px", bottom: "11px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>DRONE — SUBDIVISIÓN</span>
-          </div>
-        </div>
-      </section>
 
       <section id="faq" data-screen-label="FAQ" style={{position: "relative", padding: "100px 22px 110px", background: "rgba(255,255,255,0.68)", borderTop: "1px solid #F0EDE9"}}>
         <div data-nofx="1" style={{maxWidth: "760px", margin: "0 auto"}}>
