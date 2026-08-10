@@ -30,6 +30,7 @@ export function useAnimacionAlterna(valor: unknown, a: string, b: string): strin
 export function FilaOpcion({
   icono,
   tipoVisual = 'muestra',
+  modo = 'toggle',
   nombre,
   estado,
   on,
@@ -48,6 +49,13 @@ export function FilaOpcion({
    * interior lo convertiría en otro color.
    */
   tipoVisual?: 'icono' | 'muestra';
+  /**
+   * Sin efecto sobre el gesto — el comportamiento es el mismo en toda tabla: el
+   * "+" gira hasta volverse "×", y esa "×" es el único punto que deshace la
+   * elección. Tocar el resto de la fila ya no la borra, porque un roce
+   * accidental deshacía una decisión sin avisar.
+   */
+  modo?: 'toggle' | 'unico';
   nombre: string;
   estado?: string;
   on: boolean;
@@ -60,24 +68,34 @@ export function FilaOpcion({
   onLeave?: () => void;
 }) {
   const marca = tipoVisual === 'icono' ? { 'data-zone-icon': on ? '1' : '0' } : { 'data-zone-swatch': on ? '1' : '0' };
+  const quitable = on && !disabled;
+  const elegible = !on && !disabled;
   return (
-    <button
-      type="button"
+    <div
       data-opt-row
-      /* `aria-disabled` en vez de `disabled`: un botón deshabilitado no emite
-         eventos de ratón en Chrome, y entonces la tarjeta de detalle nunca
-         mostraría lo que es la zona que no cabe — que es justo lo que hay que
-         poder leer para decidir si vale la pena hacerle espacio. */
       aria-disabled={disabled || undefined}
       title={title}
-      aria-pressed={on}
-      onClick={() => { if (!disabled) onClick(); }}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
-      onFocus={onEnter}
-      onBlur={onLeave}
-      style={{ opacity: atenuada ? 0.55 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+      style={{ opacity: atenuada ? 0.55 : 1, cursor: elegible ? 'pointer' : 'default' }}
     >
+      {/* Elegir: cubre la fila entera, y solo existe mientras NO esté elegida.
+          `aria-disabled` en vez de `disabled` porque un botón deshabilitado no
+          emite eventos de ratón en Chrome, y la tarjeta de detalle nunca
+          mostraría qué es la zona que no cabe — justo lo que hay que poder leer
+          para decidir si vale la pena hacerle espacio. */}
+      {on ? null : (
+        <button
+          type="button"
+          aria-disabled={disabled || undefined}
+          aria-label={`Agregar ${nombre}`}
+          onClick={() => { if (!disabled) onClick(); }}
+          onFocus={onEnter}
+          onBlur={onLeave}
+          style={{ position: 'absolute', inset: 0, zIndex: 1, background: 'transparent', border: 0, padding: 0, cursor: disabled ? 'not-allowed' : 'pointer' }}
+        />
+      )}
+
       {icono ? (
         <span
           {...marca}
@@ -93,9 +111,24 @@ export function FilaOpcion({
       {/* La franja solo se ofrece si la fila se puede tocar: prometer un "+"
           que no va a pasar nada es peor que no ofrecerlo. */}
       <span data-zone-strip="" data-on={on ? '1' : '0'} data-toggle={disabled ? '0' : '1'}>
+        {/* Siempre el mismo signo. Al quedar elegida gira 45° y el "+" se lee
+            como "×" — la transición del giro vive en `globals.css`. */}
         <span data-zone-glyph="" style={{ '--r': on ? '45deg' : '0deg' } as CSSProperties}>+</span>
+        {/* Quitar: el único camino para deshacer. Es su propio blanco de 54 px
+            justo sobre la "×", no la fila entera. */}
+        {quitable ? (
+          <button
+            type="button"
+            aria-label={`Quitar ${nombre}`}
+            title={`Quitar ${nombre}`}
+            onClick={onClick}
+            onFocus={onEnter}
+            onBlur={onLeave}
+            style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', width: '54px', height: '54px', maxHeight: '100%', borderRadius: '50%', zIndex: 4, background: 'transparent', border: 0, padding: 0, cursor: 'pointer' }}
+          />
+        ) : null}
       </span>
-    </button>
+    </div>
   );
 }
 

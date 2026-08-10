@@ -203,6 +203,14 @@ textarea {
   background: #f2004b;
   transform: translateX(100%);
   transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+  /* La franja es decorado: no captura el ratón. Lo único que sí lo captura es
+     el botón de quitar que va dentro, y por eso quitar una zona exige tocar la
+     "×" y no vale rozar la fila. */
+  pointer-events: none;
+}
+
+[data-zone-strip] button {
+  pointer-events: auto;
 }
 
 [data-zone-strip][data-on='1'] {

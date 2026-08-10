@@ -956,7 +956,12 @@ export default function HomeConfigurator() {
       detalle: `${p.total.toLocaleString('es-MX')} ft² construidos en total (incluye garage, pórtico y exteriores)`,
       on: plan === k,
       cardStyle: cardStyle(plan === k, { border: '1px solid #EAE7E3' }),
-      onSelect: () => { if (!planFijo) { setPlan(k); setPlanLivingSel(null); setSugeridos(null); } },
+      onSelect: () => {
+        if (planFijo) return;
+        setPlan((prev) => (prev === k ? null : k));
+        setPlanLivingSel(null);
+        setSugeridos(null);
+      },
     };
   });
   const planesExcluidos = (['B', 'C', 'D'] as PlanKey[])
@@ -1028,15 +1033,17 @@ export default function HomeConfigurator() {
   ];
   const mostrarPresupuesto = paso >= 2 && paso <= 5;
 
+  // El mismo gesto en todos los pasos: tocar la fila elige, tocar la "×" de la
+  // franja deshace. Por eso estos handlers alternan en vez de solo asignar.
   const fachadas = FACHADAS.map((f) => ({
     ...f, on: fachada === f.key,
     cardStyle: cardStyle(fachada === f.key),
-    onSelect: () => setFachada(f.key),
+    onSelect: () => setFachada((prev) => (prev === f.key ? null : f.key)),
   }));
   const interiores = INTERIORES.map((i) => ({
     ...i, on: interior === i.key,
     cardStyle: cardStyle(interior === i.key),
-    onSelect: () => setInterior(i.key),
+    onSelect: () => setInterior((prev) => (prev === i.key ? null : i.key)),
   }));
 
   const fachadasDecision = fachadas.map((f) => ({
