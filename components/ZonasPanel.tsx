@@ -108,7 +108,11 @@ export default function ZonasPanel({
         </button>
       </div>
 
-      <div className="lgp-decision-foco" style={{ border: '1px solid #EAE7E3', background: '#F7F5F2', padding: '26px', display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '20px' }}>
+      {/* Altura fija a propósito. Antes la tarjeta crecía o se encogía según la
+          zona que tuviera el cursor encima, la lista de abajo se movía con
+          ella, y el cursor quedaba sobre otra fila: eso disparaba otro cambio
+          de altura y la pantalla entraba en un brinco sin fin. */}
+      <div className="lgp-decision-foco lgp-zona-detalle" style={{ border: '1px solid #EAE7E3', background: '#F7F5F2', padding: '26px', display: 'flex', gap: '20px', alignItems: 'flex-start', marginBottom: '20px' }}>
         <span style={{ width: '76px', height: '76px', flex: 'none', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {foco ? <Icono k={foco.iconKey} size={76} /> : null}
         </span>
@@ -156,7 +160,9 @@ export default function ZonasPanel({
         <div className="lgp-panel-elegido" style={{ width: '230px', flex: 'none', borderLeft: '1px solid #E4E1DD', paddingLeft: '20px', alignSelf: 'stretch' }}>
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#A9ADAF', textTransform: 'uppercase', marginBottom: '10px' }}>Zonas agregadas</div>
           {puestas.length ? (
-            <div style={{ background: '#fff', border: '1px solid #EAE7E3', padding: '4px 12px' }}>
+            /* Se recorta y se desplaza por dentro: con ocho zonas puestas esta
+               columna estiraba la tarjeta entera y el paso se volvía un tobogán. */
+            <div className="lgp-zonas-puestas" style={{ background: '#fff', border: '1px solid #EAE7E3', padding: '4px 12px', overflowY: 'auto', overscrollBehavior: 'contain' }}>
               {puestas.map((m) => (
                 <ZonaPuesta key={m.iconKey} m={m} />
               ))}
@@ -168,7 +174,9 @@ export default function ZonasPanel({
       </div>
 
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#A9ADAF', textTransform: 'uppercase', marginBottom: '8px' }}>Otras zonas</div>
-      <div className="lgp-decision-lista" style={{ border: '1px solid #EAE7E3', maxWidth: '520px' }}>
+      {/* La lista tampoco crece sin fin: se desplaza dentro de su propia caja
+          para que el paso conserve su altura. */}
+      <div className="lgp-decision-lista lgp-zonas-lista" style={{ border: '1px solid #EAE7E3', maxWidth: '520px', overflowY: 'auto', overscrollBehavior: 'contain' }}>
         {puestas.filter((m) => !m.incluida).map((m) => (
           <FilaOpcion
             key={m.iconKey}

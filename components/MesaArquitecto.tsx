@@ -89,11 +89,19 @@ export default function MesaArquitecto({
 
   // Posiciones fijas y a mano: un desorden aleatorio se ve aleatorio, uno
   // compuesto se ve como una mesa de trabajo de verdad.
+  //
+  // Cada pieza tiene su franja y ninguna pisa el texto de otra. Los papeles se
+  // rozan por los bordes —eso es lo que los hace parecer papeles— pero los
+  // nombres y las cifras siempre quedan libres. La inclinación es lo que da el
+  // desorden; la posición no.
+  //
+  //   izquierda 3–24%  ·  centro 30–70%  ·  derecha 76–96%
+  //   arriba 4–34%     ·  medio 40–70%   ·  abajo 74–96%
   const sitios = [
-    { left: '4%', top: '6%', width: '21%', rot: -4.5 },
-    { left: '5.5%', top: '52%', width: '20%', rot: 3.5 },
-    { left: '74%', top: '10%', width: '21%', rot: 4 },
-    { left: '73%', top: '56%', width: '22%', rot: -3 },
+    { left: '3%', top: '4%', width: '20%', rot: -4.5 },
+    { left: '3.5%', top: '40%', width: '20%', rot: 3.5 },
+    { left: '76%', top: '4%', width: '20%', rot: 4 },
+    { left: '76%', top: '40%', width: '20%', rot: -3 },
   ];
 
   return (
@@ -120,8 +128,12 @@ export default function MesaArquitecto({
         }}
       />
 
-      {/* El plano: la hoja grande, la que va hasta abajo de todo */}
-      <Hoja left="27%" top="9%" width="46%" rot={-1.2} z={10} sombra="alta" padding="1.6cqw">
+      {/* El plano: la hoja grande, la que va hasta abajo de todo.
+          Sube y se estrecha para dejarle su franja a la ficha y a la paleta.
+          Antes la ficha caía encima de su cajetín y tapaba el nombre del plano:
+          en un escritorio real los papeles se encimarán, pero el nombre del
+          plano es justo lo que nadie tapa. */}
+      <Hoja left="30%" top="4%" width="40%" rot={-1.2} z={10} sombra="alta" padding="1.5cqw">
         <div style={{ background: '#FBFBFA', border: '1px solid #F0EDE9', overflow: 'hidden' }}>
           {render ? (
             <img src={render} alt={`Plano ${planNombre}`} style={{ width: '100%', height: 'auto', display: 'block' }} />
@@ -144,30 +156,44 @@ export default function MesaArquitecto({
         </div>
       </Hoja>
 
-      {/* Zonas: fotos sueltas encimadas */}
+      {/* Zonas: fotos sueltas encimadas.
+          El icono va SIEMPRE pegado al nombre, en el pie de la foto, no dentro
+          del recuadro de imagen. Cuando la zona tiene foto el icono seguía
+          siendo lo que la identifica en el resto del configurador, y esconderlo
+          rompía el hilo: aquí la zona se llama por su icono y por su nombre a la
+          vez, igual que en la lista y en los chips. */}
       {enMesa.map((z, i) => {
         const sitio = sitios[i];
         const foto = PHOTO_BY_MODULE[z.iconKey];
         return (
-          <Hoja key={z.iconKey} left={sitio.left} top={sitio.top} width={sitio.width} rot={sitio.rot} z={20 + i} padding="1cqw 1cqw 1.4cqw">
+          <Hoja key={z.iconKey} left={sitio.left} top={sitio.top} width={sitio.width} rot={sitio.rot} z={20 + i} padding="1cqw 1cqw 1.2cqw">
             <div style={{ width: '100%', aspectRatio: '4/3', background: '#F4F1ED', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {foto ? (
                 <img src={foto} alt={z.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               ) : ICONO_ZONA[z.iconKey] ? (
-                <img src={ICONO_ZONA[z.iconKey]} alt="" aria-hidden="true" style={{ width: '52%', height: '52%', objectFit: 'contain' }} />
+                <img src={ICONO_ZONA[z.iconKey]} alt="" aria-hidden="true" style={{ width: '46%', height: '46%', objectFit: 'contain', opacity: 0.28 }} />
               ) : (
-                <ModuloIcon moduleKey={z.iconKey} size={26} color="#B7BABB" />
+                <ModuloIcon moduleKey={z.iconKey} size={26} color="#D5D7D8" />
               )}
             </div>
-            <div style={{ marginTop: '0.9cqw', fontFamily: 'Archivo, sans-serif', fontWeight: 800, fontSize: '1.15cqw', letterSpacing: '0.07em', textTransform: 'uppercase', color: '#1C1E1F' }}>
-              {z.nombre}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.7cqw', marginTop: '0.9cqw' }}>
+              <span style={{ width: '2.1cqw', height: '2.1cqw', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {ICONO_ZONA[z.iconKey] ? (
+                  <img src={ICONO_ZONA[z.iconKey]} alt="" aria-hidden="true" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+                ) : (
+                  <ModuloIcon moduleKey={z.iconKey} size={14} color="#1C1E1F" />
+                )}
+              </span>
+              <span style={{ flex: 1, minWidth: 0, fontFamily: 'Archivo, sans-serif', fontWeight: 800, fontSize: '1.15cqw', letterSpacing: '0.07em', textTransform: 'uppercase', color: '#1C1E1F', lineHeight: 1.25 }}>
+                {z.nombre}
+              </span>
             </div>
           </Hoja>
         );
       })}
 
-      {/* Ficha con los números duros */}
-      <Hoja left="30%" top="72%" width="27%" rot={2.2} z={40} sombra="media" padding="1.5cqw 1.8cqw">
+      {/* Ficha con los números duros: en su propia franja, debajo del plano */}
+      <Hoja left="30%" top="74%" width="25%" rot={2.2} z={40} sombra="media" padding="1.4cqw 1.6cqw">
         <Rotulo>Ficha</Rotulo>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '1cqw', marginTop: '0.6cqw' }}>
           <span style={{ fontFamily: 'Archivo, sans-serif', fontWeight: 800, fontSize: '2.6cqw', letterSpacing: '-0.01em', color: '#1C1E1F' }}>
@@ -183,7 +209,7 @@ export default function MesaArquitecto({
 
       {/* Muestras de color, como abanico de pinturas */}
       {interior ? (
-        <Hoja left="59%" top="76%" width="19%" rot={-3.5} z={41} sombra="media" padding="1.2cqw 1.2cqw 1.4cqw">
+        <Hoja left="57%" top="75%" width="15%" rot={-3.5} z={41} sombra="media" padding="1.1cqw 1.1cqw 1.3cqw">
           <Rotulo>Interior</Rotulo>
           <div style={{ display: 'flex', gap: '0.5cqw', marginTop: '0.8cqw' }}>
             {[interior.c1, interior.c2, interior.c3].map((c, i) => (
@@ -196,9 +222,9 @@ export default function MesaArquitecto({
         </Hoja>
       ) : null}
 
-      {/* Fachada */}
+      {/* Fachada: al margen del plano, no encima de su cajetín */}
       {fachadaKey ? (
-        <Hoja left="41%" top="1.5%" width="17%" rot={2.8} z={42} sombra="baja" padding="1cqw 1.2cqw 1.2cqw">
+        <Hoja left="76%" top="76%" width="20%" rot={2.8} z={42} sombra="baja" padding="1cqw 1.2cqw 1.2cqw">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1cqw' }}>
             <FachadaIcon styleKey={fachadaKey} size={22} />
             <div style={{ minWidth: 0 }}>
@@ -213,7 +239,7 @@ export default function MesaArquitecto({
 
       {/* Su petición, en un papelito pegado: son sus palabras, no las nuestras */}
       {brief.trim() ? (
-        <Hoja left="2.5%" top="30%" width="20%" rot={-2} z={43} sombra="media" fondo="#FDF6D8" padding="1.4cqw 1.5cqw">
+        <Hoja left="3%" top="74%" width="22%" rot={-2} z={43} sombra="media" fondo="#FDF6D8" padding="1.3cqw 1.4cqw">
           <Rotulo tam="1cqw">Tu petición</Rotulo>
           <p style={{ margin: '0.7cqw 0 0', fontSize: '1.25cqw', lineHeight: 1.5, color: '#5A5330' }}>
             “{brief.trim().slice(0, 120)}{brief.trim().length > 120 ? '…' : ''}”

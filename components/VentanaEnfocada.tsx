@@ -147,8 +147,10 @@ export default function VentanaEnfocada({
 
         {/* El paso ocupa lo que queda y se resuelve aquí dentro. El scroll
             interno es una válvula: en una pantalla de 320 px algo siempre se
-            sale, y dejarlo inalcanzable sería peor que dejarlo desplazable. */}
-        <div className="lgp-ventana-cuerpo" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+            sale, y dejarlo inalcanzable sería peor que dejarlo desplazable.
+            El `overflow` vive en la hoja de estilos, no aquí: en línea le
+            ganaría a la regla que lo bloquea durante la guía del paso 4. */}
+        <div className="lgp-ventana-cuerpo" style={{ flex: 1, minHeight: 0, overscrollBehavior: 'contain' }}>
           {children}
         </div>
 

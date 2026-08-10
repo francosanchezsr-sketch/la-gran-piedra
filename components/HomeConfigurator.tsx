@@ -1086,6 +1086,61 @@ export default function HomeConfigurator() {
     onSelect: i.onSelect,
   }));
 
+  // --- Guía del paso 4 ------------------------------------------------------
+  // El paso 4 tenía tres bloques a la vez —paleta, cuartos y zonas— y el
+  // cliente no sabía por dónde empezar. Ahora se abren de uno en uno, como el
+  // tutorial de un juego: lo que toca late, lo que no toca está apagado, y solo
+  // cuando termina se suelta todo para que pueda repasar y corregir.
+  //
+  // `tocadoCuartos` no es "tiene cuartos" sino "ya pasó por aquí": el plano ya
+  // trae recámaras y baños, así que sin esta marca la etapa se saltaría sola y
+  // nunca vería el contador.
+  // Lo mismo con las zonas: condicionarlo a "le queda presupuesto" saltaba la
+  // etapa entera en los townhouse, que arrancan en 0 ft² libres — aunque ahí sí
+  // se puede agregar la zona BBQ, que es exterior y no cuesta habitable.
+  const [tocadoCuartos, setTocadoCuartos] = useState(false);
+  const [tocadoZonas, setTocadoZonas] = useState(false);
+  const etapaGuia: 'gama' | 'cuartos' | 'zonas' | 'libre' = !interior
+    ? 'gama'
+    : !tocadoCuartos
+      ? 'cuartos'
+      : !tocadoZonas && modulos.length === 0
+        ? 'zonas'
+        : 'libre';
+  const guiaLibre = etapaGuia === 'libre';
+  const claseGuia = (mia: 'gama' | 'cuartos' | 'zonas') => {
+    if (guiaLibre) return '';
+    if (etapaGuia === mia) return 'lgp-guia-activa lgp-guia-entra';
+    const orden = { gama: 0, cuartos: 1, zonas: 2 };
+    return orden[mia] > orden[etapaGuia as 'gama' | 'cuartos' | 'zonas'] ? 'lgp-guia-bloqueada' : '';
+  };
+  // El foco no se le pide al cliente, se le lleva: al abrirse una etapa la
+  // pantalla se mueve sola hasta ella y le deja el cursor puesto en el primer
+  // control. Al terminar la última, se suelta y ya navega él.
+  const refGama = useRef<HTMLDivElement | null>(null);
+  const refCuartos = useRef<HTMLDivElement | null>(null);
+  const refZonas = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (paso !== 4 || etapaGuia === 'libre') return;
+    const destino = etapaGuia === 'gama' ? refGama.current : etapaGuia === 'cuartos' ? refCuartos.current : refZonas.current;
+    if (!destino) return;
+    // El cuerpo de la ventana tiene overflow oculto durante la guía: el usuario
+    // no puede desplazarlo, pero esto sí — que es justo la intención.
+    destino.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const t = window.setTimeout(() => {
+      const primero = destino.querySelector<HTMLElement>('button:not([disabled]), input:not([disabled])');
+      primero?.focus({ preventScroll: true });
+    }, 420);
+    return () => window.clearTimeout(t);
+  }, [etapaGuia, paso]);
+
+  const pistaGuia =
+    etapaGuia === 'gama' ? 'Empieza por la gama de interior — de ahí salen pisos, muros y carpintería.'
+    : etapaGuia === 'cuartos' ? 'Ahora ajusta recámaras y baños. Puedes dejarlos como vienen en el plano.'
+    : etapaGuia === 'zonas' ? 'Por último, agrega las zonas que quepan en lo que te queda.'
+    : null;
+  const pasoGuia = etapaGuia === 'gama' ? 1 : etapaGuia === 'cuartos' ? 2 : etapaGuia === 'zonas' ? 3 : 3;
+
   const briefLen = brief.length;
   const onBrief = (e: ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) => setBrief(e.target.value);
 
@@ -1750,7 +1805,10 @@ export default function HomeConfigurator() {
                   ? 'Traes tu propio terreno. Dinos cuánto mide y calculamos cuánta casa admite — abajo queda el catálogo de la subdivisión por si prefieres uno nuestro.'
                   : 'Empieza por el terreno. Gira el selector hasta el lote que te interese — solo los disponibles se pueden elegir.'}
               </p>
-              <div className="lgp-picker-grid" style={{order: entradaPropia ? 3 : 1, display: "grid", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
+              {/* Quien trae su terreno no ve el catálogo: son ocho lotes que no
+                  le sirven y solo le estorban para encontrar lo suyo. */}
+              {entradaPropia ? null : (
+              <div className="lgp-picker-grid" style={{order: 1, display: "grid", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", alignItems: "stretch"}}>
 
                 <div style={{position: "relative", background: "#fff", padding: "0", overflow: "hidden"}}>
                   <div ref={drumRef} {...drumTouch} style={{position: "relative", height: "250px", perspective: "960px", perspectiveOrigin: "50% 50%", touchAction: "none", cursor: "ns-resize"}}>
@@ -1814,8 +1872,11 @@ export default function HomeConfigurator() {
                   </div>
                 </div>
               </div>
-              {/* Medía 14 px de alto: imposible de atinar con el pulgar. */}
-              <p style={{margin: "14px 0 0"}}><a href="#lugares" style={{display: "inline-flex", alignItems: "center", minHeight: "44px", padding: "0 2px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#8A8F91", textTransform: "uppercase"}}><span style={{borderBottom: "1px solid #E4E1DD"}}>Ver el plano completo de la subdivisión ↗</span></a></p>
+              )}
+              {entradaPropia ? null : (
+              /* Medía 14 px de alto: imposible de atinar con el pulgar. */
+              <p style={{order: 2, margin: "14px 0 0"}}><a href="#lugares" style={{display: "inline-flex", alignItems: "center", minHeight: "44px", padding: "0 2px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#8A8F91", textTransform: "uppercase"}}><span style={{borderBottom: "1px solid #E4E1DD"}}>Ver el plano completo de la subdivisión ↗</span></a></p>
+              )}
 
               {/* ¿Ya tienes tu propio terreno? Sube el plano y lo analizamos. */}
               <div style={{order: entradaPropia ? 1 : 3, marginTop: entradaPropia ? "0" : "34px", marginBottom: entradaPropia ? "34px" : "0", padding: entradaPropia ? "clamp(20px,3vw,30px)" : "24px", background: "#fff", border: "1px solid " + (entradaPropia ? "#F2004B" : "#EAE7E3"), boxShadow: entradaPropia ? "0 2px 12px rgba(28,30,31,0.07)" : "none"}}>
@@ -1894,7 +1955,7 @@ export default function HomeConfigurator() {
                 <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: "10px", marginBottom: "20px"}}>
                   {loteModos.map((m) => (
     <Fragment key={m.key}>
-                  <button onClick={m.onClick} aria-pressed={m.on} className="lgp-hover-zoom" style={{textAlign: "left", padding: "15px 16px 16px", background: m.on ? "#1C1E1F" : "#fff", border: "1px solid " + (m.on ? "#1C1E1F" : "#E4E1DD"), cursor: "pointer"}}>
+                  <button onClick={m.onClick} aria-pressed={m.on} className={'lgp-hover-zoom' + (entradaPropia && !lotePropio && m.on ? ' lgp-guia-activa' : '')} style={{textAlign: "left", padding: "15px 16px 16px", background: m.on ? "#1C1E1F" : "#fff", border: "1px solid " + (m.on ? "#1C1E1F" : "#E4E1DD"), cursor: "pointer"}}>
                     <span style={{display: "flex", alignItems: "center", gap: "8px", marginBottom: "7px"}}>
                       <span style={{width: "13px", height: "13px", flex: "none", borderRadius: "50%", border: "2px solid " + (m.on ? "#F2004B" : "#DDD9D4"), background: m.on ? "#F2004B" : "transparent", boxShadow: m.on ? "inset 0 0 0 2px #1C1E1F" : "none"}}></span>
                       <span style={{fontFamily: "Archivo, sans-serif", fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: m.on ? "#FBFBFA" : "#1C1E1F"}}>{m.label}</span>
@@ -1918,7 +1979,9 @@ export default function HomeConfigurator() {
 
                 {loteModo === 'plano' ? (
     <Fragment>
-                <label style={{display: "inline-flex", alignItems: "center", gap: "10px", padding: "12px 18px", background: loteLoading ? "#F4F1ED" : "#1C1E1F", color: loteLoading ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: loteLoading ? "wait" : "pointer"}}>
+                {/* El destello marca dónde tiene que tocar: es lo único que
+                    falta para que el paso avance. */}
+                <label className={loteLoading || lotePropio ? '' : 'lgp-guia-activa'} style={{display: "inline-flex", alignItems: "center", gap: "10px", padding: "14px 20px", background: loteLoading ? "#F4F1ED" : "#1C1E1F", color: loteLoading ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: loteLoading ? "wait" : "pointer"}}>
                   {loteLoading ? 'Analizando…' : '+ Subir plano o foto'}
                   <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={onLoteFile} disabled={loteLoading} style={{display: "none"}} />
                 </label>
@@ -1937,7 +2000,7 @@ export default function HomeConfigurator() {
                     <span style={{display: "block", marginBottom: "6px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#A9ADAF", textTransform: "uppercase"}}>Fondo (ft)</span>
                     <input value={loteFondo} onChange={(e) => setLoteFondo(e.target.value)} inputMode="decimal" placeholder="120" style={{width: "100%", padding: "11px 12px", border: "1px solid #E4E1DD", background: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "15px", color: "#1C1E1F"}} />
                   </label>
-                  <button onClick={aplicarMedidasManuales} className="lgp-hover-zoom" style={{flex: "none", padding: "12px 18px", background: "#1C1E1F", border: 0, color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Calcular</button>
+                  <button onClick={aplicarMedidasManuales} className={'lgp-hover-zoom' + (loteFrente.trim() && loteFondo.trim() && !lotePropio ? ' lgp-guia-activa' : '')} style={{flex: "none", minHeight: "44px", padding: "0 20px", background: "#1C1E1F", border: 0, color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Calcular</button>
                 </div>
 
                 <div style={{marginTop: "18px", paddingTop: "16px", borderTop: "1px dashed #E4E1DD"}}>
@@ -2117,9 +2180,20 @@ export default function HomeConfigurator() {
           {esPaso4 ? (
     <Fragment>
 
-            <div>
+            <div className={guiaLibre ? '' : 'lgp-paso4-guiado'}>
+              {/* La pista de arriba: una sola frase con lo que toca ahora. */}
+              {pistaGuia ? (
+    <Fragment>
+              <div style={{display: "flex", alignItems: "center", gap: "12px", marginBottom: "22px", padding: "13px 16px", background: "#FFF7F9", border: "1px solid #F8C9D6"}}>
+                <span className="lgp-guia-punto" style={{width: "9px", height: "9px", flex: "none", borderRadius: "50%", background: "#F2004B"}}></span>
+                <span style={{flex: 1, minWidth: 0, fontSize: "14px", lineHeight: 1.5, color: "#1C1E1F"}}>{pistaGuia}</span>
+                <span style={{flex: "none", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#8A2249", textTransform: "uppercase"}}>{pasoGuia} de 3</span>
+              </div>
+    </Fragment>
+    ) : null}
+
               <p style={{margin: "0 0 12px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Gama de interior</p>
-              <div style={{marginBottom: "34px"}}>
+              <div ref={refGama} className={claseGuia('gama')} style={{marginBottom: "34px"}}>
                 <PasoDecision
                   opciones={gamasDecision}
                   etiquetaOtras="Gamas disponibles"
@@ -2128,7 +2202,7 @@ export default function HomeConfigurator() {
                 />
               </div>
 
-              <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "22px"}}>
+              <div ref={refCuartos} className={claseGuia('cuartos')} style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "22px"}}>
                 {contadores.map((c) => (
     <Fragment key={c.key}>
                 <div style={{background: "#fff", padding: "16px 18px"}}>
@@ -2153,6 +2227,17 @@ export default function HomeConfigurator() {
     ))}
               </div>
 
+              {/* El plano ya trae recámaras y baños, así que sin un "listo" la
+                  etapa se saltaría sola y el cliente nunca vería el contador. */}
+              {etapaGuia === 'cuartos' ? (
+    <Fragment>
+              <button onClick={() => setTocadoCuartos(true)} className="lgp-hover-zoom lgp-guia-activa" style={{display: "block", width: "100%", maxWidth: "520px", minHeight: "48px", marginBottom: "26px", background: "#1C1E1F", border: 0, color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>
+                {recamarasExtra === 0 && banosExtra === 0 ? 'Así están bien — seguir a zonas →' : `Listo: ${totalRec} recámaras y ${totalBanos} baños →`}
+              </button>
+    </Fragment>
+    ) : null}
+
+              <div ref={refZonas} className={claseGuia('zonas')}>
               <div style={{display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "18px", flexWrap: "wrap", marginBottom: "14px"}}>
                 <div style={{display: "flex", alignItems: "baseline", gap: "12px", flexWrap: "wrap"}}>
                   <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Zonas</p>
@@ -2183,12 +2268,23 @@ export default function HomeConfigurator() {
               />
     </Fragment>
     )}
+              {/* Salida explícita de la última etapa: agregar zona no es
+                  obligatorio, y sin este botón quien no quiere ninguna se
+                  quedaba encerrado con el resto del paso apagado. */}
+              {etapaGuia === 'zonas' ? (
+    <Fragment>
+              <button onClick={() => setTocadoZonas(true)} className="lgp-hover-zoom" style={{display: "block", width: "100%", maxWidth: "520px", minHeight: "48px", marginTop: "16px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>
+                Ya terminé con las zonas →
+              </button>
+    </Fragment>
+    ) : null}
+              </div>
 
               {/* Antes esto era un collage con un botón de "pantalla completa"
                   que abría lo mismo, más grande. Ahora es la mesa del
                   arquitecto: mientras arma sus zonas, va viendo cómo se le
                   acumulan los papeles encima del escritorio. */}
-              <div style={{marginTop: "34px"}}>
+              <div className={guiaLibre ? '' : 'lgp-guia-bloqueada'} style={{marginTop: "34px"}}>
                 <p style={{margin: "0 0 10px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#A9ADAF", textTransform: "uppercase"}}>Tu casa, por ahora</p>
                 <div style={{border: "1px solid #EAE7E3", boxShadow: "0 2px 10px rgba(28,30,31,0.07)"}}>
                   <MesaArquitecto
@@ -2254,54 +2350,12 @@ export default function HomeConfigurator() {
                 <span>Opcional, pero cambia todo</span><span>{briefLen} caracteres</span>
               </div>
 
-              <button onClick={runAI} disabled={aiLoading || !brief.trim()} className="lgp-hover-zoom" style={{marginTop: "16px", padding: "12px 18px", background: (aiLoading || !brief.trim()) ? "#F4F1ED" : "#1C1E1F", border: 0, color: (aiLoading || !brief.trim()) ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: (aiLoading || !brief.trim()) ? "not-allowed" : "pointer"}}>
-                {aiLoading ? 'Analizando tu brief…' : briefLectura ? 'Volver a analizar' : 'Analizar mi brief'}
-              </button>
-
-              {/* El error se muestra donde se provocó: antes vivía en el paso 4
-                  y quien tocaba el botón nunca lo veía. */}
-              {aiError ? (
-    <Fragment>
-              <p style={{margin: "14px 0 0", padding: "12px 14px", borderLeft: "3px solid #F4DA40", background: "#FEFCEC", fontSize: "13px", lineHeight: 1.6, color: "#6B6E70"}}>{aiError}</p>
-    </Fragment>
-    ) : null}
-
-              {/* Acuse de lectura: le confirma al cliente qué se entendió y qué
-                  se llevaría de su presupuesto antes de llegar a las zonas. */}
-              {briefLectura ? (
-    <Fragment>
-              <div style={{marginTop: "20px", padding: "18px", background: briefLectura.automatico ? "#F4FBF6" : "#FEFCEC", border: "1px solid " + (briefLectura.automatico ? "#CFE8D8" : "#F0E4A8")}}>
-                <p style={{margin: "0 0 8px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: briefLectura.automatico ? "#6B8F79" : "#8A7A2A", textTransform: "uppercase"}}>
-                  {briefLectura.automatico ? '✓ Leímos tu petición' : 'No se pudo analizar automáticamente'}
-                </p>
-                {briefLectura.texto ? (
-    <Fragment>
-                <p style={{margin: "0 0 14px", fontSize: "14px", lineHeight: 1.6, color: "#1C1E1F"}}>{briefLectura.texto}</p>
-    </Fragment>
-    ) : null}
-                {briefLectura.zonas.length ? (
-    <Fragment>
-                <div style={{display: "flex", flexWrap: "wrap", gap: "7px", marginBottom: "12px"}}>
-                  {briefLectura.zonas.map((z) => (
-    <Fragment key={z}>
-                  <span style={{padding: "5px 10px", background: "#fff", border: "1px solid #E4E1DD", fontFamily: "Archivo, sans-serif", fontSize: "11px", fontWeight: 700}}>{z}</span>
-    </Fragment>
-    ))}
-                </div>
-                <p style={{margin: 0, fontSize: "12px", lineHeight: 1.6, color: "#505759"}}>
-                  Tu petición sugiere estas zonas, que no llevas todavía y se llevarían <strong style={{fontWeight: 700}}>{briefLectura.impacto.toLocaleString('es-MX')} ft²</strong> de tus {ft2Rest.toLocaleString('es-MX')} ft² libres. Quedan marcadas en el paso 4 por si las quieres agregar — o déjalo así y lo ves con el arquitecto.
-                </p>
-    </Fragment>
-    ) : (
-    <Fragment>
-                <p style={{margin: 0, fontSize: "12px", lineHeight: 1.6, color: "#505759"}}>
-                  Tu petición no requiere zonas nuevas: queda anotada tal cual para que el arquitecto la revise contigo en la cita.
-                </p>
-    </Fragment>
-    )}
-              </div>
-    </Fragment>
-    ) : null}
+              {/* Sin analisis por IA: el brief son comentarios para el
+                  arquitecto, no una lista de compras que haya que interpretar.
+                  Viaja tal cual en la ficha. */}
+              <p style={{margin: "16px 0 0", padding: "13px 15px", background: "#F7F5F2", borderLeft: "3px solid #E4E1DD", fontSize: "13px", lineHeight: 1.6, color: "#505759"}}>
+                Lo que escribas viaja tal cual al arquitecto, con tus palabras. No lo resumimos ni lo interpretamos.
+              </p>
 
               {!lote || !plan ? (
     <Fragment>
