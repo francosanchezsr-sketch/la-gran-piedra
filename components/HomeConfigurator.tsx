@@ -2463,10 +2463,14 @@ export default function HomeConfigurator() {
               {enviado ? (
     <Fragment>
 
-                <div style={{maxWidth: "560px", padding: "34px 30px", border: "1px solid #EAE7E3", background: "#FBFBFA"}}>
-                  <p style={{margin: "0 0 10px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.18em", color: "#F2004B", textTransform: "uppercase"}}>Enviado</p>
-                  <p style={{margin: "0 0 16px", fontSize: "clamp(19px,2.2vw,24px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Tu configuracion ya esta con el arquitecto, {leadPrimerNombre}.</p>
-                  <p style={{margin: "0", fontSize: "15px", lineHeight: "1.65", color: "#505759"}}>Te escribimos dentro de las proximas 24 horas para agendar la visita al lote. Seguimiento a 24 h, 72 h y 7 dias &mdash; luego te dejamos en paz.</p>
+                {/* Antes esta pantalla explicaba el seguimiento a 24h/72h/7
+                    días — de más en el momento en que alguien solo quiere
+                    saber que sí se mandó. Ese detalle vive en el correo real
+                    que le llega al arquitecto, no hace falta repetirlo aquí. */}
+                <div style={{maxWidth: "420px", padding: "40px 34px", border: "1px solid #EAE7E3", background: "#FBFBFA", textAlign: "center"}}>
+                  <span style={{display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", margin: "0 auto 18px", borderRadius: "50%", background: "#F2004B", color: "#fff", fontSize: "20px", fontWeight: 800}}>✓</span>
+                  <p style={{margin: "0 0 26px", fontSize: "clamp(18px,2.1vw,22px)", lineHeight: "1.4", letterSpacing: "-0.01em"}}>Se ha enviado con éxito.</p>
+                  <button onClick={cerrarVentana} className="lgp-hover-zoom" style={{padding: "13px 26px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Cerrar</button>
                 </div>
 
     </Fragment>
