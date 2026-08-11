@@ -1526,8 +1526,6 @@ export default function HomeConfigurator() {
     }
   };
 
-  const chips = ['Casas custom', 'Spec homes', 'Escandinavo moderno', 'Farm moderno', 'Smart home', 'Lotes propios', 'Edinburg · McAllen · Mission'];
-
   // Varias preguntas abiertas a la vez: quien compara financiamiento contra
   // tiempo de obra necesita las dos en pantalla, y cerrar la anterior en
   // silencio se siente como si la página le quitara algo.
@@ -1710,15 +1708,6 @@ export default function HomeConfigurator() {
         <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
           <h2 style={{margin: "0 0 34px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Por qué nosotros</h2>
           <p style={{margin: "0 0 44px", maxWidth: "660px", fontSize: "clamp(19px,2.3vw,28px)", lineHeight: "1.36", letterSpacing: "-0.012em", textWrap: "pretty"}}>El Valle está lleno de casas que se parecen. Nosotros construimos <em style={{fontStyle: "italic"}}>pocas</em>, y el cliente ve cada decisión antes de que se vacíe el concreto.</p>
-          <div style={{display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "56px"}}>
-            {chips.map((c, _i) => (
-    <Fragment key={_i}>
-
-              <span style={{padding: "9px 14px", border: "1px solid #E4E1DD", background: "#fff", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "600", letterSpacing: "0.14em", color: "#505759", textTransform: "uppercase"}}>{c}</span>
-            
-    </Fragment>
-    ))}
-          </div>
           <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "1px", background: "#EAE7E3", border: "1px solid #EAE7E3", marginBottom: "56px"}}>
             <div style={{background: "rgba(251,251,250,0.82)", padding: "24px 22px 26px"}}>
               <div style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#F2004B", textTransform: "uppercase"}}>01</div>
