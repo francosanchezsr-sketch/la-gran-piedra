@@ -77,6 +77,9 @@ export const SUBDIVISIONES = [
     direccion: 'S.H. 107, McAllen, TX 78504',
     totalLotes: 119,
     lotes: LOTES,
+    // Foto de la entrada, para la tarjeta de "Lugares disponibles". Falta el
+    // archivo real — el componente cae a un marcador visible mientras tanto.
+    foto: '/subdivision/enclave-entrada.jpg',
   },
 ] as const;
 

@@ -62,5 +62,9 @@ del 473 real del townhouse.
   local — marcaría a Google un dato falso.
 - Falta `NEXT_PUBLIC_SITE_URL` (o desplegar en Vercel, que inyecta la suya) para
   que las tarjetas al compartir apunten al dominio bueno.
+- Falta la foto real de acceso de Enclave on 107 en
+  `public/subdivision/enclave-entrada.jpg` (la tarjeta de "Lugares
+  disponibles" cae a un marcador mientras tanto — código listo, solo falta el
+  archivo).
 
 @AGENTS.md

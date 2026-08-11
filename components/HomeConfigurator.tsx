@@ -182,6 +182,9 @@ export default function HomeConfigurator() {
   const [tragaluces, setTragaluces] = useState<string[]>([]);
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [subdivisionKey, setSubdivisionKey] = useState<SubdivisionKey>(SUBDIVISIONES[0].key);
+  // Mientras no exista el archivo real de la foto de entrada, se cae al
+  // marcador — sin esto, un 404 se vería como una imagen rota.
+  const [subdivisionFotoError, setSubdivisionFotoError] = useState(false);
   const subdivisionActiva = SUBDIVISIONES.find((s) => s.key === subdivisionKey) ?? SUBDIVISIONES[0];
   const [recamarasExtra, setRecamarasExtra] = useState(0);
   const [banosExtra, setBanosExtra] = useState(0);
@@ -790,6 +793,7 @@ export default function HomeConfigurator() {
 
   const mostrarVendidos = true;
   const visibles = mostrarVendidos ? LOTES : LOTES.filter((l) => l.status === 'disponible');
+  const lotesDisponibles = LOTES.filter((l) => l.status === 'disponible').length;
 
   const lotes = visibles.map((l) => {
     const sel = lote && lote.id === l.id;
@@ -1755,34 +1759,45 @@ export default function HomeConfigurator() {
 
       <section id="lugares" data-screen-label="Lugares disponibles" style={{position: "relative", padding: "110px 22px 120px"}}>
         <div data-nofx="1" style={{maxWidth: "1080px", margin: "0 auto"}}>
-          <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "20px", flexWrap: "wrap", marginBottom: "18px"}}>
-            <div>
-              <h2 style={{margin: "0", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>Lugares disponibles</h2>
-              <div style={{display: "flex", alignItems: "center", gap: "10px", marginTop: "12px"}}>
-                <select
-                  value={subdivisionKey}
-                  onChange={(e) => setSubdivisionKey(e.target.value as SubdivisionKey)}
-                  style={{padding: "8px 12px", border: "1px solid #DDD9D4", background: "#fff", color: "#1C1E1F", fontFamily: "Archivo, sans-serif", fontWeight: "700", fontSize: "11px", letterSpacing: "0.06em", cursor: "pointer"}}
-                >
-                  {SUBDIVISIONES.map((s) => (
-                    <option key={s.key} value={s.key}>{s.nombre}</option>
-                  ))}
-                </select>
+          {/* Tarjeta foto-hero de la subdivisión: reemplaza el encabezado de
+              texto (título + selector + botón) que había aquí. La foto de
+              entrada, el nombre y la ubicación van sobre la imagen; abajo, en
+              la franja blanca, la disponibilidad y el acceso al mapa completo.
+              El selector de subdivisión se quitó de la vista — hoy solo existe
+              una — pero el estado sigue vivo por si se agrega una segunda. */}
+          <div style={{position: "relative", border: "1px solid #EAE7E3", background: "#fff", marginBottom: "26px"}}>
+            <div style={{position: "relative", height: "clamp(240px,32vw,360px)", overflow: "hidden", background: "repeating-linear-gradient(135deg,#F3F1EE 0 8px,#FCFBFA 8px 16px)"}}>
+              {!subdivisionFotoError ? (
+                <img
+                  src={subdivisionActiva.foto}
+                  alt={`Acceso de ${subdivisionActiva.nombre}`}
+                  onError={() => setSubdivisionFotoError(true)}
+                  style={{position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block"}}
+                />
+              ) : (
+                /* El rótulo va arriba, no abajo: el título y su gradiente ya
+                   ocupan la franja inferior, y ahí se hubiera tapado. */
+                <span style={{position: "absolute", left: "16px", top: "14px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>FOTO — ACCESO DE LA SUBDIVISIÓN</span>
+              )}
+              <div style={{position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(18,19,20,0) 45%, rgba(18,19,20,0.62) 100%)"}}></div>
+              <div style={{position: "absolute", left: "22px", right: "22px", bottom: "18px"}}>
+                <h2 style={{margin: "0 0 6px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "clamp(24px,3.4vw,36px)", letterSpacing: "-0.02em", textTransform: "uppercase", color: "#fff"}}>{subdivisionActiva.nombre}</h2>
+                <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "rgba(255,255,255,0.82)", textTransform: "uppercase"}}>{subdivisionActiva.zona} · {subdivisionActiva.direccion}</p>
               </div>
-              <p style={{margin: "10px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#8A8F91", textTransform: "uppercase"}}>{subdivisionActiva.zona} · {subdivisionActiva.direccion}</p>
             </div>
-            <div style={{display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "10px"}}>
+            <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", padding: "18px 22px"}}>
+              <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", letterSpacing: "0.1em", color: "#505759", textTransform: "uppercase"}}>{lotesDisponibles} de {LOTES.length} lotes disponibles</p>
               <button onClick={() => setOverviewOpen(true)} className="lgp-hover-zoom" style={{minHeight: "44px", padding: "0 16px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap"}}>Ver mapa completo ↗</button>
-              {/* Aquí se elige el lote, no solo se mira: el plano es el
-                  selector, y hay que decirlo. */}
-              <p style={{margin: "0", maxWidth: "310px", fontSize: "13px", lineHeight: "1.5", color: "#8A8F91", textAlign: "right"}}>
-                <strong style={{fontWeight: 600, color: "#1C1E1F"}}>Aquí empieza tu casa.</strong> Toca un lote para ver su frente, su orientación y cuánto admite — y para armar la tuya encima.
-              </p>
             </div>
           </div>
 
           <div style={{position: "relative", border: "1px solid #EAE7E3", background: "#fff", padding: "26px 22px 18px"}}>
             <div style={{position: "absolute", inset: "0", background: "radial-gradient(38% 60% at 62% 78%, rgba(246,117,153,0.10), transparent 72%)", pointerEvents: "none"}}></div>
+            {/* Aquí se elige el lote, no solo se mira: el plano es el
+                selector, y hay que decirlo justo antes de él. */}
+            <p style={{position: "relative", margin: "0 0 18px", maxWidth: "620px", fontSize: "14px", lineHeight: "1.6", color: "#505759"}}>
+              <strong style={{fontWeight: 600, color: "#1C1E1F"}}>Aquí empieza tu casa.</strong> Toca un lote para ver su frente, su orientación y cuánto admite — y para armar la tuya encima.
+            </p>
             <div style={{position: "relative"}}>{planoSvg}</div>
             <div style={{position: "relative", display: "flex", flexWrap: "wrap", gap: "18px", marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #F0EDE9", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#8A8F91", textTransform: "uppercase"}}>
               <span style={{display: "flex", alignItems: "center", gap: "7px"}}><span style={{width: "9px", height: "9px", background: "#F2004B", display: "block"}}></span>Disponible</span>
