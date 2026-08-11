@@ -1586,6 +1586,57 @@ export default function HomeConfigurator() {
   };
   const cerrarVentana = () => setVentanaAbierta(false);
 
+  // Cierre desde la pantalla de éxito: no es "voy a seguir después", ya se
+  // mandó. Si solo cerráramos la ventana, dos cosas quedarían mal — el fondo
+  // seguiría donde se abrió (a media página de "Lugares disponibles", no en
+  // el inicio) y el guardado local seguiría ofreciendo "retomar" un combo que
+  // ya está en el correo del arquitecto. Por eso este cierre reinicia todo el
+  // configurador y sube a la portada, como si el cliente llegara de nuevo.
+  const cerrarTrasEnviar = () => {
+    borrarGuardado();
+    setRetomable(null);
+    setVentanaAbierta(false);
+    setPaso(1);
+    setLote(null);
+    setLotePropio(null);
+    setPlan(null);
+    setFachada(null);
+    setInterior(null);
+    setBrief('');
+    setModulos([]);
+    setSugeridos(null);
+    setBriefLectura(null);
+    setLead({ nombre: '', correo: '', tel: '' });
+    setEnviado(false);
+    setEnvioError(null);
+    setDrumIdx(1);
+    setModuloIdx(0);
+    setEntradaPropia(false);
+    setTragaluces([]);
+    setRecamarasExtra(0);
+    setBanosExtra(0);
+    setPlanLivingSel(null);
+    setVerTodasZonas(false);
+    setLoteFile(null);
+    setLoteTextoCapturado(null);
+    setLoteLoading(false);
+    setLoteError(null);
+    setLoteErrorTipo('error');
+    setLoteAnalisis(null);
+    setLoteModo('plano');
+    setLoteTexto('');
+    setLoteFrente('');
+    setLoteFondo('');
+    setRetiros(RETIROS_DEFAULT);
+    setGarage2(true);
+    setLoteUbicacion(null);
+    setTocadoCuartos(false);
+    setTocadoZonas(false);
+    // Después de que la ventana termine su transición de salida, no antes —
+    // moverlo a la vez se siente como un salto brusco.
+    window.setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80);
+  };
+
   return (
     <div style={{position: "relative", overflowX: "hidden", background: "#FBFBFA", paddingBottom: "74px"}}>
 
@@ -2470,7 +2521,7 @@ export default function HomeConfigurator() {
                 <div style={{maxWidth: "420px", padding: "40px 34px", border: "1px solid #EAE7E3", background: "#FBFBFA", textAlign: "center"}}>
                   <span style={{display: "flex", alignItems: "center", justifyContent: "center", width: "48px", height: "48px", margin: "0 auto 18px", borderRadius: "50%", background: "#F2004B", color: "#fff", fontSize: "20px", fontWeight: 800}}>✓</span>
                   <p style={{margin: "0 0 26px", fontSize: "clamp(18px,2.1vw,22px)", lineHeight: "1.4", letterSpacing: "-0.01em"}}>Se ha enviado con éxito.</p>
-                  <button onClick={cerrarVentana} className="lgp-hover-zoom" style={{padding: "13px 26px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Cerrar</button>
+                  <button onClick={cerrarTrasEnviar} className="lgp-hover-zoom" style={{padding: "13px 26px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Cerrar</button>
                 </div>
 
     </Fragment>
