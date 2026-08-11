@@ -161,6 +161,7 @@ export default function HomeConfigurator() {
   // Cita rápida del header: es un camino aparte del configurador, porque quien
   // pulsa "Agenda una cita" normalmente todavía no ha elegido lote ni floorplan.
   const [citaEnviada, setCitaEnviada] = useState(false);
+  const [citaEnviando, setCitaEnviando] = useState(false);
   const [citaError, setCitaError] = useState<string | null>(null);
   const citaNombreRef = useRef<HTMLInputElement | null>(null);
   // Arrastre táctil de los cilindros. `movido` distingue un giro de un tap, y
@@ -1485,7 +1486,13 @@ export default function HomeConfigurator() {
   };
   // Pedimos nombre y una sola vía de contacto: exigir las dos sobra para una
   // primera llamada y cuesta conversiones.
-  const agendarCita = () => {
+  //
+  // Esta cita se pide antes de terminar el configurador, así que `armarFicha`
+  // se manda con lo que haya — lote y plan pueden venir en blanco. La ruta y la
+  // ficha ya están hechas para el envío del paso 7; es la misma, para no tener
+  // dos caminos de correo con reglas distintas.
+  const agendarCita = async () => {
+    if (citaEnviando) return;
     if (!lead.nombre.trim()) {
       setCitaError('Escribe tu nombre para saber a quién buscamos.');
       return;
@@ -1495,7 +1502,28 @@ export default function HomeConfigurator() {
       return;
     }
     setCitaError(null);
-    setCitaEnviada(true);
+    setCitaEnviando(true);
+    try {
+      const res = await fetch('/api/enviar-resumen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(armarFicha()),
+      });
+      if (res.ok) {
+        setCitaEnviada(true);
+        return;
+      }
+      // Mismo trato que en el paso 7: nunca se confirma un envío que no salió.
+      setCitaError(
+        res.status === 501
+          ? 'El envío automático todavía no está activo, pero anotamos tus datos — escríbenos a contact@lagranpiedrallc.com y te contestamos directo.'
+          : 'No pudimos mandarlo en este momento. Vuelve a intentar, o escríbenos a contact@lagranpiedrallc.com.',
+      );
+    } catch {
+      setCitaError('No pudimos mandarlo: revisa tu conexión y vuelve a intentar.');
+    } finally {
+      setCitaEnviando(false);
+    }
   };
 
   const chips = ['Casas custom', 'Spec homes', 'Escandinavo moderno', 'Farm moderno', 'Smart home', 'Lotes propios', 'Edinburg · McAllen · Mission'];
@@ -2586,15 +2614,17 @@ export default function HomeConfigurator() {
             <p style={{margin: "14px 0 0", padding: "11px 13px", background: "#FEFCEC", borderLeft: "3px solid #F4DA40", fontSize: "13px", lineHeight: "1.5", color: "#505759"}}>{citaError}</p>
     </Fragment>
     ) : null}
-            <button onClick={agendarCita} className="lgp-hover-zoom" style={{width: "100%", marginTop: "18px", padding: "15px 20px", background: "#F2004B", color: "#fff", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>Agendar mi cita →</button>
-            <p style={{margin: "12px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", lineHeight: "1.6", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>Con el correo o el teléfono basta · Prototipo — no se envía correo real</p>
+            <button onClick={agendarCita} disabled={citaEnviando} className="lgp-hover-zoom" style={{width: "100%", marginTop: "18px", padding: "15px 20px", background: citaEnviando ? "#F4F1ED" : "#F2004B", color: citaEnviando ? "#B7BABB" : "#fff", border: "0", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: citaEnviando ? "wait" : "pointer"}}>
+              {citaEnviando ? 'Enviando…' : 'Agendar mi cita →'}
+            </button>
+            <p style={{margin: "12px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", lineHeight: "1.6", letterSpacing: "0.08em", color: "#B7BABB", textTransform: "uppercase"}}>Con el correo o el teléfono basta</p>
           </div>
 
     </Fragment>
     )}
           <div style={{display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "26px", marginTop: "46px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", letterSpacing: "0.08em", color: "#8A8F91"}}>
             <a href="tel:+19560000000">(956) 000 0000</a>
-            <a href="mailto:hola@lagranpiedra.com">HOLA@LAGRANPIEDRA.COM</a>
+            <a href="mailto:contact@lagranpiedrallc.com">CONTACT@LAGRANPIEDRALLC.COM</a>
             <span>EDINBURG, TX</span>
           </div>
           <p style={{margin: "30px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "#C4C7C8"}}>LA GRAN PIEDRA LLC · TX BUILDER · © 2026</p>

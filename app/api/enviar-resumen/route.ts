@@ -5,7 +5,13 @@ import { fichaHtml, fichaTexto, type Ficha } from '@/lib/ficha';
 // a propósito: la ficha larga es la herramienta de trabajo del arquitecto, no un
 // entregable del sitio.
 //
-// Sin RESEND_API_KEY y LGP_CORREO_ARQUITECTOS el endpoint responde 501 y el
+// El destino real de la empresa. No es secreto — a diferencia de la llave de
+// Resend, un correo de contacto puede vivir en el código — así que sirve de
+// default y LGP_CORREO_ARQUITECTOS solo hace falta para cambiarlo o para
+// agregar más destinatarios.
+const CORREO_ARQUITECTOS_DEFAULT = 'contact@lagranpiedrallc.com';
+
+// Sin RESEND_API_KEY y LGP_CORREO_REMITENTE el endpoint responde 501 y el
 // configurador lo dice en pantalla — nunca se le confirma un envío al cliente
 // que en realidad no salió.
 
@@ -60,10 +66,10 @@ export async function POST(request: Request) {
   }
 
   const apiKey = process.env.RESEND_API_KEY;
-  const destino = process.env.LGP_CORREO_ARQUITECTOS;
+  const destino = process.env.LGP_CORREO_ARQUITECTOS || CORREO_ARQUITECTOS_DEFAULT;
   // El remitente tiene que ser de un dominio verificado en Resend.
   const remitente = process.env.LGP_CORREO_REMITENTE;
-  if (!apiKey || !destino || !remitente) {
+  if (!apiKey || !remitente) {
     return NextResponse.json({ error: 'correo no configurado' }, { status: 501 });
   }
 

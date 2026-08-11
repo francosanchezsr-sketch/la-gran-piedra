@@ -46,18 +46,20 @@ del 473 real del townhouse.
 
 - Falta `ANTHROPIC_API_KEY` en Vercel: sin ella el análisis de plano y de
   dirección del paso 1 responde 501 y solo funciona la captura manual de medidas.
-- El "Enviar al arquitecto" del paso 7 ya manda la ficha por correo, pero
-  necesita `RESEND_API_KEY`, `LGP_CORREO_ARQUITECTOS` y `LGP_CORREO_REMITENTE`
-  (ver `.env.example`). Sin ellas responde 501 y la UI lo dice: nunca se le
+- El "Enviar al arquitecto" del paso 7 y el "Agenda una cita" rápido del header
+  mandan la ficha por correo a `contact@lagranpiedrallc.com` (ya en el código,
+  vía `LGP_CORREO_ARQUITECTOS` si se necesita cambiarlo o agregar más
+  destinatarios). Falta `RESEND_API_KEY` y `LGP_CORREO_REMITENTE` (ver
+  `.env.example`) — sin ellas responde 501 y la UI lo dice: nunca se le
   confirma al cliente un envío que no salió. Los archivos que sube el cliente
   siguen viviendo solo en memoria del navegador — no viajan en el correo.
 - El sitio está solo en español y asume contexto local (pies, retiros de Texas,
   lada 956, cita presencial). Para el cliente internacional falta idioma,
   unidades, moneda y agenda remota.
-- Los datos de contacto del pie son de relleno: `(956) 000 0000`,
-  `hola@lagranpiedra.com` y un enlace a `instagram.com` sin cuenta. Hasta que
-  sean los reales no se puede publicar JSON-LD de negocio local — marcaría a
-  Google un teléfono y un correo falsos.
+- El correo del pie ya es el real (`contact@lagranpiedrallc.com`). El teléfono
+  (`(956) 000 0000`) y el enlace a `instagram.com` siguen siendo de relleno.
+  Hasta que el teléfono sea real no se puede publicar JSON-LD de negocio
+  local — marcaría a Google un dato falso.
 - Falta `NEXT_PUBLIC_SITE_URL` (o desplegar en Vercel, que inyecta la suya) para
   que las tarjetas al compartir apunten al dominio bueno.
 
