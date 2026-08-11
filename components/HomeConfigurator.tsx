@@ -2574,7 +2574,12 @@ export default function HomeConfigurator() {
 
           <div className="lgp-step-actions" style={{display: "flex", alignItems: "center", gap: "10px", marginTop: "40px", paddingTop: "22px", borderTop: "1px solid #F0EDE9"}}>
             <button onClick={atras} className="lgp-hover-zoom" style={{padding: "11px 17px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer"}}>← Atrás</button>
+            {/* No hay paso 8: en el 7 este botón se veía activo pero tocarlo
+                no llevaba a ningún lado — `siguiente()` recalculaba el mismo
+                paso en el que ya estabas. */}
+            {esPaso7 ? null : (
             <button onClick={siguiente} disabled={siguienteBloqueado} title={siguienteBloqueado ? `Antes elige ${faltantes.map((f) => f.que).join(', ')}` : undefined} className="lgp-hover-zoom" style={{padding: "11px 17px", background: siguienteBloqueado ? "#F4F1ED" : "#1C1E1F", border: "0", color: siguienteBloqueado ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: siguienteBloqueado ? "not-allowed" : "pointer"}}>Siguiente →</button>
+            )}
             <span style={{marginLeft: "auto", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#B7BABB", textTransform: "uppercase"}}>{pasoHint}</span>
           </div>
 
