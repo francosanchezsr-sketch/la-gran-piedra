@@ -42,6 +42,7 @@ export default function PasoDecision({
   accionSecundaria,
   onSecundaria,
   carrusel,
+  exclusivo,
   nota,
 }: {
   opciones: OpcionDecision[];
@@ -58,6 +59,13 @@ export default function PasoDecision({
    * plano se compara viéndolo, no leyendo su nombre en una lista.
    */
   carrusel?: boolean;
+  /**
+   * De esta lista solo cabe una. Mientras haya algo elegido, el resto de las
+   * filas queda bloqueado: para cambiar hay que quitar la actual con su "×" y
+   * entonces elegir otra. Es lo que hace visible que la elección es única — con
+   * el cambio directo, el cliente nunca se entera de que solo puede llevar una.
+   */
+  exclusivo?: boolean;
   nota?: ReactNode;
 }) {
   const [hover, setHover] = useState<string | null>(null);
@@ -173,8 +181,20 @@ export default function PasoDecision({
       {carrusel ? null : (
     <>
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#A9ADAF', textTransform: 'uppercase', marginBottom: '8px' }}>{etiquetaOtras}</div>
+      {/* Con la elección hecha, decir por qué el resto ya no responde: un
+          renglón apagado sin explicación se lee como que la página falla. */}
+      {exclusivo && elegida ? (
+        <p style={{ margin: '0 0 8px', maxWidth: '520px', fontSize: '12.5px', lineHeight: 1.55, color: '#8A8F91' }}>
+          Solo puedes llevar una. Para cambiarla, quita <strong style={{ fontWeight: 600, color: '#1C1E1F' }}>{elegida.nombre}</strong> con su ✕ y elige otra.
+        </p>
+      ) : null}
       <div className="lgp-decision-lista" style={{ border: '1px solid #EAE7E3', maxWidth: '520px' }}>
-        {opciones.map((o) => (
+        {opciones.map((o) => {
+          // En una lista exclusiva, con algo elegido las demás no se pueden
+          // tomar: primero se suelta la actual. Así el gesto de quitar deja de
+          // ser decorativo y se vuelve el camino real para cambiar de opinión.
+          const bloqueadaPorOtra = Boolean(exclusivo && elegida && !o.on);
+          return (
           <FilaOpcion
             key={o.key}
             icono={mini(o)}
@@ -182,12 +202,15 @@ export default function PasoDecision({
             nombre={o.nombre}
             estado={o.on ? (o.fija ? 'Incluido' : 'Elegido') : o.fija ? 'Incluido' : ''}
             on={o.on}
-            disabled={o.fija}
+            disabled={o.fija || bloqueadaPorOtra}
+            atenuada={bloqueadaPorOtra}
+            title={bloqueadaPorOtra && elegida ? `Primero quita ${elegida.nombre} con su ✕` : undefined}
             onClick={o.onSelect}
             onEnter={() => setHover(o.key)}
             onLeave={() => setHover(null)}
           />
-        ))}
+          );
+        })}
       </div>
     </>
       )}

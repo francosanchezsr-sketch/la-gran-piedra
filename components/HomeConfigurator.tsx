@@ -2177,6 +2177,7 @@ export default function HomeConfigurator() {
               <PasoDecision
                 opciones={fachadasDecision}
                 etiquetaOtras="Fachadas disponibles"
+                exclusivo
                 tituloPanel="Fachada elegida"
                 vacioPanel="Ninguna seleccionada. Elige una de la lista."
               />
@@ -2205,6 +2206,7 @@ export default function HomeConfigurator() {
                 <PasoDecision
                   opciones={gamasDecision}
                   etiquetaOtras="Gamas disponibles"
+                  exclusivo
                   tituloPanel="Gama elegida"
                   vacioPanel="Ninguna seleccionada. Elige una de la lista."
                 />
