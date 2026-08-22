@@ -106,7 +106,7 @@ export function FilaOpcion({
       ) : null}
       <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '12.5px' }}>{nombre}</span>
       {estado ? (
-        <span style={{ flex: 'none', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9.5px', color: '#8A8F91', textTransform: 'uppercase' }}>{estado}</span>
+        <span style={{ flex: 'none', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9.5px', color: '#5C6163', textTransform: 'uppercase' }}>{estado}</span>
       ) : null}
       {/* La franja solo se ofrece si la fila se puede tocar: prometer un "+"
           que no va a pasar nada es peor que no ofrecerlo. */}
@@ -132,43 +132,14 @@ export function FilaOpcion({
   );
 }
 
-/**
- * Columna derecha de "lo que llevas elegido". Cuando cambia la elección, una
- * franja carmín barre la tarjeta y detrás queda el dato nuevo — es el acuse de
- * recibo del prototipo.
- */
-export function PanelElegido({
-  titulo,
-  vacio,
-  clave,
-  children,
-}: {
-  titulo: string;
-  /** Qué decir cuando todavía no hay nada elegido. */
-  vacio: string;
-  /** Cambiar este valor dispara el barrido. */
-  clave: string | null;
-  children?: ReactNode;
-}) {
-  const sweep = useAnimacionAlterna(clave, 'fxSweepA', 'fxSweepB');
-  const texto = useAnimacionAlterna(clave, 'fxTextA', 'fxTextB');
+/* `PanelElegido` vivía aquí: la columna derecha de "lo que llevas elegido" en
+   los pasos de elección única. Se quitó porque solo repetía el nombre que la
+   tarjeta de foco ya muestra en grande a menos de 100px de distancia. El
+   acuse de la elección ya lo da la propia fila, que se cubre de carmín.
 
-  return (
-    <div className="lgp-panel-elegido" style={{ width: '230px', flex: 'none', borderLeft: '1px solid #E4E1DD', paddingLeft: '20px', alignSelf: 'stretch' }}>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#A9ADAF', textTransform: 'uppercase', marginBottom: '10px' }}>{titulo}</div>
-      {clave ? (
-        <div style={{ position: 'relative', overflow: 'hidden', background: '#fff', border: '1px solid #EAE7E3', padding: '12px 14px' }}>
-          {sweep ? <span className="lgp-sweep" style={{ position: 'absolute', inset: 0, background: '#F2004B', animation: `${sweep} .75s cubic-bezier(.65,0,.35,1) both` }} /> : null}
-          <div className="lgp-sweep-texto" style={{ position: 'relative', animation: texto ? `${texto} .75s ease both` : undefined }}>
-            {children}
-          </div>
-        </div>
-      ) : (
-        <div style={{ fontSize: '12px', color: '#A9ADAF', lineHeight: 1.5 }}>{vacio}</div>
-      )}
-    </div>
-  );
-}
+   `ZonasPanel` conserva su propia columna con la clase `.lgp-panel-elegido`:
+   ahí no es redundante, porque lista varias zonas puestas a la vez y no hay
+   ninguna tarjeta de foco que las repita. */
 
 /** Cifra de ft² que entra rebotando, con su regla debajo. */
 export function CifraFt2({ etiqueta, valor, color, clave }: { etiqueta: string; valor: string; color: string; clave: string | null }) {
@@ -178,7 +149,7 @@ export function CifraFt2({ etiqueta, valor, color, clave }: { etiqueta: string; 
   return (
     <div className="lgp-paso-anim" style={{ display: 'inline-flex', flexDirection: 'column', gap: '4px', animation: entra ? `${entra} .35s ease both` : undefined }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px' }}>
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#A9ADAF', textTransform: 'uppercase' }}>{etiqueta}</span>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase' }}>{etiqueta}</span>
         <span style={{ display: 'inline-block', fontWeight: 800, fontSize: '15px', letterSpacing: '-0.01em', color, animation: numero ? `${numero} .45s cubic-bezier(.22,1,.36,1) both` : undefined }}>{valor}</span>
       </div>
       <span style={{ display: 'block', height: '2px', background: color, transformOrigin: 'left center', animation: regla ? `${regla} .45s cubic-bezier(.22,1,.36,1) both` : undefined }} />

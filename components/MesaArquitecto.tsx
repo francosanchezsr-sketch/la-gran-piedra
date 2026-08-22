@@ -2,9 +2,9 @@
 
 import FloorplanDiagram from '@/components/FloorplanDiagram';
 import type { PlanDiagramKey } from '@/components/FloorplanDiagram';
-import { FachadaIcon, ModuloIcon } from '@/components/ConfigIcons';
+import { ModuloIcon } from '@/components/ConfigIcons';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
-import { RENDER_PLAN, ICONO_ZONA } from '@/lib/assets';
+import { RENDER_PLAN, RENDER_FACHADA_MINI, ICONO_ZONA } from '@/lib/assets';
 
 export type ZonaEnMesa = { iconKey: string; nombre: string; razon: string | null };
 
@@ -51,7 +51,7 @@ function Hoja({
 
 function Rotulo({ children, tam = '1.15cqw' }: { children: React.ReactNode; tam?: string }) {
   return (
-    <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: tam, letterSpacing: '0.12em', color: '#A9ADAF', textTransform: 'uppercase', lineHeight: 1.5 }}>
+    <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: tam, letterSpacing: '0.12em', color: '#6E7375', textTransform: 'uppercase', lineHeight: 1.5 }}>
       {children}
     </div>
   );
@@ -60,7 +60,7 @@ function Rotulo({ children, tam = '1.15cqw' }: { children: React.ReactNode; tam?
 export default function MesaArquitecto({
   planKey, planNombre, planMeta,
   loteId, loteMedida,
-  fachadaKey, fachadaNombre,
+  fachadaKey, fachadaNombre, fachadaFija,
   interior,
   zonas,
   brief,
@@ -74,6 +74,8 @@ export default function MesaArquitecto({
   loteMedida: string;
   fachadaKey: string | null;
   fachadaNombre: string;
+  /** El lote la trae puesta: la hoja se muestra igual, pero sin maqueta. */
+  fachadaFija?: boolean;
   interior: { nombre: string; c1: string; c2: string; c3: string } | null;
   zonas: ZonaEnMesa[];
   brief: string;
@@ -199,12 +201,12 @@ export default function MesaArquitecto({
           <span style={{ fontFamily: 'Archivo, sans-serif', fontWeight: 800, fontSize: '2.6cqw', letterSpacing: '-0.01em', color: '#1C1E1F' }}>
             {ft2Living.toLocaleString('es-MX')}
           </span>
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '1.1cqw', letterSpacing: '0.08em', color: '#8A8F91', textTransform: 'uppercase' }}>ft² habitables</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '1.1cqw', letterSpacing: '0.08em', color: '#5C6163', textTransform: 'uppercase' }}>ft² habitables</span>
         </div>
         <div style={{ marginTop: '0.7cqw', fontFamily: "'IBM Plex Mono', monospace", fontSize: '1.15cqw', letterSpacing: '0.05em', color: '#505759', textTransform: 'uppercase' }}>
           {recamaras} rec · {banos} baños · {ft2Total.toLocaleString('es-MX')} ft² construidos
         </div>
-        <div style={{ marginTop: '0.5cqw', fontFamily: "'IBM Plex Mono', monospace", fontSize: '1.05cqw', color: '#A9ADAF' }}>{loteMedida}</div>
+        <div style={{ marginTop: '0.5cqw', fontFamily: "'IBM Plex Mono', monospace", fontSize: '1.05cqw', color: '#6E7375' }}>{loteMedida}</div>
       </Hoja>
 
       {/* Muestras de color, como abanico de pinturas */}
@@ -223,14 +225,26 @@ export default function MesaArquitecto({
       ) : null}
 
       {/* Fachada: al margen del plano, no encima de su cajetín */}
-      {fachadaKey ? (
+      {/* Con la fachada fija la hoja se queda: que no aparezca se leería como
+          que la casa no tiene fachada, no como que ya viene definida. */}
+      {fachadaKey || fachadaFija ? (
         <Hoja left="76%" top="76%" width="20%" rot={2.8} z={42} sombra="baja" padding="1cqw 1.2cqw 1.2cqw">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1cqw' }}>
-            <FachadaIcon styleKey={fachadaKey} size={22} />
+            {/* La mini, no la grande: en la mesa esta ficha mide unos 35 px. */}
+            {fachadaKey && RENDER_FACHADA_MINI[fachadaKey] ? (
+              <img
+                src={RENDER_FACHADA_MINI[fachadaKey]}
+                alt=""
+                aria-hidden="true"
+                style={{ width: '4cqw', height: '4cqw', flex: 'none', objectFit: 'contain', display: 'block' }}
+              />
+            ) : null}
             <div style={{ minWidth: 0 }}>
               <Rotulo tam="1cqw">Fachada</Rotulo>
-              <div style={{ fontFamily: 'Archivo, sans-serif', fontWeight: 800, fontSize: '1.15cqw', letterSpacing: '0.05em', textTransform: 'uppercase', color: '#1C1E1F', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {fachadaNombre}
+              {/* Sin estilo elegido el texto es una frase, no un nombre: se le
+                  deja pasar de renglón en vez de cortarlo con puntos. */}
+              <div style={{ fontFamily: 'Archivo, sans-serif', fontWeight: 800, fontSize: '1.15cqw', letterSpacing: '0.05em', textTransform: 'uppercase', color: '#1C1E1F', lineHeight: 1.25, ...(fachadaKey ? { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : null) }}>
+                {fachadaKey ? fachadaNombre : 'De la subdivisión'}
               </div>
             </div>
           </div>
@@ -248,7 +262,7 @@ export default function MesaArquitecto({
       ) : null}
 
       {sobran > 0 ? (
-        <div style={{ position: 'absolute', right: '2.5%', bottom: '2%', zIndex: 50, fontFamily: "'IBM Plex Mono', monospace", fontSize: '1.1cqw', letterSpacing: '0.08em', color: '#8A8F91', textTransform: 'uppercase' }}>
+        <div style={{ position: 'absolute', right: '2.5%', bottom: '2%', zIndex: 50, fontFamily: "'IBM Plex Mono', monospace", fontSize: '1.1cqw', letterSpacing: '0.08em', color: '#5C6163', textTransform: 'uppercase' }}>
           +{sobran} zona{sobran > 1 ? 's' : ''} más en la ficha
         </div>
       ) : null}

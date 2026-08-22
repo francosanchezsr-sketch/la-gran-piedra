@@ -1,23 +1,38 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+
+import { useVentanaModal } from '@/lib/useVentanaModal';
+
+// La hoja aterriza a los 780ms, pero el canto levantado espera 540 y tarda otros
+// 400 en cerrarse: la fase no puede acabar antes que la última pieza del gesto,
+// o el nodo se desmontaría con la esquina todavía a medio bajar.
+const MS_ENTRADA = 940;
+// El cierre son dos gestos encadenados: la hoja se dobla sobre sí misma (340ms)
+// y a los 180 empieza el tirón que se la lleva (380 más). Total 560. Desmontarla
+// antes la cortaría a media huida y volvería a parecer un parpadeo, que es justo
+// lo que se quitó.
+const MS_SALIDA = 560;
+
+function prefiereMenosMovimiento() {
+  return typeof window !== 'undefined'
+    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+}
 
 /**
  * La ventana donde vive "Personaliza tu casa". Ocupa la pantalla entera y tapa
  * el sitio: mientras el cliente arma su casa no hay hero, ni FAQ, ni barra de
  * navegación compitiendo por su atención.
  *
- * Los modales que ya existían fallaban en todo lo que un modal tiene que
- * cumplir, así que aquí se resuelve de una vez:
+ * Foco, Escape, `inert`, scroll de fondo y gesto de "atrás" los resuelve
+ * `useVentanaModal`, que es el único sitio donde viven esas reglas. Lo que este
+ * componente aporta encima es su puesta en escena —la hoja que alguien pone
+ * sobre el escritorio, en `globals.css`— y la caja con cabecera y pie.
  *
- *  - Escape cierra.
- *  - El foco entra al abrir y no se sale mientras esté abierta.
- *  - Al cerrar, el foco vuelve a donde estaba.
- *  - El fondo no hace scroll.
- *  - Anunciada como diálogo para lectores de pantalla.
- *  - El botón/gesto de "atrás" del teléfono cierra la ventana en vez de sacar
- *    al cliente del sitio. Sin esto, un deslizamiento en el paso 5 le borra
- *    todo el trabajo — y en Android es el gesto más usado que existe.
+ * La puesta en escena es de una sola capa: la ventana misma se posa. El telón
+ * carmín que vivía aquí necesitaba una segunda capa por encima para tapar el
+ * momento en que el contenido se materializaba detrás; una hoja que se posa no
+ * tapa nada, así que ese nodo desapareció con él.
  */
 export default function VentanaEnfocada({
   abierto,
@@ -36,120 +51,93 @@ export default function VentanaEnfocada({
   pie?: ReactNode;
 }) {
   const cajaRef = useRef<HTMLDivElement | null>(null);
-  const focoPrevioRef = useRef<HTMLElement | null>(null);
-  // Distingue un cierre nuestro de uno provocado por el botón atrás, para no
-  // sacar dos entradas del historial por el mismo cierre.
-  const cerrandoPorHistorialRef = useRef(false);
-  // `onCerrar` suele llegar como función nueva en cada render. Si los efectos
-  // dependieran de ella, se desmontarían y volverían a montar constantemente —
-  // y como la limpieza del efecto de historial llama a `history.back()`, la
-  // ventana se cerraba sola al primer re-render.
-  const onCerrarRef = useRef(onCerrar);
-  onCerrarRef.current = onCerrar;
+  // --- Fases de apertura y cierre ------------------------------------------
+  // La ventana sigue montada mientras sale: si se desmontara con `abierto`,
+  // no habría nada a lo que animarle la salida y se cortaría en seco.
+  const [montado, setMontado] = useState(abierto);
+  const [fase, setFase] = useState<'entra' | 'abierto' | 'sale'>(abierto ? 'abierto' : 'sale');
 
-  // --- Bloqueo del scroll de fondo -----------------------------------------
   useEffect(() => {
-    if (!abierto) return;
-    const previo = document.body.style.overflow;
-    const previoTouch = document.body.style.touchAction;
-    document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
-    return () => {
-      document.body.style.overflow = previo;
-      document.body.style.touchAction = previoTouch;
-    };
+    const sinMovimiento = prefiereMenosMovimiento();
+    if (abierto) {
+      setMontado(true);
+      if (sinMovimiento) { setFase('abierto'); return; }
+      setFase('entra');
+      const t = setTimeout(() => setFase('abierto'), MS_ENTRADA);
+      return () => clearTimeout(t);
+    }
+    if (!montado) return;
+    if (sinMovimiento) { setMontado(false); return; }
+    setFase('sale');
+    const t = setTimeout(() => setMontado(false), MS_SALIDA);
+    return () => clearTimeout(t);
+    // `montado` se lee pero no se observa a propósito: incluirlo relanzaría el
+    // efecto en cuanto lo cambiamos y volvería a programar el mismo cierre.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto]);
 
-  // --- Atrás del navegador y del teléfono ----------------------------------
-  useEffect(() => {
-    if (!abierto) return;
-    window.history.pushState({ lgpVentana: true }, '');
-    const alVolver = () => {
-      cerrandoPorHistorialRef.current = true;
-      onCerrarRef.current();
-    };
-    window.addEventListener('popstate', alVolver);
-    return () => {
-      window.removeEventListener('popstate', alVolver);
-      // Si se cerró con la ✕ o con Escape, la entrada que empujamos sigue en el
-      // historial y hay que sacarla; si se cerró con "atrás", el navegador ya
-      // la sacó él solo.
-      if (cerrandoPorHistorialRef.current) {
-        cerrandoPorHistorialRef.current = false;
-      } else if (window.history.state?.lgpVentana) {
-        window.history.back();
-      }
-    };
-  }, [abierto]);
+  // Foco, Escape, contención de Tab, `inert` del fondo, scroll bloqueado y el
+  // gesto de "atrás" del teléfono: todo vive en el hook, compartido con el
+  // visor de fotos de "La obra".
+  useVentanaModal({ abierto, montado, cajaRef, onCerrar });
 
-  // --- Escape, trampa de foco y devolución del foco ------------------------
-  useEffect(() => {
-    if (!abierto) return;
-    focoPrevioRef.current = document.activeElement as HTMLElement | null;
-
-    const enfocables = () =>
-      Array.from(
-        cajaRef.current?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        ) ?? [],
-      ).filter((e) => !e.hasAttribute('disabled') && e.offsetParent !== null);
-
-    // El primer foco va a la caja, no al primer botón: leerle "Cerrar" a
-    // alguien que acaba de abrir la ventana no le dice dónde está.
-    cajaRef.current?.focus();
-
-    const alTeclear = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onCerrarRef.current();
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      const lista = enfocables();
-      if (!lista.length) return;
-      const primero = lista[0];
-      const ultimo = lista[lista.length - 1];
-      const activo = document.activeElement;
-      if (e.shiftKey && (activo === primero || activo === cajaRef.current)) {
-        e.preventDefault();
-        ultimo.focus();
-      } else if (!e.shiftKey && activo === ultimo) {
-        e.preventDefault();
-        primero.focus();
-      }
-    };
-
-    document.addEventListener('keydown', alTeclear);
-    return () => {
-      document.removeEventListener('keydown', alTeclear);
-      focoPrevioRef.current?.focus?.();
-    };
-  }, [abierto]);
-
-  if (!abierto) return null;
+  if (!montado) return null;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={etiqueta}
-      style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', flexDirection: 'column', background: '#FBFBFA' }}
+      // Sin fondo propio: el papel es la HOJA, no el marco. Mientras el fondo
+      // vivía aquí, al abrir aparecía de golpe un muro opaco a pantalla
+      // completa y la hoja se desvanecía encima — ese era el parpadeo en
+      // blanco. Ahora detrás está la página, que es la mesa sobre la que cae.
+      style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', flexDirection: 'column' }}
     >
       <div
         ref={cajaRef}
         tabIndex={-1}
         className="lgp-ventana"
-        style={{ display: 'flex', flexDirection: 'column', height: '100%', outline: 'none' }}
+        data-fase={fase}
+        style={{ display: 'flex', flexDirection: 'column', height: '100%', outline: 'none', position: 'relative', background: '#FBFBFA' }}
       >
+        {/* Las dos capas de la puesta en escena. Solo existen mientras dura el
+            movimiento: con la ventana ya abierta no pintan nada y se llevarían
+            por delante los clics de la esquina inferior derecha aunque fueran
+            invisibles, así que se desmontan en vez de quedarse en opacidad 0.
+
+            Van dentro de la caja para heredar su transformación: así viajan con
+            la hoja sin que haya que duplicarles la animación, que es el tipo de
+            duplicado que acaba desincronizándose al tocar un número. */}
+        {fase === 'abierto' ? null : <span className="lgp-hoja-sombra" aria-hidden="true" />}
+
+        {/* El dorso de la hoja. Solo existe al cerrar: es la cara de atrás que
+            va quedando a la vista mientras el pliegue barre la hoja entera. */}
+        {fase === 'sale' ? <span className="lgp-hoja-dorso" aria-hidden="true" /> : null}
+
+        {/* El canto doblado se queda toda la sesión: es el dorso carmín de la
+            hoja y, desde que la esquina está levantada, el sitio por donde se
+            despega. Cierra la ventana igual que el "CERRAR ✕" de la cabecera,
+            que sigue ahí — un triángulo de color no dice por sí solo lo que
+            hace, y la salida tiene que estar escrita con palabras además de
+            insinuada. */}
+        <button
+          type="button"
+          className="lgp-hoja-canto"
+          onClick={onCerrar}
+          aria-label="Cerrar"
+          title="Cerrar"
+        />
+
         {cabecera ? (
-          <div style={{ flex: 'none', borderBottom: '1px solid #EAE7E3', background: '#fff' }}>{cabecera}</div>
+          <div className="lgp-ventana-cabecera" style={{ flex: 'none', borderBottom: '1px solid #EAE7E3', background: '#fff' }}>{cabecera}</div>
         ) : null}
 
         {/* El paso ocupa lo que queda y se resuelve aquí dentro. El scroll
             interno es una válvula: en una pantalla de 320 px algo siempre se
             sale, y dejarlo inalcanzable sería peor que dejarlo desplazable.
             El `overflow` vive en la hoja de estilos, no aquí: en línea le
-            ganaría a la regla que lo bloquea durante la guía del paso 4. */}
+            ganaría a la regla que lo bloquea durante la guía del paso 3. */}
         <div className="lgp-ventana-cuerpo" style={{ flex: 1, minHeight: 0, overscrollBehavior: 'contain' }}>
           {children}
         </div>

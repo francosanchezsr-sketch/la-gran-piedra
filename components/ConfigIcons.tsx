@@ -177,41 +177,8 @@ export function ModuloIcon({ moduleKey, size, color }: { moduleKey: string; size
   return <Icon size={size} color={color} />;
 }
 
-const FACHADA_ICONS: Record<string, (p: IconProps) => ReactElement> = {
-  esc: ({ size = 40, color = '#8A8F91' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.4} {...base}>
-      <path d="M3 9.5h18" />
-      <rect x="3" y="9.5" width="18" height="9.5" />
-      <rect x="7.5" y="12.5" width="6.5" height="6.5" />
-    </svg>
-  ),
-  farm: ({ size = 40, color = '#8A8F91' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.4} {...base}>
-      <path d="M4 10 12 4l8 6" />
-      <rect x="5" y="10" width="14" height="9" />
-      <path d="M12 10v9" />
-    </svg>
-  ),
-  piedra: ({ size = 40, color = '#8A8F91' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.4} {...base}>
-      <path d="M4 10 12 4l8 6" />
-      <rect x="5" y="10" width="14" height="9" />
-      <path d="M7 14.3h3M11.3 14.3h3M15.6 14.3h2.4" />
-      <path d="M7 17h3.6M12 17h3.6" />
-    </svg>
-  ),
-  negro: ({ size = 40, color = '#8A8F91' }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" stroke={color} strokeWidth={1.4} {...base}>
-      <path d="M3 9.5h18" />
-      <rect x="3" y="9.5" width="18" height="9.5" />
-      <path d="M14 9.5v9.5" />
-      <path d="M15.2 10.7l4 4M19.2 10.7l-4 4" />
-    </svg>
-  ),
-};
-
-export function FachadaIcon({ styleKey, size, color }: { styleKey: string; size?: number; color?: string }) {
-  const Icon = FACHADA_ICONS[styleKey];
-  if (!Icon) return null;
-  return <Icon size={size} color={color} />;
-}
+/* Aquí vivían los cuatro pictogramas de fachada (`FachadaIcon`). Se quitaron:
+   dibujados a línea, los cuatro estilos salían casi idénticos —un rectángulo
+   con techo— y no dejaban ver lo que de verdad los distingue, que es el
+   volumen. En su lugar van las maquetas isométricas de `RENDER_FACHADA`
+   (`lib/assets.ts`). */

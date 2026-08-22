@@ -25,7 +25,7 @@ export const LOTES = [
 export type LoteTipo = 'townhouse' | 'libre';
 
 // Un lote puede venir del catálogo (readonly, con `as const`) o de un plano que
-// el usuario subió en el paso 1 — por eso el tipo es estructural, no derivado.
+// el usuario subió en la pantalla previa — por eso el tipo es estructural.
 export type Lote = {
   id: string;
   x: number; y: number; w: number; h: number;
@@ -50,6 +50,15 @@ export const REGLAS_LOTE: Record<LoteTipo, {
   planes: string[];
   zonasBloqueadas: string[];
   motivo: string;
+  /**
+   * En townhouse la fachada tampoco se elige: la subdivisión la trae ya
+   * definida y aprobada, igual que el floorplan. Con esto el paso de fachada
+   * desaparece del recorrido en vez de mostrarse apagado — un paso entero en
+   * gris que nunca se puede tocar es peor que no tenerlo.
+   */
+  fachadaFija: boolean;
+  /** Por qué no se elige. La UI nunca apaga algo sin decir esto. */
+  motivoFachada: string;
 }> = {
   townhouse: {
     // La casa viene diseñada por default; el floorplan no se elige.
@@ -58,11 +67,15 @@ export const REGLAS_LOTE: Record<LoteTipo, {
     // los admita en un lote de 32.5'–33' de frente pegado a sus vecinos.
     zonasBloqueadas: ['alberca', 'masterpatio'],
     motivo: 'No permitido por reglas de la subdivisión en lotes townhouse',
+    fachadaFija: true,
+    motivoFachada: 'La casa del townhouse se entrega con su fachada ya diseñada y aprobada por la subdivisión',
   },
   libre: {
     planes: ['B', 'C', 'D'],
     zonasBloqueadas: [],
     motivo: '',
+    fachadaFija: false,
+    motivoFachada: '',
   },
 };
 
@@ -77,151 +90,21 @@ export const SUBDIVISIONES = [
     direccion: 'S.H. 107, McAllen, TX 78504',
     totalLotes: 119,
     lotes: LOTES,
-    // Foto de la entrada, para la tarjeta de "Lugares disponibles". Falta el
-    // archivo real — el componente cae a un marcador visible mientras tanto.
-    foto: '/subdivision/enclave-entrada.jpg',
+    // Las imágenes de la tarjeta de "Lugares disponibles", en orden.
+    //
+    // El `tipo` no es decorativo: gobierna el rótulo. La foto de acceso es obra
+    // real y no lleva ninguno; el render sí, y dice que es un render. La sección
+    // vecina promete "sin render que prometa lo que no se entrega", así que una
+    // imagen sintética sin marcar aquí contradiría al sitio dos pantallas más
+    // abajo. Quien añada una imagen aquí declara qué es.
+    imagenes: [
+      { src: '/subdivision/enclave-entrada.jpg', alt: 'Acceso de Enclave on 107', tipo: 'foto' },
+      { src: '/subdivision/casa-modelo-render.jpg', alt: 'Render del townhouse modelo de Enclave on 107: fachadas en madera, estuco blanco y cochera negra', tipo: 'render' },
+    ],
   },
 ] as const;
 
 export type SubdivisionKey = (typeof SUBDIVISIONES)[number]['key'];
-
-// Trazo del plat de Enclave on 107 (119 lotes), calcado sobre las
-// proporciones reales del levantamiento (rectángulo de 600.16' E-O x
-// 1181.23' N-S, según los rumbos del perímetro en la hoja 1). Cada lote recto
-// conserva su frente/fondo real en pies (33'x100' en las columnas exteriores,
-// 32.5'x80' en las columnas interiores); los 14 lotes de los dos cul-de-sac
-// (36-49) se trazan como cuñas radiales alrededor de los bulbos de retorno
-// (R50'), tal como se ven en el plat, en vez de aproximarse con rectángulos.
-// Los 8 lotes de entrada (1-8) siguen la curva de acceso cerca del P.O.B.
-// Los 8 lotes de LOTES (73-76, 116-119) se muestran interactivos sobre este
-// mismo mapa; el resto solo aparece con su número, de referencia.
-export const PLAT_VIEWBOX = { w: 600, h: 1181 };
-
-export type PlatLot =
-  | { num: number; kind: 'rect'; x: number; y: number; w: number; h: number; rot?: number }
-  | { num: number; kind: 'wedge'; d: string; lx: number; ly: number };
-
-export const PLAT_ENCLAVE107: PlatLot[] = [
-  { num: 1, kind: 'rect', x: 80, y: 1135, w: 58, h: 32, rot: -10 },
-  { num: 2, kind: 'rect', x: 145, y: 1140, w: 58, h: 32, rot: -6 },
-  { num: 3, kind: 'rect', x: 210, y: 1143, w: 58, h: 32, rot: -3 },
-  { num: 4, kind: 'rect', x: 275, y: 1145, w: 58, h: 32, rot: -1 },
-  { num: 5, kind: 'rect', x: 340, y: 1145, w: 58, h: 32, rot: 1 },
-  { num: 6, kind: 'rect', x: 405, y: 1143, w: 58, h: 32, rot: 3 },
-  { num: 7, kind: 'rect', x: 470, y: 1140, w: 58, h: 32, rot: 6 },
-  { num: 8, kind: 'rect', x: 535, y: 1135, w: 58, h: 32, rot: 10 },
-  { num: 9, kind: 'rect', x: 460, y: 1063, w: 100, h: 31.5 },
-  { num: 10, kind: 'rect', x: 460, y: 1030, w: 100, h: 31.5 },
-  { num: 11, kind: 'rect', x: 460, y: 997, w: 100, h: 31.5 },
-  { num: 12, kind: 'rect', x: 460, y: 964, w: 100, h: 31.5 },
-  { num: 13, kind: 'rect', x: 460, y: 931, w: 100, h: 31.5 },
-  { num: 14, kind: 'rect', x: 460, y: 898, w: 100, h: 31.5 },
-  { num: 15, kind: 'rect', x: 460, y: 865, w: 100, h: 31.5 },
-  { num: 16, kind: 'rect', x: 460, y: 832, w: 100, h: 31.5 },
-  { num: 17, kind: 'rect', x: 460, y: 799, w: 100, h: 31.5 },
-  { num: 18, kind: 'rect', x: 460, y: 766, w: 100, h: 31.5 },
-  { num: 19, kind: 'rect', x: 460, y: 733, w: 100, h: 31.5 },
-  { num: 20, kind: 'rect', x: 460, y: 700, w: 100, h: 31.5 },
-  { num: 21, kind: 'rect', x: 460, y: 667, w: 100, h: 31.5 },
-  { num: 22, kind: 'rect', x: 460, y: 634, w: 100, h: 31.5 },
-  { num: 23, kind: 'rect', x: 460, y: 601, w: 100, h: 31.5 },
-  { num: 24, kind: 'rect', x: 460, y: 568, w: 100, h: 31.5 },
-  { num: 25, kind: 'rect', x: 460, y: 535, w: 100, h: 31.5 },
-  { num: 26, kind: 'rect', x: 460, y: 502, w: 100, h: 31.5 },
-  { num: 27, kind: 'rect', x: 460, y: 469, w: 100, h: 31.5 },
-  { num: 28, kind: 'rect', x: 460, y: 436, w: 100, h: 31.5 },
-  { num: 29, kind: 'rect', x: 460, y: 403, w: 100, h: 31.5 },
-  { num: 30, kind: 'rect', x: 460, y: 370, w: 100, h: 31.5 },
-  { num: 31, kind: 'rect', x: 460, y: 337, w: 100, h: 31.5 },
-  { num: 32, kind: 'rect', x: 460, y: 304, w: 100, h: 31.5 },
-  { num: 33, kind: 'rect', x: 460, y: 271, w: 100, h: 31.5 },
-  { num: 34, kind: 'rect', x: 460, y: 238, w: 100, h: 31.5 },
-  { num: 35, kind: 'rect', x: 460, y: 205, w: 100, h: 31.5 },
-  { num: 36, kind: 'wedge', d: 'M 366.3 148.9 L 442.1 123.2 A 130 130 0 0 1 448.5 176.3 L 368.8 169.4 A 50 50 0 0 0 366.3 148.9 Z', lx: 408.4, ly: 154.2 },
-  { num: 37, kind: 'wedge', d: 'M 355.9 131.2 L 414.8 77.2 A 130 130 0 0 1 442.1 123.2 L 366.3 148.9 A 50 50 0 0 0 355.9 131.2 Z', lx: 396.4, ly: 119.2 },
-  { num: 38, kind: 'wedge', d: 'M 339.1 119.2 L 371.4 46.0 A 130 130 0 0 1 414.8 77.2 L 355.9 131.2 A 50 50 0 0 0 339.1 119.2 Z', lx: 371.4, ly: 91.8 },
-  { num: 39, kind: 'wedge', d: 'M 319.0 115.0 L 319.0 35.0 A 130 130 0 0 1 371.4 46.0 L 339.1 119.2 A 50 50 0 0 0 319.0 115.0 Z', lx: 337.5, ly: 76.9 },
-  { num: 40, kind: 'wedge', d: 'M 298.9 119.2 L 266.6 46.0 A 130 130 0 0 1 319.0 35.0 L 319.0 115.0 A 50 50 0 0 0 298.9 119.2 Z', lx: 300.5, ly: 76.9 },
-  { num: 41, kind: 'wedge', d: 'M 282.1 131.2 L 223.2 77.2 A 130 130 0 0 1 266.6 46.0 L 298.9 119.2 A 50 50 0 0 0 282.1 131.2 Z', lx: 266.6, ly: 91.8 },
-  { num: 42, kind: 'wedge', d: 'M 271.7 148.9 L 195.9 123.2 A 130 130 0 0 1 223.2 77.2 L 282.1 131.2 A 50 50 0 0 0 271.7 148.9 Z', lx: 241.6, ly: 119.2 },
-  { num: 43, kind: 'wedge', d: 'M 269.2 169.4 L 189.5 176.3 A 130 130 0 0 1 195.9 123.2 L 271.7 148.9 A 50 50 0 0 0 269.2 169.4 Z', lx: 229.6, ly: 154.2 },
-  { num: 44, kind: 'wedge', d: 'M 261.2 145.9 L 335.1 115.3 A 130 130 0 0 1 344.5 176.3 L 264.8 169.4 A 50 50 0 0 0 261.2 145.9 Z', lx: 304, ly: 151.3 },
-  { num: 45, kind: 'wedge', d: 'M 247.1 126.7 L 298.6 65.4 A 130 130 0 0 1 335.1 115.3 L 261.2 145.9 A 50 50 0 0 0 247.1 126.7 Z', lx: 287.6, ly: 111.8 },
-  { num: 46, kind: 'wedge', d: 'M 225.8 116.2 L 243.1 38.1 A 130 130 0 0 1 298.6 65.4 L 247.1 126.7 A 50 50 0 0 0 225.8 116.2 Z', lx: 254.8, ly: 84.3 },
-  { num: 47, kind: 'wedge', d: 'M 202.1 116.7 L 181.4 39.4 A 130 130 0 0 1 243.1 38.1 L 225.8 116.2 A 50 50 0 0 0 202.1 116.7 Z', lx: 213, ly: 75 },
-  { num: 48, kind: 'wedge', d: 'M 181.2 128.1 L 127.2 69.2 A 130 130 0 0 1 181.4 39.4 L 202.1 116.7 A 50 50 0 0 0 181.2 128.1 Z', lx: 171.7, ly: 86.1 },
-  { num: 49, kind: 'wedge', d: 'M 168.0 147.9 L 92.8 120.5 A 130 130 0 0 1 127.2 69.2 L 181.2 128.1 A 50 50 0 0 0 168.0 147.9 Z', lx: 140.2, ly: 115 },
-  { num: 50, kind: 'rect', x: 279, y: 228, w: 80, h: 31 },
-  { num: 51, kind: 'rect', x: 279, y: 260.5, w: 80, h: 31 },
-  { num: 52, kind: 'rect', x: 279, y: 293, w: 80, h: 31 },
-  { num: 53, kind: 'rect', x: 279, y: 325.5, w: 80, h: 31 },
-  { num: 54, kind: 'rect', x: 279, y: 358, w: 80, h: 31 },
-  { num: 55, kind: 'rect', x: 279, y: 390.5, w: 80, h: 31 },
-  { num: 56, kind: 'rect', x: 279, y: 423, w: 80, h: 31 },
-  { num: 57, kind: 'rect', x: 279, y: 455.5, w: 80, h: 31 },
-  { num: 58, kind: 'rect', x: 279, y: 488, w: 80, h: 31 },
-  { num: 59, kind: 'rect', x: 279, y: 520.5, w: 80, h: 31 },
-  { num: 60, kind: 'rect', x: 279, y: 553, w: 80, h: 31 },
-  { num: 61, kind: 'rect', x: 279, y: 585.5, w: 80, h: 31 },
-  { num: 62, kind: 'rect', x: 279, y: 618, w: 80, h: 31 },
-  { num: 63, kind: 'rect', x: 279, y: 650.5, w: 80, h: 31 },
-  { num: 64, kind: 'rect', x: 279, y: 683, w: 80, h: 31 },
-  { num: 65, kind: 'rect', x: 279, y: 715.5, w: 80, h: 31 },
-  { num: 66, kind: 'rect', x: 279, y: 748, w: 80, h: 31 },
-  { num: 67, kind: 'rect', x: 279, y: 780.5, w: 80, h: 31 },
-  { num: 68, kind: 'rect', x: 279, y: 813, w: 80, h: 31 },
-  { num: 69, kind: 'rect', x: 279, y: 845.5, w: 80, h: 31 },
-  { num: 70, kind: 'rect', x: 279, y: 878, w: 80, h: 31 },
-  { num: 71, kind: 'rect', x: 279, y: 910.5, w: 80, h: 31 },
-  { num: 72, kind: 'rect', x: 279, y: 943, w: 80, h: 31 },
-  { num: 73, kind: 'rect', x: 175, y: 943, w: 80, h: 31 },
-  { num: 74, kind: 'rect', x: 175, y: 910.5, w: 80, h: 31 },
-  { num: 75, kind: 'rect', x: 175, y: 878, w: 80, h: 31 },
-  { num: 76, kind: 'rect', x: 175, y: 845.5, w: 80, h: 31 },
-  { num: 77, kind: 'rect', x: 175, y: 813, w: 80, h: 31 },
-  { num: 78, kind: 'rect', x: 175, y: 780.5, w: 80, h: 31 },
-  { num: 79, kind: 'rect', x: 175, y: 748, w: 80, h: 31 },
-  { num: 80, kind: 'rect', x: 175, y: 715.5, w: 80, h: 31 },
-  { num: 81, kind: 'rect', x: 175, y: 683, w: 80, h: 31 },
-  { num: 82, kind: 'rect', x: 175, y: 650.5, w: 80, h: 31 },
-  { num: 83, kind: 'rect', x: 175, y: 618, w: 80, h: 31 },
-  { num: 84, kind: 'rect', x: 175, y: 585.5, w: 80, h: 31 },
-  { num: 85, kind: 'rect', x: 175, y: 553, w: 80, h: 31 },
-  { num: 86, kind: 'rect', x: 175, y: 520.5, w: 80, h: 31 },
-  { num: 87, kind: 'rect', x: 175, y: 488, w: 80, h: 31 },
-  { num: 88, kind: 'rect', x: 175, y: 455.5, w: 80, h: 31 },
-  { num: 89, kind: 'rect', x: 175, y: 423, w: 80, h: 31 },
-  { num: 90, kind: 'rect', x: 175, y: 390.5, w: 80, h: 31 },
-  { num: 91, kind: 'rect', x: 175, y: 358, w: 80, h: 31 },
-  { num: 92, kind: 'rect', x: 175, y: 325.5, w: 80, h: 31 },
-  { num: 93, kind: 'rect', x: 175, y: 293, w: 80, h: 31 },
-  { num: 94, kind: 'rect', x: 175, y: 260.5, w: 80, h: 31 },
-  { num: 95, kind: 'rect', x: 175, y: 228, w: 80, h: 31 },
-  { num: 96, kind: 'rect', x: 40, y: 205, w: 100, h: 31.5 },
-  { num: 97, kind: 'rect', x: 40, y: 238, w: 100, h: 31.5 },
-  { num: 98, kind: 'rect', x: 40, y: 271, w: 100, h: 31.5 },
-  { num: 99, kind: 'rect', x: 40, y: 304, w: 100, h: 31.5 },
-  { num: 100, kind: 'rect', x: 40, y: 337, w: 100, h: 31.5 },
-  { num: 101, kind: 'rect', x: 40, y: 370, w: 100, h: 31.5 },
-  { num: 102, kind: 'rect', x: 40, y: 403, w: 100, h: 31.5 },
-  { num: 103, kind: 'rect', x: 40, y: 436, w: 100, h: 31.5 },
-  { num: 104, kind: 'rect', x: 40, y: 469, w: 100, h: 31.5 },
-  { num: 105, kind: 'rect', x: 40, y: 502, w: 100, h: 31.5 },
-  { num: 106, kind: 'rect', x: 40, y: 535, w: 100, h: 31.5 },
-  { num: 107, kind: 'rect', x: 40, y: 568, w: 100, h: 31.5 },
-  { num: 108, kind: 'rect', x: 40, y: 601, w: 100, h: 31.5 },
-  { num: 109, kind: 'rect', x: 40, y: 634, w: 100, h: 31.5 },
-  { num: 110, kind: 'rect', x: 40, y: 667, w: 100, h: 31.5 },
-  { num: 111, kind: 'rect', x: 40, y: 700, w: 100, h: 31.5 },
-  { num: 112, kind: 'rect', x: 40, y: 733, w: 100, h: 31.5 },
-  { num: 113, kind: 'rect', x: 40, y: 766, w: 100, h: 31.5 },
-  { num: 114, kind: 'rect', x: 40, y: 799, w: 100, h: 31.5 },
-  { num: 115, kind: 'rect', x: 40, y: 832, w: 100, h: 31.5 },
-  { num: 116, kind: 'rect', x: 40, y: 865, w: 100, h: 31.5 },
-  { num: 117, kind: 'rect', x: 40, y: 898, w: 100, h: 31.5 },
-  { num: 118, kind: 'rect', x: 40, y: 931, w: 100, h: 31.5 },
-  { num: 119, kind: 'rect', x: 40, y: 964, w: 100, h: 31.5 },
-] as const;
 
 // Floorplans. `living` es lo único que consume presupuesto; `total` es la
 // envolvente construida (living + garage + pórtico + patio + balcón) y solo se
@@ -267,7 +150,7 @@ export const PORCHE = 24;
 
 // Retiros (setbacks) por default. NO son el reglamento verificado de ninguna
 // ciudad: son valores de arranque razonables para lote residencial del Valle,
-// editables por el usuario en el paso 1. El cálculo de superficie construible
+// editables por el usuario en la pantalla previa. El cálculo de construible
 // sale de aquí, así que si el municipio pide otros hay que capturarlos.
 export const RETIROS_DEFAULT = { frente: 25, fondo: 20, lados: 6 };
 
@@ -290,17 +173,40 @@ export const EXTRAS = {
 } as const;
 
 export const FACHADAS = [
-  { key: 'esc', nombre: 'Escandinavo moderno', desc: 'Volumen blanco, ventanal corrido, alero mínimo.', slot: 'RENDER FACHADA A' },
-  { key: 'farm', nombre: 'Farm moderno', desc: 'Dos aguas marcadas, lámina negra, madera cálida.', slot: 'RENDER FACHADA B' },
-  { key: 'piedra', nombre: 'Piedra blanca', desc: 'Muro de piedra caliza local y estuco liso.', slot: 'RENDER FACHADA C' },
-  { key: 'negro', nombre: 'Híbrido negro', desc: 'Estuco carbón, celosía geométrica de concreto.', slot: 'RENDER FACHADA D' },
+  // Las `key` NO se renombran aunque el nombre visible sí: son lo que se guarda
+  // en localStorage, así que cambiarlas dejaría inservible la configuración a
+  // medias de cualquier cliente que vuelva. 'piedra' y 'negro' ya no describen
+  // su estilo, pero son identificadores, no texto de pantalla.
+  { key: 'esc', nombre: 'Escandinavo', desc: 'Volumen blanco, ventanal corrido, alero mínimo.', slot: 'RENDER FACHADA A' },
+  { key: 'farm', nombre: 'Farm style', desc: 'Dos aguas marcadas, lámina negra, madera cálida.', slot: 'RENDER FACHADA B' },
+  { key: 'piedra', nombre: 'Moderno', desc: 'Muro de piedra caliza local y estuco liso.', slot: 'RENDER FACHADA C' },
+  { key: 'negro', nombre: 'Mediterráneo', desc: 'Estuco carbón, celosía geométrica de concreto.', slot: 'RENDER FACHADA D' },
 ];
 
+// Paletas de interior. Son las seis que el cliente aprobó, y cada una tiene su
+// maqueta de cocina ya renderizada — la cocina es la vitrina donde se ve la
+// paleta, no el único cuarto al que aplica: de aquí salen carpintería, piedra y
+// piso de toda la casa.
+//
+// `key` es el `slug` de `scripts/cocina/paletas.js`, que es también el nombre
+// del archivo del sprite. Un solo identificador para el dato, la imagen y el
+// guardado en `localStorage`: si mañana se regenera una paleta, no hay dos
+// nombres que sincronizar.
+//
+// c1/c2/c3 son los tres materiales que definen la paleta de un vistazo
+// —gabinete, cubierta y piso—, extraídos de esos mismos hex. Es la muestra
+// preliminar de la fila; la maqueta es la que enseña el resultado.
+//
+// SUPUESTO VISIBLE: los hex vienen muestreados de los bocetos a color del
+// cliente, no de una carta de color suya. Los renders ya se aprobaron sobre esa
+// muestra, pero el valor exacto sigue pendiente de confirmar.
 export const INTERIORES = [
-  { key: 'nordico', nombre: 'Nórdico claro', desc: 'Roble blanqueado, lino, latón cepillado.', c1: '#F2F0EB', c2: '#D8D2C7', c3: '#505759' },
-  { key: 'calida', nombre: 'Piedra cálida', desc: 'Micro-cemento arena, nogal, textiles crudos.', c1: '#E8E1D6', c2: '#B8A894', c3: '#3A3733' },
-  { key: 'grafito', nombre: 'Grafito', desc: 'Grises profundos, acero negro, mármol veteado.', c1: '#D9D9D6', c2: '#6B6E70', c3: '#1C1E1F' },
-  { key: 'carmin', nombre: 'Acento carmín', desc: 'Base neutra con un solo golpe de color de marca.', c1: '#F5F2EF', c2: '#505759', c3: '#F2004B' },
+  { key: 'nogal-marmol', nombre: 'Nogal + Mármol Crema', desc: 'Nogal cálido, mármol crema veteado y loseta gris. Herrajes en negro mate.', c1: '#BD8E70', c2: '#EFE7DA', c3: '#9B9B9F' },
+  { key: 'nogal-oscuro-blanco', nombre: 'Nogal Oscuro + Blanco', desc: 'Nogal oscuro contra cuarzo blanco y loseta gris. Herrajes en negro mate.', c1: '#6B4726', c2: '#FAFAF8', c3: '#B9B9BC' },
+  { key: 'olivo-dorado', nombre: 'Verde Olivo + Dorado', desc: 'Verde olivo con cuarzo crema, duela de madera y herrajes en dorado cepillado.', c1: '#6E7458', c2: '#DCD3C4', c3: '#A97E56' },
+  { key: 'crema-laton', nombre: 'Crema + Latón', desc: 'Tono sobre tono: gabinete crema, cuarzo arena liso, duela y latón champagne.', c1: '#D5CEC2', c2: '#E2D9C6', c3: '#A97E56' },
+  { key: 'azul-acero-dorado', nombre: 'Azul Acero + Dorado', desc: 'Azul acero con cuarzo gris liso, duela de madera y herrajes dorados.', c1: '#6E88A8', c2: '#C9C9CB', c3: '#A97E56' },
+  { key: 'blanco-cuarzo-gris', nombre: 'Blanco + Cuarzo Gris', desc: 'Se invierte el esquema: el mueble es lo claro y la piedra lo oscuro. Herrajes negro mate.', c1: '#E2E0DC', c2: '#9B9B99', c3: '#CCCAC6' },
 ];
 
 type Modulo = {
@@ -337,7 +243,7 @@ export const MODULOS: Modulo[] = [
   { key: 'scullery', nombre: 'Walking pantry', corto: 'Walking pantry', rango: '8×10 – 10×12', area: '80–120', prop: '4:5', min: 80, nota: '' },
   { key: 'mudroom', nombre: 'Mudroom desde el garage', corto: 'Mudroom', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: '' },
   // 'rec2' se quitó del catálogo de zonas: las recámaras se suben y bajan con
-  // el contador del paso 4, y tenerlas también aquí eran dos formas distintas
+  // el contador del paso 3, y tenerlas también aquí eran dos formas distintas
   // de pedir lo mismo, con el mismo costo en ft².
   // Cuarto sin uso asignado: gym, visitas, taller, lo que el cliente decida.
   // Se dimensiona al mínimo de un cuarto habitable (70 ft², 7 ft en cualquier
@@ -370,6 +276,31 @@ export const FAQS = [
   { q: '¿Construyen fuera del Rio Grande Valley?', a: 'Hoy operamos en McAllen, Edinburg y Mission. Tenemos visión de crecer a otros mercados de Texas — si tu terreno está fuera del Valle, escríbenos y lo evaluamos caso por caso.' },
 ];
 
+// WhatsApp del negocio, para el botón del cierre de la página.
+//
+// El número vive en variable de entorno y no en el código por una razón dura:
+// hoy NO hay número real. El `(956) 000 0000` del pie es relleno, y un botón de
+// WhatsApp que abre un chat con un número inventado es peor que no tener botón
+// — el cliente escribe, nadie contesta, y la primera impresión ya se gastó.
+// Mientras `NEXT_PUBLIC_LGP_WHATSAPP` esté vacía el botón no se dibuja en
+// producción; en desarrollo sí aparece, apagado y diciendo qué le falta, para
+// que no se olvide.
+//
+// Formato: código de país y dígitos, que es lo que pide wa.me (`19561234567`).
+// `whatsappHref` limpia todo lo que no sea dígito, así que también acepta
+// "+1 (956) 123-4567" tal como se copia del teléfono.
+export const WHATSAPP = (process.env.NEXT_PUBLIC_LGP_WHATSAPP ?? '').replace(/\D/g, '');
+
+// El mensaje ya escrito le quita al cliente el trabajo de arrancar la
+// conversación, y de paso le dice a quien contesta de dónde viene.
+export const WHATSAPP_MENSAJE =
+  'Hola, los encontré en su página y quiero platicar sobre mi casa.';
+
+export function whatsappHref(mensaje: string = WHATSAPP_MENSAJE): string | null {
+  if (!WHATSAPP) return null;
+  return `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
+}
+
 export const NAV = [
   { label: 'Índice', id: 'index' },
   { label: 'Lugares', id: 'lugares' },
@@ -384,9 +315,11 @@ export const NAV = [
 // El resumen va ANTES de pedir datos: el cliente ve lo que armó y decide si le
 // gusta, y solo entonces se le piden nombre y teléfono. Pedirlos antes de
 // enseñarle el resultado es cobrar por adelantado.
-export const PASO_NOMBRES = ['Lote', 'Floorplan', 'Fachada', 'Interior y zonas', 'Brief', 'Tu casa', 'Tus datos'];
+// El lote dejó de ser un paso: quien entra por la subdivisión ya lo trae
+// resuelto, y quien trae el suyo lo captura en una pantalla previa, antes de
+// que el contador empiece. El configurador arranca donde empieza la casa.
+export const PASO_NOMBRES = ['Floorplan', 'Fachada', 'Interior y zonas', 'Brief', 'Tu casa', 'Tus datos'];
 export const PASO_HINTS = [
-  'Elige un lote disponible para continuar',
   'Variantes curadas para tu lote',
   'Selecciona un estilo de fachada',
   'Elige tu paleta y arma tus zonas',

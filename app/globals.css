@@ -1,5 +1,64 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------------
+   Retícula de página. Antes había seis anchos distintos (1240, 1080, 1000,
+   760, 660 y ancho completo) y ningún borde izquierdo coincidía con el de
+   arriba al bajar por la página: es lo que se leía como descuido sin poder
+   señalarlo. Ahora hay UN ancho estructural y las columnas angostas se miden
+   por longitud de línea (ch), no por otro contenedor.
+
+   El ritmo vertical tampoco existía: casi todas las secciones repetían
+   ~110px arriba y ~100px abajo, así que todo pesaba lo mismo. La escala de
+   abajo distingue el aire que abre un tema del que solo separa dos bloques
+   emparentados.
+   --------------------------------------------------------------------------- */
+:root {
+  --lgp-ancho: 1180px;
+  --lgp-canal: 22px;
+
+  /* Abre un tema nuevo. */
+  --lgp-y-tema: clamp(72px, 8.5vw, 112px);
+  /* Separa bloques del mismo tema. */
+  --lgp-y-bloque: clamp(40px, 5vw, 64px);
+  /* Cierra un tema contra el siguiente. */
+  --lgp-y-cierre: clamp(48px, 6vw, 76px);
+}
+
+.lgp-contenedor {
+  width: 100%;
+  max-width: var(--lgp-ancho);
+  margin-inline: auto;
+}
+
+/* Las tres razones: columnas separadas por filete vertical, sin caja. El
+   filete va como borde izquierdo de cada columna menos la primera, así no
+   sobra una línea en el borde exterior. */
+.lgp-razones {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 34px;
+}
+
+.lgp-razon + .lgp-razon {
+  padding-left: 34px;
+  border-left: 1px solid #eae7e3;
+}
+
+@media (max-width: 820px) {
+  .lgp-razones {
+    grid-template-columns: 1fr;
+    row-gap: 26px;
+  }
+  /* En una columna el filete tiene que ser horizontal: uno vertical entre
+     bloques apilados no separa nada. */
+  .lgp-razon + .lgp-razon {
+    padding-left: 0;
+    padding-top: 26px;
+    border-left: 0;
+    border-top: 1px solid #eae7e3;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -28,8 +87,11 @@ a {
   text-decoration: none;
 }
 
+/* Carmín Legible, no carmín de marca: esta regla pinta el texto de TODO enlace
+   al pasar el cursor, incluidas las etiquetas de 10px de la barra inferior, y
+   #F2004B da 4.16:1 sobre el papel del sitio — reprueba AA. #8A2249 da 8.43:1. */
 a:hover {
-  color: #f2004b;
+  color: #8a2249;
 }
 
 input,
@@ -185,7 +247,7 @@ textarea {
 }
 
 [data-opt-row]:hover,
-[data-opt-row]:focus-visible {
+[data-opt-row]:has(:focus-visible) {
   background: #f7f5f2;
 }
 
@@ -218,7 +280,7 @@ textarea {
 }
 
 [data-opt-row]:hover [data-zone-strip][data-on='0'][data-toggle='1'],
-[data-opt-row]:focus-visible [data-zone-strip][data-on='0'][data-toggle='1'] {
+[data-opt-row]:has(:focus-visible) [data-zone-strip][data-on='0'][data-toggle='1'] {
   transform: translateX(50%);
 }
 
@@ -236,7 +298,7 @@ textarea {
 }
 
 [data-opt-row]:hover [data-zone-strip][data-on='0'][data-toggle='1'] [data-zone-glyph],
-[data-opt-row]:focus-visible [data-zone-strip][data-on='0'][data-toggle='1'] [data-zone-glyph] {
+[data-opt-row]:has(:focus-visible) [data-zone-strip][data-on='0'][data-toggle='1'] [data-zone-glyph] {
   left: 25%;
 }
 
@@ -264,6 +326,559 @@ textarea {
   box-shadow: 0 0 0 2px #fff;
 }
 
+/* ---------------------------------------------------------------------------
+   LA HOJA. El momento de autoría de la página.
+
+   Aquí vivía EL TELÓN: la franja carmín que confirma cada elección, escalada a
+   pantalla completa. Se sustituye a petición del cliente, y la nota queda
+   escrita porque el cambio no es de adorno — el telón es el gesto que
+   `DESIGN.md` documenta como el momento de autoría del sistema.
+
+   El gesto nuevo: alguien avienta una hoja sobre el escritorio. La hoja llega
+   desde arriba y a la derecha, girada, apoya primero por la esquina inferior
+   izquierda, y la SUPERIOR DERECHA —la que trae la mano— es la última en caer.
+   Esa esquina va levantada durante el viaje y por eso se le ve el DORSO, que
+   es carmín de marca: la hoja es blanca por delante y marca por detrás.
+
+   Las tres piezas van encadenadas y no se pueden mover por separado: el canto
+   que se levanta, el punto sobre el que la hoja pivota y la dirección de
+   llegada son la misma decisión vista desde tres sitios. Si el canto sube a la
+   derecha, el pivote baja a la izquierda y la hoja entra por arriba.
+
+   La animación va en tres capas separadas, y la separación es el motivo de que
+   se vea fluida:
+
+   1. **La hoja** anima solo `transform` y `opacity`. Nada más. Son las dos
+      propiedades que el compositor resuelve sin repintar.
+
+   2. **La sombra** es su propia capa con una sombra fija, y lo único que se le
+      anima es la opacidad. La versión anterior animaba el `box-shadow` del
+      elemento a pantalla completa, fotograma a fotograma: eso obliga al
+      navegador a recalcular y repintar un desenfoque del tamaño de la pantalla
+      sesenta veces por segundo, y es exactamente donde se iba la fluidez.
+
+   3. **El canto** es la esquina levantada, y se encoge hasta desaparecer.
+
+   La hoja usa UNA sola curva de principio a fin, sin keyframes intermedios. La
+   versión anterior metía un paso al 72% para que el giro se resolviera después
+   del desplazamiento; el problema es que dos curvas de desaceleración pegadas
+   frenan y vuelven a arrancar, y ese tropiezo es lo que se sentía. El "la
+   esquina cae al final" ahora lo cuenta el canto, que se encoge 80ms después
+   de que la hoja ya está plana — y se ve, que es más de lo que se podía decir
+   de un tercio de grado de giro residual.
+   --------------------------------------------------------------------------- */
+@keyframes lgpHojaEntra {
+  from {
+    /* Entra desde fuera del cuadro. El recorrido corto de antes (5% / 8.5%)
+       hacía que la hoja pareciera aparecer casi en su sitio y solo acomodarse;
+       con este, se ve venir. */
+    transform: translate(15%, -52%) rotate(-5.5deg);
+  }
+  to {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+
+@keyframes lgpHojaSombra {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* El canto se cierra hacia su propia esquina hasta su tamaño de reposo — no
+   hasta cero: la esquina doblada se queda puesta toda la sesión, porque es el
+   botón de cerrar. Ver `.lgp-hoja-canto`. */
+@keyframes lgpCantoBaja {
+  from { transform: scale(2); }
+  to { transform: scale(1); }
+}
+
+/* Al cerrar: alguien agarra el canto levantado y JALA hacia donde apunta esa
+   esquina —abajo y a la izquierda—, y la hoja se despliega sobre sí misma. La
+   línea de doblez, que en reposo es un triangulito en la esquina superior
+   derecha, barre la hoja entera en diagonal: el frente con el contenido se va
+   comiendo y detrás aparece el dorso carmín, cada vez más grande, hasta que lo
+   único que queda en pantalla es el otro lado de la hoja. Entonces se la
+   llevan.
+
+   La geometría, en coordenadas normalizadas donde la esquina superior derecha
+   es (1,0) y la inferior izquierda es (0,1):
+
+     La doblez avanza con un parámetro t de 0 a 1. En t la línea corta el borde
+     superior en (1−t, 0) y el derecho en (1, t). Con t=1 la línea es la
+     diagonal principal y hay media hoja doblada.
+
+     FRENTE (lo que queda sin doblar): el polígono
+       (0,0) · (1−t,0) · (1,t) · (1,1) · (0,1)
+     Cinco puntos SIEMPRE, aunque en t=0 dos coincidan: `clip-path` solo
+     interpola entre polígonos con el mismo número de vértices, y escribirlo
+     con los puntos justos en cada extremo lo dejaría sin animar.
+
+     DORSO (lo doblado, visto por detrás): el reflejo del triángulo de esquina
+     sobre la propia doblez, que es
+       (1−t,0) · (1,t) · (1−t,t)
+     En t=1 coincide exactamente con el frente que queda — que es lo que pasa
+     al doblar una hoja justo por su diagonal, y por eso la pantalla acaba
+     siendo puro dorso.
+
+   El tirón empieza a los 180ms, con la doblez ya avanzada: primero se ve el
+   papel plegarse y solo después se lo llevan. Si arrancan a la vez, la hoja
+   sale de cuadro antes de que se entienda lo que le está pasando. */
+@keyframes lgpHojaDobla {
+  from {
+    clip-path: polygon(0 0, 100% 0, 100% 0, 100% 100%, 0 100%);
+  }
+  to {
+    clip-path: polygon(0 0, 0 0, 100% 100%, 100% 100%, 0 100%);
+  }
+}
+
+@keyframes lgpDorsoCrece {
+  from {
+    clip-path: polygon(100% 0, 100% 0, 100% 0);
+  }
+  to {
+    clip-path: polygon(0 0, 100% 100%, 0 100%);
+  }
+}
+
+/* Hacia donde apunta la esquina levantada: abajo y a la izquierda. */
+@keyframes lgpVentanaSale {
+  from {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate(-42%, 116%) rotate(7deg);
+  }
+}
+
+/* El dorso de la hoja a tamaño completo. Es el mismo carmín del canto, con la
+   luz cayendo sobre la doblez y la masa del pliegue en sombra. */
+.lgp-hoja-dorso {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: linear-gradient(225deg, #ff3a72 0%, #f2004b 46%, #c8003e 100%);
+}
+
+.lgp-ventana[data-fase='sale'] .lgp-hoja-dorso {
+  animation: lgpDorsoCrece 340ms cubic-bezier(0.35, 0.15, 0.3, 1) both;
+}
+
+/* El canto chico desaparece en cuanto empieza el despliegue: el dorso a tamaño
+   completo es esa misma esquina, ya crecida. Tener los dos sería dibujar dos
+   veces el mismo pliegue. */
+.lgp-ventana[data-fase='sale'] .lgp-hoja-canto {
+  display: none;
+}
+
+.lgp-ventana[data-fase='entra'],
+.lgp-ventana[data-fase='sale'] {
+  /* El canto que apoya primero: abajo a la izquierda, en diagonal opuesta al
+     que se levanta. Es el punto sobre el que la hoja pivota al caer. Desde el
+     centro pivotaría en el aire como una aguja de reloj, que es lo que no hace
+     ninguna hoja de papel. */
+  transform-origin: 10% 94%;
+  will-change: transform, opacity;
+}
+
+.lgp-ventana[data-fase='entra'] {
+  /* Sin animación de opacidad, y esa ausencia es una decisión: la hoja llega
+     YA opaca y ya con su contenido, como una hoja que alguien avienta sobre la
+     mesa. Cualquier desvanecido en la entrada deja ver el fondo a través del
+     contenido y eso se lee como un parpadeo en blanco, no como papel.
+
+     La curva es de lanzamiento —sale con velocidad, no arranca desde cero como
+     algo que se posa con cuidado— pero medida. El primer intento fue
+     `cubic-bezier(0.1, 0.72, 0.28, 1)` en 520ms y era demasiado: a los 120ms
+     la hoja ya había hecho el 73% del camino, así que el ojo no veía un
+     lanzamiento sino un tirón y luego un arrastre. Esta reparte el viaje y
+     alarga el frenado. Es la diferencia entre aventar una hoja y azotarla. */
+  animation: lgpHojaEntra 780ms cubic-bezier(0.3, 0.5, 0.28, 1) both;
+}
+
+.lgp-ventana[data-fase='sale'] {
+  /* Dos animaciones sobre el mismo nodo, cada una con SU propiedad: una dobla
+     (`clip-path`) y la otra jala (`transform`). No se pisan porque no compiten
+     por la misma propiedad, y así cada gesto lleva su propio ritmo y su propio
+     retraso sin tener que fundirlos en una sola curva de compromiso. */
+  animation: lgpHojaDobla 340ms cubic-bezier(0.35, 0.15, 0.3, 1) both,
+    lgpVentanaSale 380ms cubic-bezier(0.36, 0.02, 0.72, 0.4) 180ms both;
+}
+
+/* La capa de sombra. Va dentro de la hoja para heredar su transformación —así
+   viaja con ella sin duplicar la animación— y no lleva fondo: lo único que se
+   ve de ella es la sombra que proyecta por fuera de su caja. */
+.lgp-hoja-sombra {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: 0 44px 92px rgba(28, 30, 31, 0.28);
+}
+
+.lgp-ventana[data-fase='entra'] .lgp-hoja-sombra {
+  /* Misma curva y misma duración que la hoja: la sombra ES la altura de la
+     hoja. Con una curva propia se despegarían y la sombra contaría una caída
+     distinta de la que se está viendo. */
+  animation: lgpHojaSombra 780ms cubic-bezier(0.3, 0.5, 0.28, 1) both;
+}
+
+.lgp-ventana[data-fase='sale'] .lgp-hoja-sombra {
+  animation: lgpHojaSombra 380ms cubic-bezier(0.36, 0.02, 0.72, 0.4) 180ms reverse both;
+}
+
+/* El canto levantado: el dorso de la hoja. Es carmín de marca porque el dorso
+   ES la marca — el mismo color del telón que este gesto sustituye, ahora en un
+   triángulo de esquina en vez de una franja a pantalla completa.
+
+   El degradado no introduce un color nuevo: es el mismo #F2004B oscurecido
+   hacia la punta, que es como se ve una superficie que se curva. La Regla de
+   la Voz Única sigue en pie — sigue habiendo un solo color que habla. */
+.lgp-hoja-canto {
+  position: absolute;
+  right: 0;
+  top: 0;
+  z-index: 3;
+  width: clamp(52px, 5vw, 74px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  /* Se cierra hacia su propia esquina, la superior derecha. */
+  transform-origin: 100% 0;
+}
+
+/* La pintura va en el pseudo-elemento y el blanco se queda en el botón. La
+   razón es de uso, no de estilo: `clip-path` recorta también los eventos de
+   ratón, así que con el recorte puesto en el botón la esquina exacta —el
+   píxel al que todo el mundo apunta para cerrar— quedaba muerta, y solo
+   respondía el triángulo. Ahora el cuadro entero recibe el toque y solo el
+   triángulo se pinta.
+
+   El triángulo es el de ABAJO A LA IZQUIERDA dentro de ese cuadro, y no es un
+   descuido: una esquina levantada es el reflejo de la esquina sobre su línea
+   de doblez, así que el vértice que estaba en el pico acaba apuntando hacia
+   adentro de la hoja. El pico propiamente dicho queda vacío — es el hueco que
+   deja el papel al doblarse. No hay que recortar la hoja para enseñarlo: la
+   mesa y el papel son el mismo `#FBFBFA`. */
+.lgp-hoja-canto::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+  /* La luz cae sobre el doblez —la hipotenusa, que va de la esquina superior
+     derecha hacia abajo— y la punta levantada queda en sombra. Es el mismo
+     #F2004B con un tono más claro y uno más oscuro: no entra un color nuevo al
+     sistema, entra una superficie curva. La Regla de la Voz Única sigue en
+     pie. */
+  background: linear-gradient(45deg, #d10041 0%, #f2004b 52%, #ff3a72 100%);
+  /* La sombra que el canto levantado proyecta sobre la propia hoja: cae hacia
+     abajo y a la izquierda, hacia donde apunta la punta que está en el aire.
+     Sin ella el triángulo no despega del papel. */
+  filter: drop-shadow(-9px 9px 16px rgba(28, 30, 31, 0.26));
+  transition: filter 0.2s ease;
+}
+
+/* La ✕ sobre el dorso. Va en su propio pseudo-elemento y no dentro del que
+   pinta el triángulo, porque ese lleva `clip-path` y se llevaría el glifo por
+   delante junto con las esquinas que sobran.
+
+   Se coloca en el baricentro del triángulo (33%, 67% de la caja), que además
+   es la zona más oscura del degradado: blanco sobre #F2004B da 4.31:1 y
+   reprobaría como texto normal, pero aquí cae sobre el extremo oscurecido y a
+   17px en negrita —tamaño grande, cuyo mínimo es 3:1— con holgura de sobra.
+
+   Desde que este canto es la única salida en pantalla, el glifo no es adorno:
+   es lo que dice qué hace. Un triángulo de color sin la ✕ obligaba a
+   descubrirlo probando, y de la ventana donde el cliente arma su casa no se
+   sale probando. */
+.lgp-hoja-canto::after {
+  content: '✕';
+  position: absolute;
+  left: 33%;
+  top: 67%;
+  transform: translate(-50%, -50%);
+  font-family: Archivo, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  pointer-events: none;
+}
+
+/* --- El canto como control ------------------------------------------------
+   La esquina doblada no se va con la transición: se queda levantada toda la
+   sesión y es por donde se cierra la ventana. Tiene sentido físico —una hoja
+   se despega tirando de la esquina que está levantada— y le da a la marca un
+   sitio permanente en pantalla sin convertirla en fondo dominante, que es lo
+   que el manual prohíbe.
+
+   NO sustituye al "CERRAR ✕" de la cabecera. Un triángulo de color no dice por
+   sí solo lo que hace, y esta ventana la usa gente que está tomando la decisión
+   de compra más cara de su vida: la salida tiene que estar escrita con
+   palabras, no solo insinuada. El canto es el camino corto para quien lo
+   descubre, no el único camino. */
+.lgp-hoja-canto:hover,
+.lgp-hoja-canto:focus-visible {
+  /* Se levanta más: es el gesto de despegar la hoja, no un resaltado. */
+  transform: scale(1.16);
+}
+
+.lgp-hoja-canto:hover::before,
+.lgp-hoja-canto:focus-visible::before {
+  filter: drop-shadow(-12px 12px 20px rgba(28, 30, 31, 0.32));
+}
+
+.lgp-hoja-canto {
+  transition: transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1), filter 0.2s ease;
+}
+
+.lgp-hoja-canto:active {
+  transform: scale(1.05);
+  transition-duration: 0.11s;
+}
+
+/* El anillo de foco del sistema no sirve aquí: `outline` sigue la caja del
+   elemento y `clip-path` se lo lleva por delante junto con las esquinas que
+   sobran, así que se vería un cuadrado recortado o no se vería nada. Un halo
+   por `drop-shadow` sí sigue la silueta del triángulo. */
+.lgp-hoja-canto:focus-visible {
+  outline: none;
+}
+
+.lgp-hoja-canto:focus-visible::before {
+  filter: drop-shadow(-12px 12px 20px rgba(28, 30, 31, 0.32))
+    drop-shadow(0 0 2px #1c1e1f) drop-shadow(0 0 2px #1c1e1f)
+    drop-shadow(0 0 1px #1c1e1f);
+}
+
+/* Mientras dura el movimiento, el canto no responde: está viajando. */
+.lgp-ventana[data-fase='entra'] .lgp-hoja-canto,
+.lgp-ventana[data-fase='sale'] .lgp-hoja-canto {
+  transition: none;
+}
+
+.lgp-ventana[data-fase='entra'] .lgp-hoja-canto {
+  /* El retraso es el gesto entero, y por eso va como retraso y no como una
+     curva lenta: el canto tiene que quedarse ARRIBA, a tamaño completo,
+     mientras la hoja viaja y apoya. Recién entonces se cierra. Con una curva
+     sin retraso empezaba a encogerse desde el primer fotograma y a mitad del
+     viaje ya casi no quedaba esquina que ver.
+
+     540ms de espera + 400 de cierre = 940, contra los 780 de la hoja. La
+     esquina es lo último que toca la mesa, 160ms después que todo lo demás. */
+  animation: lgpCantoBaja 400ms cubic-bezier(0.4, 0, 0.25, 1) 540ms both;
+}
+
+
+
+/* ---------------------------------------------------------------------------
+   BOTONES — una sola ley de feedback: al pasar el cursor, el botón intercambia
+   figura y fondo.
+
+   Aquí hubo un error que conviene dejar escrito para no repetirlo. La primera
+   versión reusaba la franja carmín del configurador como hover. Dos fallos:
+
+   1. La franja significa ELEGIDO. Es el gesto que confirma una decisión. Un
+      hover no es una decisión — es pasar el cursor. Ponerle el gesto de
+      selección a un hover gasta el gesto y lo deja sin significado. Además, en
+      una fila ancha la franja cubre y explica; en un botón de 140px es solo
+      algo que se desliza de lado.
+   2. Barría con #8A2249, un carmín oscuro que NO está en el manual de
+      identidad (su paleta es #505759, #F67599, #F2004B, #F4DA40, #307FE2,
+      #78D64B). Estaba en el código y lo di por bueno sin verificarlo.
+
+   La inversión no tiene ninguno de los dos problemas: no usa ni un color que
+   no esté ya en el reposo del propio botón, así que es imposible que se cuele
+   algo fuera del manual, y cumple la regla de que el blanco o el negro
+   prevalezcan mientras el saturado queda como acento.
+   --------------------------------------------------------------------------- */
+.lgp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  font-family: Archivo, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  /* 180ms: cambio de estado rutinario. Más lento se siente como latencia. */
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+/* Carmín — la acción que avanza. Una sola por región. */
+/* El relleno del botón NO es el carmín de marca, y la razón es medible: blanco
+   sobre #F2004B da 4.31:1 y la etiqueta es de 10px, así que reprueba AA por
+   0.19. #EB004B da 4.54:1 con la misma etiqueta. La diferencia entre 242 y 235
+   de rojo es imperceptible a simple vista; la de aprobar o reprobar, no.
+
+   El carmín de marca se conserva intacto donde es grafismo puro y no lleva
+   texto encima: el filete de este mismo botón, la franja que confirma una
+   elección, las viñetas, el telón y la firma de cierre. Es la misma corrección
+   que ya hizo este sistema con el Carmín Legible, por la misma razón: el manual
+   de identidad fija la marca, pero no fue escrito contra los criterios de
+   accesibilidad de una interfaz. */
+.lgp-btn-carmin {
+  background: #eb004b;
+  border-color: #f2004b;
+  color: #fff;
+}
+/* El filete se queda en el carmín de marca —es grafismo y no tiene exigencia de
+   contraste— pero el texto pasa al carmín legible. El #F2004B sobre papel da
+   4.16:1 y la etiqueta es de 10px: reprueba AA, que pide 4.5:1. El #8A2249 da
+   8.43:1. Para eso existe ese tono en el proyecto, y este es exactamente su
+   trabajo: texto carmín sobre fondo claro. */
+.lgp-btn-carmin:hover,
+.lgp-btn-carmin:focus-visible {
+  background: #fbfbfa;
+  color: #8a2249;
+}
+
+/* Tinta — navegación persistente y acciones sólidas que no convierten. */
+.lgp-btn-tinta {
+  background: #1c1e1f;
+  border-color: #1c1e1f;
+  color: #fbfbfa;
+}
+.lgp-btn-tinta:hover,
+.lgp-btn-tinta:focus-visible {
+  background: #fbfbfa;
+  color: #1c1e1f;
+}
+
+/* Fantasma — explorar, no avanzar. Su figura es el filete y el texto, así que
+   invertir aquí es rellenarse. */
+.lgp-btn-fantasma {
+  background: transparent;
+  border-color: #ddd9d4;
+  color: #505759;
+}
+.lgp-btn-fantasma:hover,
+.lgp-btn-fantasma:focus-visible {
+  background: #1c1e1f;
+  border-color: #1c1e1f;
+  color: #fbfbfa;
+}
+
+/* Fantasma sobre foto — mismo criterio con el blanco como figura. */
+.lgp-btn-sobre-foto {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #fff;
+}
+.lgp-btn-sobre-foto:hover,
+.lgp-btn-sobre-foto:focus-visible {
+  background: #fbfbfa;
+  border-color: #fbfbfa;
+  color: #1c1e1f;
+}
+
+/* Acuse inmediato al presionar: 110ms, lo mínimo que se percibe. */
+.lgp-btn:active {
+  transform: translateZ(0) scale(0.985);
+  transition: transform 0.11s ease;
+}
+
+/* Anillo de foco propio del sistema, no el del navegador. */
+.lgp-btn:focus-visible,
+[data-opt-row]:has(:focus-visible) {
+  outline: 2px solid #f2004b;
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Ventana de acuse (envío correcto). El check se dibuja en vez de aparecer:
+   es geometría, no ilustración, y el trazo que se traza lee como "acaba de
+   pasar" mucho mejor que un icono que se enciende.
+   --------------------------------------------------------------------------- */
+@keyframes lgpTrazo {
+  from { stroke-dashoffset: var(--largo, 48); }
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes lgpAcuseEntra {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lgp-acuse {
+  animation: lgpAcuseEntra 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.lgp-acuse-trazo {
+  stroke-dasharray: var(--largo, 48);
+  stroke-dashoffset: var(--largo, 48);
+  animation: lgpTrazo 520ms cubic-bezier(0.65, 0, 0.35, 1) 160ms forwards;
+}
+
+/* ---------------------------------------------------------------------------
+   Entrada escalonada de las tres razones. Es un escalonado legítimo porque son
+   una lista: aparecen como lista y se leen como lista. No se aplica a las
+   demás secciones — convertir cada sección en una revelación al hacer scroll
+   es exactamente lo que hace que un sitio se sienta de plantilla.
+   --------------------------------------------------------------------------- */
+@keyframes lgpRazonEntra {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.lgp-razon[data-visible='1'] {
+  animation: lgpRazonEntra 540ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+/* ---------------------------------------------------------------------------
+   Acuse de elección en la tarjeta de foco (`PasoDecision`). La lista de abajo
+   ya se cubre de carmín al elegir, pero la tarjeta grande de arriba —que es
+   donde el cliente está mirando el estilo— cambiaba sin decir nada. Aquí el
+   mismo gesto de la franja, a escala de tarjeta: el carmín cruza y la pieza se
+   asienta detrás. Dos nombres por animación porque repetir el nombre no la
+   vuelve a disparar (ver `useAnimacionAlterna`).
+   --------------------------------------------------------------------------- */
+@keyframes lgpElegidaA {
+  0% { transform: scale(1); }
+  26% { transform: scale(0.955); }
+  62% { transform: scale(1.022); }
+  100% { transform: scale(1); }
+}
+
+@keyframes lgpElegidaB {
+  0% { transform: scale(1); }
+  26% { transform: scale(0.955); }
+  62% { transform: scale(1.022); }
+  100% { transform: scale(1); }
+}
+
+/* Variante para `prefers-reduced-motion`: sin desplazamiento. */
+@keyframes lgpDestelloFoco {
+  0% { opacity: 0; }
+  35% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+@keyframes lgpBarridoFoco {
+  0% { transform: translateX(-101%); }
+  46% { transform: translateX(0); }
+  100% { transform: translateX(101%); }
+}
+
+.lgp-decision-barrido {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #f2004b;
+  pointer-events: none;
+  animation: lgpBarridoFoco 620ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
 /* Quien pidió menos movimiento en su sistema no debería pelearse con esto: se
    queda el diseño, se va la animación. */
 @media (prefers-reduced-motion: reduce) {
@@ -275,8 +890,80 @@ textarea {
   }
   .lgp-paso-anim,
   .lgp-sweep,
-  .lgp-sweep-texto {
+  .lgp-sweep-texto,
+  .lgp-decision-visual-caja {
     animation: none !important;
+  }
+
+  /* El visor aparece sin escala ni desvanecido; la foto sigue estando, que es
+     lo único que la animación aportaba. La lupa se queda visible en vez de
+     entrar, porque su trabajo es informar de que la foto se puede abrir. */
+  .lgp-visor,
+  .lgp-visor-img {
+    animation: none !important;
+  }
+  .lgp-obra-lupa {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  /* Movimiento reducido no es "sin acuse". Se va el desplazamiento; se queda
+     todo lo que informa de que algo cambió. */
+
+  /* El barrido no cruza: destella una vez en su lugar. Sigue diciendo "quedó
+     elegida" sin nada que se desplace por la pantalla. */
+  .lgp-decision-barrido {
+    animation: lgpDestelloFoco 380ms ease-out both;
+  }
+
+  /* La hoja no se posa: la ventana simplemente está. Las dos capas de la
+     puesta en escena —la sombra de altura y el canto levantado— se van con
+     ella: sin caída no hay altura que contar ni esquina que asentar, y un
+     triángulo carmín parado en la esquina sería un adorno sin motivo. */
+  .lgp-ventana[data-fase='entra'],
+  .lgp-ventana[data-fase='sale'] {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    clip-path: none;
+  }
+  .lgp-hoja-dorso {
+    display: none;
+  }
+  /* La sombra se va: sin caída no hay altura que contar. El canto se QUEDA —
+     dejó de ser adorno el día que se volvió el botón de cerrar, y esconderlo
+     dejaría a quien pide menos movimiento sin uno de los dos caminos de
+     salida. Lo que se le quita es el viaje, no la existencia. */
+  .lgp-hoja-sombra {
+    display: none;
+  }
+  .lgp-hoja-canto {
+    animation: none !important;
+    transform: scale(1);
+  }
+
+  /* El botón conserva la inversión —es el acuse, y sin ella no habría forma de
+     saber que responde— pero se le quita el empujón de escala y la presión. */
+  .lgp-btn {
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  }
+  .lgp-btn:active {
+    transform: none;
+  }
+
+  /* El check se muestra completo en vez de dibujarse: sigue diciendo
+     "se envió", que es lo único que importa ahí. */
+  .lgp-acuse {
+    animation: none;
+  }
+  .lgp-acuse-trazo {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .lgp-razon[data-visible='1'] {
+    animation: none;
   }
 }
 
@@ -403,8 +1090,21 @@ textarea {
   width: clamp(300px, 46vw, 620px);
 }
 
+/* Sangría al eje del contenedor sin encajonar el contenido: la usa una
+   sección de borde a borde cuyo texto debe caer a plomo con el resto de la
+   página. Es el equivalente full-bleed de .lgp-contenedor. */
+.lgp-sangria {
+  padding-left: max(var(--lgp-canal), calc((100% - var(--lgp-ancho)) / 2));
+  padding-right: max(var(--lgp-canal), calc((100% - var(--lgp-ancho)) / 2));
+}
+
+/* La tira mantiene la sangría izquierda del contenedor —así la primera foto
+   queda a plomo con el título "LA OBRA"— pero a la derecha solo deja el canal,
+   para que se vea que hay más piezas y haya que deslizar. */
 .lgp-obra-tira {
-  scroll-padding-left: 22px;
+  padding-left: max(var(--lgp-canal), calc((100% - var(--lgp-ancho)) / 2));
+  padding-right: var(--lgp-canal);
+  scroll-padding-left: max(var(--lgp-canal), calc((100% - var(--lgp-ancho)) / 2));
 }
 
 @media (max-width: 640px) {
@@ -414,13 +1114,286 @@ textarea {
   }
 }
 
+/* --- Tira de obra: flechas, lupa y visor ----------------------------------
+   Las flechas van en tinta y no en carmín: son navegación, no la acción que
+   avanza, y el carmín ya está gastado en esta pantalla por el CTA. Canto vivo,
+   44px de objetivo táctil, y la misma inversión figura/fondo que cualquier
+   botón del sistema. */
+.lgp-tira-flecha {
+  position: absolute;
+  top: calc(50% - 8px);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid #1c1e1f;
+  background: #1c1e1f;
+  color: #fbfbfa;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.lgp-tira-flecha:hover,
+.lgp-tira-flecha:focus-visible {
+  background: #fbfbfa;
+  color: #1c1e1f;
+}
+
+.lgp-tira-flecha:active {
+  transform: translateY(-50%) scale(0.985);
+}
+
+.lgp-obra-abrir {
+  position: relative;
+  overflow: hidden;
+}
+
+/* La lupa aparece al acercarse: en reposo la foto no lleva nada encima, que es
+   la Regla del Plano en Reposo aplicada a un adorno. En táctil no hay hover, y
+   por eso la foto entera es el objetivo — la lupa solo confirma en escritorio
+   lo que el cursor `zoom-in` ya dijo. */
+.lgp-obra-lupa {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: rgba(28, 30, 31, 0.72);
+  color: #fbfbfa;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+  pointer-events: none;
+}
+
+.lgp-obra-abrir:hover .lgp-obra-lupa,
+.lgp-obra-abrir:focus-visible .lgp-obra-lupa,
+.lgp-carrusel-abrir:hover .lgp-obra-lupa,
+.lgp-carrusel-abrir:focus-visible .lgp-obra-lupa {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- Textura de cubos detrás de los sprites -------------------------------
+   El mismo mosaico isométrico del fondo de la página, generado por
+   `scripts/textura-cubos.js` desde los valores del canvas para que las dos
+   superficies no puedan divergir.
+
+   `background-size` fija el mosaico en sus 79.674 x 138 px reales: sin él, un
+   SVG sin dimensiones intrínsecas se estiraría al tamaño de la caja y cada
+   panel enseñaría la textura a una escala distinta.
+
+   El componente deja de escribir `background` en línea cuando hay textura. Es a
+   propósito y no vale "arreglarlo" devolviéndolo: un shorthand en línea pone
+   `background-image: none` y le gana a esta regla, así que la textura
+   desaparecía sin que nada avisara. */
+.lgp-decision-visual[data-textura='1'] {
+  background-color: #fbfbfa;
+  background-image: url('/textura-cubos.svg');
+  background-repeat: repeat;
+  background-size: 79.674px 138px;
+  /* La deriva recorre exactamente un mosaico —79.674 x 138— y por eso el ciclo
+     cierra sin salto: al terminar, la retícula está en la misma posición
+     aparente que al empezar. Cualquier otra distancia daría un tirón cada vuelta.
+
+     40 s para recorrer el mosaico son ~3.5 px/s. Se llegó aquí bajando: 120 s
+     (1.2 px/s) parecía una imagen fija, 60 s se leía como movimiento pero justo
+     en el límite. A 40 s se percibe sin esfuerzo y sigue lejos de distraer
+     mientras se elige una fachada.
+
+     Se anima `background-position` y NO un `transform` del panel, que
+     arrastraría también la maqueta y su sombra. Ese es el motivo de que los
+     sprites se vean quietos mientras el fondo corre. */
+  animation: lgpTexturaDeriva 40s linear infinite;
+}
+
+@keyframes lgpTexturaDeriva {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 79.674px 138px;
+  }
+}
+
+
+
+
+
+
+@media (prefers-reduced-motion: reduce) {
+  .lgp-decision-visual[data-textura='1'] {
+    animation: none;
+  }
+}
+
+/* --- Carrusel de la tarjeta de subdivisión ------------------------------- */
+
+/* Cubre la imagen entera para que el clic caiga donde el cliente lo da: sobre
+   la foto, no sobre un botón chico. Va por debajo de los puntos y la pausa
+   (z-index 3), que siguen siendo pulsables por separado. */
+.lgp-carrusel-abrir {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.lgp-carrusel-abrir:focus-visible {
+  outline: 2px solid #f2004b;
+  outline-offset: -4px;
+}
+
+/* Puntos y pausa: cuadrados de canto vivo como todo el sistema, no círculos.
+   El punto activo se llena; los demás quedan en filete. */
+/* El área que se toca mide 44px; la marca que se ve, 9. Encoger el objetivo
+   hasta el tamaño del punto es el error clásico de los carruseles: se ve
+   elegante y falla el 40% de los toques con el pulgar. */
+.lgp-carrusel-punto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.lgp-carrusel-punto > span {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: transparent;
+  transition: background 0.2s ease;
+}
+
+.lgp-carrusel-punto[data-on='1'] > span {
+  background: #fff;
+}
+
+.lgp-carrusel-punto:hover > span,
+.lgp-carrusel-punto:focus-visible > span {
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* La pausa sí lleva caja visible: es un control con estado, no un indicador de
+   posición, y tiene que distinguirse de los puntos a simple vista. Conserva los
+   44px de los puntos — el filete se dibuja dentro del mismo objetivo táctil, no
+   a costa de encogerlo. */
+.lgp-carrusel-pausa {
+  margin-left: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.lgp-carrusel-pausa:hover,
+.lgp-carrusel-pausa:focus-visible {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.lgp-carrusel-punto:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+.lgp-visor {
+  animation: lgpIn 0.18s ease both;
+}
+
+.lgp-visor-img {
+  animation: lgpVisorFoto 0.28s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes lgpVisorFoto {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Botones del visor: sobre foto, así que filete blanco translúcido y texto
+   blanco, con la misma inversión al tocarlos. */
+.lgp-visor-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: transparent;
+  color: #fff;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.lgp-visor-btn:hover,
+.lgp-visor-btn:focus-visible {
+  border-color: #fbfbfa;
+  background: #fbfbfa;
+  color: #1c1e1f;
+}
+
+/* Al 55% de opacidad, sobre una cocina blanca la flecha se componía en un gris
+   medio y el chevrón blanco encima quedaba lavado. Al 88% el control se lee
+   sobre cualquier foto y sigue leyéndose como algo puesto encima, no como parte
+   de la imagen. */
+.lgp-visor-flecha {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  transform: translateY(-50%);
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(28, 30, 31, 0.88);
+}
+
+.lgp-visor-flecha:hover,
+.lgp-visor-flecha:focus-visible {
+  transform: translateY(-50%);
+}
+
+/* El foco del sistema también aquí: nunca el anillo por defecto del navegador. */
+.lgp-tira-flecha:focus-visible,
+.lgp-visor-btn:focus-visible,
+.lgp-obra-abrir:focus-visible {
+  outline: 2px solid #f2004b;
+  outline-offset: 2px;
+}
+
 /* Invisible hasta que el teclado lo enfoca. */
 .lgp-skip {
   position: absolute;
   left: 12px;
   top: -60px;
   z-index: 90;
-  padding: 12px 18px;
+  /* El atajo de accesibilidad medía 41px de alto: quedaba por debajo del mismo
+     piso táctil de 44px que existe para no dejar a nadie fuera. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 18px;
   background: #1c1e1f;
   color: #fbfbfa;
   font-family: Archivo, sans-serif;
@@ -534,4 +1507,891 @@ body:has(input:focus, textarea:focus) .lgp-bottom-nav-wrap {
     gap: 12px !important;
     padding: 10px 14px !important;
   }
+}
+
+/* ===========================================================================
+   MOVIMIENTO DE LA PÁGINA DE INICIO
+
+   La ventana del configurador ya tenía su momento de autoría —el telón— y sus
+   acuses. La página de inicio, en cambio, se quedaba quieta de principio a fin:
+   entraba el titular con `lgpUp`, se escalonaban las tres razones, y de ahí
+   hasta el pie no volvía a moverse nada que no fuera un cursor encima.
+
+   Lo que sigue no convierte cada sección en una revelación al hacer scroll —eso
+   es exactamente lo que hace que un sitio se sienta de plantilla, y el sistema
+   lo tiene escrito—. Son cuatro momentos contados, cada uno con un trabajo:
+
+     1. La cabecera se despega del papel solo cuando deja de estar en el borde.
+     2. Las cifras llegan pasándose de largo y asientan (el gesto de `ftNum`,
+        que ya existe en el configurador, aplicado al dato de la portada).
+     3. La respuesta del FAQ se despliega desde su pregunta en vez de aparecer.
+     4. La firma del pie emerge del papel: el momento de autoría de esta página.
+   =========================================================================== */
+
+/* --- 1. La cabecera que se despega ----------------------------------------
+   La Regla del Plano en Reposo dice que ninguna superficie nace con sombra: la
+   sombra es respuesta a un estado. La cabecera llevaba la suya puesta desde el
+   primer píxel, incluso pegada al borde superior, donde no está flotando sobre
+   nada. Ahora la gana al separarse del borde y la pierde al volver.
+
+   Va con `animation-timeline: scroll()` y no con un listener: es una relación
+   de scroll pura, no hay estado que React tenga que conocer, y un listener de
+   scroll en el hilo principal por una sombra no se paga. Donde el navegador no
+   soporta la línea de tiempo, la cabecera se queda con su sombra de siempre —
+   el respaldo es el diseño anterior, no una cabecera rota. */
+.lgp-header {
+  box-shadow: 0 8px 30px rgba(28, 30, 31, 0.13);
+}
+
+@supports (animation-timeline: scroll()) {
+  .lgp-header {
+    box-shadow: 0 8px 30px rgba(28, 30, 31, 0);
+    animation: lgpCabeceraPosa linear both;
+    animation-timeline: scroll(root block);
+    /* 120px: lo que tarda el ojo en registrar que la página se movió. */
+    animation-range: 0 120px;
+  }
+}
+
+@keyframes lgpCabeceraPosa {
+  from {
+    box-shadow: 0 8px 30px rgba(28, 30, 31, 0);
+  }
+  to {
+    box-shadow: 0 8px 30px rgba(28, 30, 31, 0.13);
+  }
+}
+
+/* --- 2. La cifra que asienta ----------------------------------------------
+   El mismo gesto de `ftNum` en el configurador: el número entra, se pasa de
+   largo y se acomoda. No es un rebote decorativo —el sistema prohíbe la curva
+   elástica salvo en el giro del glifo `+`— es el vocabulario que este proyecto
+   ya usa para decir "este número acaba de calcularse".
+
+   El sobrepaso es de 1.06 y no de 1.18 como en el configurador: allá la cifra
+   cambia sola mientras el cliente mira, y aquí solo llega. Un dato que llega
+   necesita menos énfasis que uno que se corrige.
+
+   La etiqueta entra detrás, no a la vez: primero el dato, después su unidad,
+   que es el orden en que se leen. */
+@keyframes lgpCifraAsienta {
+  0% {
+    opacity: 0;
+    transform: translateY(7px) scale(0.86);
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(0) scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lgpCifraPie {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* En el hero arrancan al cargar: la tarjeta está a la vista desde el primer
+   momento, así que esperar a un observador sería esperar a nada. El retraso
+   base las pone después del titular, que entra con `lgpUp` en 900ms. */
+/* Sin tocar el `display`: en el hero la cifra ya es un bloque y en "Lugares"
+   es un elemento de una caja flexible, que el navegador blockifica solo. Poner
+   `inline-block` ahí la sentaría sobre una línea de texto y le añadiría el
+   hueco del descendente, moviendo la etiqueta de abajo unos píxeles — un salto
+   de retícula a cambio de nada.
+
+   El origen sí importa: escala desde el borde izquierdo, que es donde empieza
+   el número. Desde el centro, la cifra se movería de sitio al crecer. */
+.lgp-cifra {
+  transform-origin: left center;
+  animation: lgpCifraAsienta 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(560ms + var(--i, 0) * 110ms);
+}
+
+.lgp-cifra-pie {
+  animation: lgpCifraPie 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(700ms + var(--i, 0) * 110ms);
+}
+
+/* En "Lugares disponibles" la cifra está a media página: ahí sí espera al
+   observador, y usa el mismo `data-visible` que ya escriben las tres razones —
+   ningún observador nuevo, ninguna pieza de estado nueva. Si el script falla,
+   el bloque se queda visible y legible, que es el estado por defecto. */
+.lgp-cifra-observada .lgp-cifra,
+.lgp-cifra-observada .lgp-cifra-pie {
+  animation: none;
+}
+
+.lgp-cifra-observada[data-visible="1"] .lgp-cifra {
+  animation: lgpCifraAsienta 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.lgp-cifra-observada[data-visible="1"] .lgp-cifra-pie {
+  animation: lgpCifraPie 420ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+}
+
+/* --- 3. La respuesta que se despliega -------------------------------------
+   La respuesta del FAQ aparecía y desaparecía de golpe: el bloque de texto se
+   materializaba sin que nada dijera de dónde salió. Ahora baja desde su propia
+   pregunta —empieza 6px arriba, tapada por la fila— y se asienta.
+
+   No hay animación de salida y es a propósito: cerrar es instantáneo porque el
+   contenido deja de existir en el DOM, y la regla de la casa es salir siempre
+   más rápido que entrar. 280ms de entrada contra 0 de salida cumple de sobra.
+
+   La fila pierde `.lgp-hover-zoom` y gana un cambio de fondo. El sistema ya lo
+   tiene escrito: escalar una fila de ancho completo mueve su texto, y aquí el
+   texto es una pregunta que el cliente está leyendo mientras la toca. */
+@keyframes lgpRespuestaEntra {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lgp-faq-respuesta {
+  animation: lgpRespuestaEntra 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.lgp-faq-fila {
+  transition: background 0.18s ease;
+}
+
+.lgp-faq-fila:hover,
+.lgp-faq-fila:focus-visible {
+  background: #f7f5f2;
+}
+
+.lgp-faq-fila:focus-visible {
+  outline: 2px solid #f2004b;
+  outline-offset: -2px;
+}
+
+/* El glifo es texto que cambia de `+` a `−`, así que no se puede transicionar
+   el carácter. Lo que sí responde es su caja: crece un punto al abrirse, que es
+   lo mínimo para que el ojo confirme que ese signo es el que cambió. */
+.lgp-faq-glifo {
+  display: inline-block;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.lgp-faq-fila[aria-expanded="true"] .lgp-faq-glifo {
+  transform: scale(1.25);
+}
+
+/* --- 4. La firma que emerge (momento de autoría de la página) -------------
+   "LA GRAN PIEDRA" en carmín cierra la página y ya vivía debajo de una máscara
+   que la desvanece hacia abajo: la marca no termina, se hunde en el papel. Esa
+   máscara estaba ahí sin que nada la usara.
+
+   Aquí es donde el gesto se cobra: al llegar al pie, las dos líneas suben desde
+   dentro de su propia máscara, como si el nombre saliera del papel en vez de
+   encenderse encima. Es lo mismo que hace el telón al abrir el configurador
+   —una pieza de marca que ocupa la pantalla y se mueve una sola vez— pero en el
+   otro extremo del recorrido, y sin repetirse: el observador deja de mirar en
+   cuanto dispara.
+
+   La ocultación la hace la máscara que ya existe, no un `overflow: hidden`
+   nuevo: con `line-height: 0.78` cualquier caja de recorte cortaría las
+   mayúsculas por arriba. La segunda línea entra 120ms después que la primera —
+   se lee "LA GRAN", luego "PIEDRA", que es el orden en que se dice el nombre. */
+@keyframes lgpFirmaEmerge {
+  from {
+    opacity: 0;
+    transform: translateY(30%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lgp-firma > div {
+  will-change: transform;
+}
+
+.lgp-firma[data-visible="1"] > div {
+  animation: lgpFirmaEmerge 820ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.lgp-firma[data-visible="1"] > div:nth-child(2) {
+  animation-delay: 120ms;
+}
+
+/* --- Foco de los campos ---------------------------------------------------
+   Los siete campos del sitio llevaban `outline: none` en línea y ningún estado
+   de foco propio: quien navega con teclado escribía a ciegas, sin saber en qué
+   campo estaba. El sistema ya tiene su anillo —2px carmín con 2px de
+   separación, nunca el del navegador— y lo único que faltaba era aplicarlo aquí.
+
+   Solo el anillo, y no también un filete que se oscurezca: el `border` de estos
+   campos va en el estilo en línea, y desde una hoja no se le puede ganar sin
+   `!important`. El anillo carmín con su separación ya dice "aquí estás" de
+   sobra; añadir una regla que el navegador va a descartar sería dejar escrita
+   una intención que no ocurre. */
+.lgp-campo:focus-visible {
+  outline: 2px solid #f2004b;
+  outline-offset: 2px;
+}
+
+/* --- Movimiento reducido --------------------------------------------------
+   Se queda el diseño, se va el desplazamiento. Lo que informa no se toca: el
+   anillo de foco, la sombra de la cabecera y el fondo de la fila del FAQ son
+   estados, no adornos, y siguen respondiendo igual. */
+@media (prefers-reduced-motion: reduce) {
+  .lgp-cifra,
+  .lgp-cifra-pie,
+  .lgp-cifra-observada[data-visible="1"] .lgp-cifra,
+  .lgp-cifra-observada[data-visible="1"] .lgp-cifra-pie,
+  .lgp-firma[data-visible="1"] > div {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  /* La respuesta no baja, pero sí se enciende: sin ningún acuse, abrir una
+     pregunta y que el texto simplemente esté no se distingue de un salto. */
+  .lgp-faq-respuesta {
+    animation: lgpIn 200ms ease both;
+  }
+
+  .lgp-faq-glifo {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   ESCUADRAS DE REGISTRO — el acuse del floorplan y de la fachada.
+
+   Estos dos pasos no podían usar el barrido carmín, y la bandera que hoy se
+   llama `acuseEscuadras` nació apagándolo del todo: ahí la imagen ES el
+   contenido, y cruzar una cortina por encima justo al elegir esconde lo único
+   que el cliente quería ver de cerca. El resultado era que elegir un plano o
+   una fachada no acusaba nada.
+
+   La respuesta no es una cortina más suave: es otra clase de gesto. Cuatro
+   marcas en ángulo se cierran sobre las esquinas del render —las marcas de
+   registro de un plano, el enfoque de una cámara al fijar— y dejan la imagen
+   entera a la vista. Entran desde fuera del cuadro y se aprietan en su sitio,
+   en pares diagonales: primero la esquina superior izquierda con la inferior
+   derecha, 70ms después la otra diagonal. Ese orden es el que hace que se lea
+   como algo que se cuadra y no como cuatro adornos que aparecen.
+
+   Y no son un destello: se quedan mientras esa opción siga siendo la elegida.
+   En el carrusel del floorplan eso significa que al volver a pasar por tu plano
+   las escuadras están puestas — dicen "este es el tuyo" sin una sola palabra.
+   Es estado, no acuse de un instante.
+
+   2px y no el filete de 1px del sistema: no están separando nada, están
+   marcando. El grosor es el del anillo de foco, que es la otra marca carmín
+   que este sistema pone encima de algo para señalarlo.
+   --------------------------------------------------------------------------- */
+.lgp-escuadras {
+  position: absolute;
+  inset: 0;
+  /* Por ENCIMA del fogonazo (z-index 3), no por debajo. Es lo que hace que el
+     gesto se lea: el destello lava el render y las cuatro marcas carmin
+     sobreviven encima, asi que el ojo las sigue a traves del flash y aterriza
+     en ellas cuando la luz baja. Al reves, el destello se tragaba justo lo
+     que tenia que quedar. */
+  z-index: 4;
+  /* Decorado puro: en el carrusel, debajo hay una imagen que se puede abrir. */
+  pointer-events: none;
+}
+
+.lgp-escuadras > span {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 0 solid #f2004b;
+  animation: lgpEscuadraEntra 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Cada escuadra dibuja solo los dos lados de su esquina, y entra empujada
+   hacia afuera en su propia diagonal. El desplazamiento va en variables para
+   que el keyframe sea uno solo y no cuatro copias con el signo cambiado. */
+.lgp-escuadras > span:nth-child(1) {
+  top: 8px;
+  left: 8px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+  --dx: -15px;
+  --dy: -15px;
+}
+
+.lgp-escuadras > span:nth-child(2) {
+  top: 8px;
+  right: 8px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+  --dx: 15px;
+  --dy: -15px;
+  animation-delay: 60ms;
+}
+
+.lgp-escuadras > span:nth-child(3) {
+  right: 8px;
+  bottom: 8px;
+  border-right-width: 2px;
+  border-bottom-width: 2px;
+  --dx: 15px;
+  --dy: 15px;
+}
+
+.lgp-escuadras > span:nth-child(4) {
+  bottom: 8px;
+  left: 8px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+  --dx: -15px;
+  --dy: 15px;
+  animation-delay: 60ms;
+}
+
+@keyframes lgpEscuadraEntra {
+  from {
+    opacity: 0;
+    transform: translate(var(--dx, 0), var(--dy, 0));
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+}
+
+/* --- El fogonazo ----------------------------------------------------------
+   Las escuadras solas cuentan bien lo que pasó, pero lo cuentan en voz baja: en
+   una imagen grande, cuatro marcas de 26px en las esquinas se pueden pasar por
+   alto. Falta el disparo.
+
+   Así que el encuadre se cierra y se toma la foto. El destello es blanco y no
+   carmín por dos razones: un lavado carmín sobre el render lo tiñe entero —
+   justo lo que había que evitar— y, sobre todo, el blanco es lo que dice
+   "cámara" sin que nadie tenga que explicarlo. Dura 300ms y el pico está en
+   los primeros 40: entra instantáneo y decae, que es como se comporta un flash
+   de verdad. Un destello simétrico se lee como un parpadeo de pantalla.
+
+   Sale a los 300ms, cuando las escuadras acaban de asentar. Ese orden es todo:
+   primero se encuadra, después se dispara. Al revés sería un destello con unas
+   marcas llegando tarde.
+
+   Dispara SOLO al elegir, nunca al recorrer el carrusel. Por eso en el
+   componente el nodo cuelga de `asienta` —que cambia únicamente cuando cambia
+   la elección— y no de si la opción a la vista está elegida: si colgara de eso,
+   pasar por tu plano ya escogido volvería a disparar el flash cada vez. */
+.lgp-fogonazo {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: #ffffff;
+  pointer-events: none;
+  opacity: 0;
+  animation: lgpFogonazo 2000ms linear 300ms both;
+}
+
+@keyframes lgpFogonazo {
+  0% {
+    opacity: 0;
+  }
+  /* 80ms hasta el pico: el disparo. */
+  4% {
+    opacity: 0.82;
+  }
+  /* A los 400ms ya se ve el render otra vez. De aqui al final es la estela,
+     que es lo que hace que el destello dure dos segundos sin tapar nada:
+     un blanco a tope sostenido dos segundos escondería exactamente lo que el
+     cliente acaba de elegir. */
+  20% {
+    opacity: 0.3
+  }
+  55% {
+    opacity: 0.1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Las escuadras se quedan: son el estado que dice cuál está elegida, y
+     quitarlas dejaría el paso sin ningún acuse. Lo que se va es el viaje desde
+     fuera del cuadro; se encienden en su sitio. */
+  .lgp-escuadras > span {
+    animation: lgpIn 220ms ease both;
+  }
+
+  /* El fogonazo se va entero, sin sustituto. Un destello a pantalla es
+     precisamente lo que quien pide movimiento reducido está pidiendo evitar, y
+     aquí no hace falta un reemplazo: las escuadras ya dicen cuál quedó. */
+  .lgp-fogonazo {
+    animation: none;
+    display: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   LA CINTA — el carrusel de floorplans como banda transportadora.
+
+   Antes el plano cambiaba de golpe: apretabas la flecha y la imagen era otra.
+   Sin recorrido, comparar dos planos es un ejercicio de memoria, porque nada
+   dice que el que estaba se fue por un lado y el nuevo llegó por el otro.
+
+   Ahora las dos piezas viajan en la misma línea y en el mismo sentido: la que
+   estaba sale por un costado mientras la nueva entra por el contrario. Esa
+   continuidad es lo único que convierte un cambio de imagen en una banda.
+
+   La curva no es la de llegada del sistema (`cubic-bezier(0.16, 1, 0.3, 1)`,
+   que arranca disparada y frena larguísimo): una banda no acelera, arrastra a
+   velocidad pareja y se detiene.
+
+   El primer intento fue `cubic-bezier(0.15, 0.62, 0.24, 1)` y estaba mal: a
+   los 193ms de 460 —el 42% del tiempo— la pieza ya había recorrido el 88% del
+   camino. Eso no es una banda, es un latigazo con un arrastre pegado detrás.
+   `cubic-bezier(0.34, 0.34, 0.58, 1)` sale con pendiente 1 (velocidad constante
+   desde el primer fotograma, que es lo que hace una cinta) y llega con
+   tangente horizontal (se detiene, no choca).
+
+   El sentido entra por `--dir` (1 o -1) desde el componente, así que un solo
+   par de keyframes sirve para los dos lados en vez de cuatro copias.
+
+   Los nombres van en pares A/B por la Regla del Nombre Alterno: el nodo de la
+   cinta NO se remonta al navegar —a propósito, para que el rebote de selección
+   que vive dentro no se vuelva a disparar cada vez que pasas por tu plano— y
+   reusar el mismo nombre no relanzaría la animación.
+   --------------------------------------------------------------------------- */
+.lgp-decision-cinta {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* La pieza que se va. Vive solo mientras dura su viaje: el componente la
+   desmonta en `onAnimationEnd`, así que fuera de la transición no hay ningún
+   nodo de más en el árbol. */
+.lgp-decision-cinta-saliente {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  pointer-events: none;
+}
+
+@keyframes lgpCintaA {
+  from {
+    transform: translateX(calc(var(--dir, 1) * 100%));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes lgpCintaB {
+  from {
+    transform: translateX(calc(var(--dir, 1) * 100%));
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes lgpCintaSale {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(var(--dir, 1) * -100%));
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   EL REBOTE DEL SPRITE — la reacción al disparo.
+
+   El encuadre cierra a los 419ms y el flash pica a los 464. En esa ventana el
+   sprite se comprime y rebota: la maqueta acusa el golpe de luz en vez de
+   quedarse indiferente mientras todo lo demás pasa a su alrededor.
+
+   Los tiempos están calzados a mano contra el fogonazo, no elegidos sueltos:
+   520ms de rebote con 300ms de retraso — el mismo retraso del flash— dejan la
+   compresión máxima (22%) en el milisegundo 414, justo cuando la luz sube. El
+   rebote de vuelta (1.035) cae mientras el destello decae. Si se mueve uno,
+   hay que mover el otro o el gesto se descoyunta en dos.
+
+   La escala se queda en 0.93/1.035 y la curva es de desaceleración, no
+   elástica: es un cuerpo que encaja, no una goma. Va sobre la caja interior y
+   no sobre el marco, para que las escuadras y el filete no escalen con ella —
+   las esquinas tienen que quedarse clavadas donde están.
+   --------------------------------------------------------------------------- */
+@keyframes lgpSpriteReboteA {
+  0% {
+    transform: scale(1);
+  }
+  22% {
+    transform: scale(0.93);
+  }
+  55% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes lgpSpriteReboteB {
+  0% {
+    transform: scale(1);
+  }
+  22% {
+    transform: scale(0.93);
+  }
+  55% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* La banda no arrastra: la pieza nueva se enciende en su sitio y la que se
+     va, se va sin viaje. Se pierde la metáfora, se conserva el cambio. */
+  .lgp-decision-cinta {
+    animation: lgpIn 200ms ease both !important;
+  }
+
+  .lgp-decision-cinta-saliente {
+    display: none;
+  }
+
+  .lgp-decision-visual-caja {
+    animation: none !important;
+  }
+}
+
+/* --- Flechas del carrusel en pantalla chica -------------------------------
+   En escritorio las flechas van a los lados del visor y el reparto funciona.
+   En un teléfono de 375px se comían 104px de ancho —dos botones más sus
+   huecos— y la maqueta se quedaba en 205px: el carrusel acababa enseñando la
+   fachada MÁS chica que la lista a la que sustituyó, que es lo contrario de
+   por qué se hizo el cambio.
+
+   Aquí se montan encima del visor, en sus bordes, y el marco recupera el ancho
+   completo. Es lo mismo que ya hace el visor de obra con sus flechas, así que
+   no es un patrón nuevo: es el que este proyecto usa cuando una imagen manda y
+   el ancho no sobra. */
+@media (max-width: 720px) {
+  .lgp-carrusel-fila {
+    position: relative;
+    gap: 0;
+  }
+
+  .lgp-carrusel-fila .lgp-flecha {
+    position: absolute;
+    top: 50%;
+    z-index: 4;
+    transform: translateY(-50%);
+    /* Sobre la maqueta, no junto a ella: el filete solo ya no basta para
+       despegarla del render que tiene detrás. */
+    box-shadow: 0 2px 10px rgba(28, 30, 31, 0.16);
+  }
+
+  .lgp-carrusel-fila .lgp-flecha:first-child {
+    left: 8px;
+  }
+
+  .lgp-carrusel-fila .lgp-flecha:last-child {
+    right: 8px;
+  }
+}
+
+/* --- Las escuadras que sueltan -------------------------------------------
+   El inverso del encuadre. Si al elegir las cuatro marcas se cierran sobre las
+   esquinas desde fuera, al quitar se abren y se van por donde vinieron: el
+   encuadre suelta la pieza. No hace falta explicar nada más — la misma forma,
+   al revés, ya lo dice.
+
+   260ms contra los 400 de la entrada, porque en este sistema se sale siempre
+   más rápido de lo que se entra. Y la curva se invierte con la duración: la
+   entrada llega desacelerando (`cubic-bezier(0.16, 1, 0.3, 1)`, algo que se
+   posa) y la salida acelera al irse (`cubic-bezier(0.4, 0, 1, 1)`, algo que se
+   suelta). Reusar la curva de llegada para la despedida es lo que hace que una
+   salida se sienta pesada sin que se pueda señalar por qué.
+
+   Las cuatro salen a la vez. La entrada va escalonada en diagonales porque
+   encuadrar es un gesto en secuencia; soltar no tiene secuencia, es una sola
+   cosa que ocurre. El escalonado aquí además tendría un costo real: con las
+   marcas terminando en momentos distintos, el `onAnimationEnd` que desmonta el
+   nodo cortaría a las rezagadas a media salida.
+
+   Sin fogonazo, a propósito. El destello dice "queda registrado"; dispararlo al
+   borrar diría lo contrario de lo que acaba de pasar.
+
+   Los selectores llevan el atributo para ganarle en especificidad al
+   escalonado de la entrada (`.lgp-escuadras > span:nth-child(2)` y su retraso
+   de 60ms), sin recurrir a `!important`. */
+.lgp-escuadras[data-suelta='1'] > span:nth-child(n) {
+  animation: lgpEscuadraSuelta 260ms cubic-bezier(0.4, 0, 1, 1) both;
+  animation-delay: 0s;
+}
+
+@keyframes lgpEscuadraSuelta {
+  from {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  to {
+    opacity: 0;
+    /* Un poco más lejos que los 15px de la entrada: al soltarse, algo que
+       estaba en tensión se va con más recorrido del que tuvo al llegar. */
+    transform: translate(calc(var(--dx, 0px) * 1.5), calc(var(--dy, 0px) * 1.5));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Se apagan en su sitio, sin viaje. Sigue habiendo acuse de que se soltó. */
+  .lgp-escuadras[data-suelta='1'] > span:nth-child(n) {
+    animation: lgpEscuadraApaga 200ms ease both;
+  }
+}
+
+@keyframes lgpEscuadraApaga {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* --- La cabecera le deja sitio al canto -----------------------------------
+   El canto doblado vive en la esquina superior derecha de la ventana y se lleva
+   los toques de todo su cuadro. En pantalla ancha no estorba: la cabecera se
+   centra en 1080px y termina más de cien píxeles antes de llegar a él.
+
+   En cuanto la cabecera pasa a ocupar el ancho completo, la última pestaña de
+   pasos queda debajo del canto y deja de poderse tocar. Medido en un teléfono
+   de 375: el paso 5 existía, se veía a medias y el toque se lo quedaba el botón
+   de cerrar. Eso no es un solape estético — es un paso del recorrido al que el
+   cliente no podía llegar.
+
+   El hueco se abre a la derecha y no arriba: en un teléfono el alto es lo que
+   escasea, y bajar la cabecera 60px para esquivar una esquina se paga en todas
+   las pantallas del configurador. */
+@media (max-width: 1200px) {
+  .lgp-ventana-cabecera {
+    padding-right: clamp(52px, 5vw, 74px);
+  }
+}
+
+/* --- Cambio de paso en el configurador ------------------------------------
+   Entre un paso y otro no pasaba nada: el contenido se sustituía de golpe y en
+   un recorrido de seis pasos eso deja al cliente sin saber si avanzó, si
+   retrocedió o si la página se recargó sola.
+
+   Es un cambio de vista, no un acuse, así que va corto —380ms— y pequeño: 10px
+   de subida y un sobrepaso de escala de seis milésimas. Lo justo para que el
+   ojo registre que el bloque es nuevo y no un repintado del anterior.
+
+   El rebote está en los keyframes y no en la curva. La diferencia importa: una
+   curva elástica (`cubic-bezier` con el control fuera de [0,1]) rebota en TODO
+   lo que anima y delata la plantilla; un sobrepaso escrito a mano se queda
+   donde se puso y la curva sigue siendo de desaceleración limpia. Es el mismo
+   recurso que ya usan `ftNum` y el rebote del sprite al elegir.
+
+   Pares A/B por la Regla del Nombre Alterno: el contenedor no se remonta al
+   cambiar de paso, así que reusar un solo nombre solo animaría el primero. */
+@keyframes lgpPasoEntraA {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.006);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lgpPasoEntraB {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(1.006);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Modo lateral de `PasoDecision`: la tabla a la izquierda y la maqueta a la
+   derecha. Lo usa la paleta de interior, donde la lista es corta y la maqueta
+   es literalmente el resultado de lo que se está eligiendo.
+
+   Con la tarjeta de foco encima de la lista —el reparto del resto de los
+   pasos— el cursor vive en la fila de abajo y la imagen cambia arriba, fuera
+   del campo de visión: se puede recorrer la lista entera sin enterarse de que
+   algo se actualizaba. Al lado, el ojo alcanza las dos cosas sin moverse.
+   --------------------------------------------------------------------------- */
+.lgp-decision-lateral {
+  display: grid;
+  /* La columna de la maqueta no crece más: el sprite es casi cuadrado y el
+     alto lo manda el `clamp` de `PasoDecision`, así que un panel más ancho solo
+     agrega aire muerto a los costados de la imagen. */
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  gap: 22px;
+  align-items: start;
+}
+
+/* El panel se queda a la vista mientras la lista se recorre. `top` es el aire
+   de la cabecera de la ventana, no un número redondo. */
+.lgp-decision-lateral-panel {
+  position: sticky;
+  top: 12px;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  /* Una columna. La maqueta sube: la tabla completa empuja la imagen fuera de
+     la pantalla, y una paleta que no se ve mientras se elige no es una paleta,
+     es una lista de nombres. */
+  .lgp-decision-lateral {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .lgp-decision-lateral-panel {
+    position: static;
+    order: -1;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Entrada de la maqueta al panel lateral. Es la hermana pequeña del rebote de
+   la elección (`lgpSpriteRebote`): la misma curva de desaceleración y el mismo
+   gesto de encajar, a un tercio de la amplitud y sin sobrepaso.
+
+   La diferencia de escala es la que separa los dos mensajes: curiosear es una
+   respuesta, elegir es un acuse. Si la entrada rebotara igual de fuerte, pasar
+   el cursor por seis filas se sentiría como haber elegido seis veces.
+
+   Dos nombres alternos, como todo lo demás de este archivo: reusar el mismo no
+   vuelve a disparar la animación (ver `useAnimacionAlterna`).
+   --------------------------------------------------------------------------- */
+@keyframes lgpSpriteEntraA {
+  0% {
+    opacity: 0;
+    transform: scale(0.975);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lgpSpriteEntraB {
+  0% {
+    opacity: 0;
+    transform: scale(0.975);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* La caja ya tiene `animation: none !important` más arriba para el acuse de
+     elección, así que la entrada tampoco corre. La maqueta simplemente está,
+     que es lo único que la animación aportaba. */
+  .lgp-decision-lateral-panel {
+    position: static;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   La burbuja de WhatsApp del cierre. Es el logo solo, sin texto: de los pocos
+   iconos que no necesitan etiqueta. El nombre sigue existiendo para quien no ve
+   la pantalla (`aria-label`) y para quien duda (`title`).
+
+   Va en verde de marca y no en fantasma como el resto de los secundarios: sin
+   texto, un logo de WhatsApp en gris deja de leerse como WhatsApp. La jerarquía
+   contra "Agendar mi cita" la carga el tamaño —54px contra una barra de 460—,
+   no el color.
+
+   54px y no 44: el mínimo táctil es el suelo, y este es un blanco redondo
+   aislado en medio de mucho aire, donde el dedo no tiene bordes vecinos que le
+   ayuden a apuntar.
+   --------------------------------------------------------------------------- */
+.lgp-wa-burbuja {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 0;
+  background: #25d366;
+  color: #fff;
+  cursor: pointer;
+  /* La sombra lleva el propio verde y no un gris neutro: un halo gris debajo de
+     un círculo de color lo despega del papel en vez de asentarlo. */
+  box-shadow: 0 6px 18px rgba(37, 211, 102, 0.34);
+}
+
+.lgp-wa-burbuja:hover,
+.lgp-wa-burbuja:focus-visible {
+  background: #1fb955;
+}
+
+/* `lgp-hover-zoom` pone su propia sombra gris al pasar el cursor y le ganaría a
+   la verde. Se le devuelve la suya, un punto más alta. */
+.lgp-wa-burbuja.lgp-hover-zoom:hover,
+.lgp-wa-burbuja.lgp-hover-zoom:focus-visible {
+  box-shadow: 0 10px 24px rgba(37, 211, 102, 0.42);
+}
+
+.lgp-wa-burbuja:focus-visible {
+  outline: 2px solid #1c1e1f;
+  outline-offset: 3px;
+}
+
+/* Sin número configurado. Solo se ve en desarrollo, y tiene que verse: es un
+   pendiente, no un botón. Gris, punteado y sin destino — nada que invite a
+   pulsarlo. */
+.lgp-wa-burbuja-pendiente {
+  background: transparent;
+  border: 1px dashed #ddd9d4;
+  color: #b7babb;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.lgp-wa-burbuja-pendiente:hover,
+.lgp-wa-burbuja-pendiente:focus-visible {
+  background: transparent;
 }

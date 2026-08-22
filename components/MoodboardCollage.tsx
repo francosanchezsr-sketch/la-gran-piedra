@@ -100,7 +100,7 @@ export default function MoodboardCollage({
           <div style={{ border: '1px solid #EAE7E3', background: '#fff', padding: compact ? '10px 10px 4px' : '18px 18px 10px' }}>
             <FloorplanDiagram planKey={planKey ?? 'B'} />
           </div>
-          <p style={{ margin: '10px 0 0', textAlign: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', color: '#8A8F91', textTransform: 'uppercase' }}>
+          <p style={{ margin: '10px 0 0', textAlign: 'center', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', color: '#5C6163', textTransform: 'uppercase' }}>
             {planNombre}
           </p>
         </div>
@@ -116,12 +116,12 @@ export default function MoodboardCollage({
       </div>
 
       {shown.length === 0 ? (
-        <p style={{ margin: '14px 0 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', color: '#B7BABB', textTransform: 'uppercase', textAlign: 'center' }}>
+        <p style={{ margin: '14px 0 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase', textAlign: 'center' }}>
           Aún no agregas zonas — elige algunas para verlas aquí.
         </p>
       ) : null}
       {extra > 0 ? (
-        <p style={{ margin: '10px 0 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', color: '#B7BABB', textTransform: 'uppercase', textAlign: 'center' }}>
+        <p style={{ margin: '10px 0 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase', textAlign: 'center' }}>
           +{extra} zona{extra > 1 ? 's' : ''} más en tu resumen
         </p>
       ) : null}
@@ -129,10 +129,10 @@ export default function MoodboardCollage({
       <div style={{ display: 'flex', justifyContent: 'center', gap: compact ? '10px' : '14px', marginTop: compact ? '18px' : '26px' }}>
         {interior ? (
           [interior.c1, interior.c2, interior.c3].map((c, i) => (
-            <div key={i} style={{ width: compact ? '30px' : '52px', height: compact ? '30px' : '52px', borderRadius: '999px', background: c, border: '1px solid rgba(28,30,31,0.08)' }} />
+            <div key={i} style={{ width: compact ? '30px' : '52px', height: compact ? '30px' : '52px', borderRadius: '50%', background: c, border: '1px solid rgba(28,30,31,0.08)' }} />
           ))
         ) : (
-          <p style={{ margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.08em', color: '#B7BABB', textTransform: 'uppercase' }}>Sin gama elegida</p>
+          <p style={{ margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.08em', color: '#6E7375', textTransform: 'uppercase' }}>Sin paleta elegida</p>
         )}
       </div>
     </div>

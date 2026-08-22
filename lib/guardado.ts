@@ -9,7 +9,10 @@ import type { Lote } from '@/lib/data';
 // además es dato suyo que no tiene por qué quedarse en el navegador de un
 // equipo prestado.
 
-export const CLAVE_GUARDADO = 'lgp-configuracion-v1';
+// v2: al desaparecer el paso de lote, los pasos se recorrieron (7 → 6). Un
+// guardado viejo traería un número de paso que ya significa otra cosa, así que
+// se cambia la clave en vez de restaurarlo en la pantalla equivocada.
+export const CLAVE_GUARDADO = 'lgp-configuracion-v2';
 
 export type ConfigGuardada = {
   v: 1;
@@ -74,5 +77,5 @@ export function borrarGuardado(): void {
 
 /** Si no eligió ni lote ni plano, no hay nada que valga la pena retomar. */
 export function valeLaPenaRetomar(d: ConfigGuardada | null): boolean {
-  return Boolean(d && (d.loteId || d.lotePropio) && (d.plan || d.paso > 2));
+  return Boolean(d && (d.loteId || d.lotePropio) && (d.plan || d.paso > 1));
 }

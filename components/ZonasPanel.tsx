@@ -25,7 +25,7 @@ function ZonaPuesta({ m }: { m: ZonaMod }) {
           <Icono k={m.iconKey} size={22} />
         </span>
         <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '11.5px', color: '#1C1E1F' }}>{m.nombre}</span>
-        <span style={{ flex: 'none', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', color: '#8A8F91' }}>
+        <span style={{ flex: 'none', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', color: '#5C6163' }}>
           {m.incluida ? 'INCL' : m.costoLiving === 0 ? 'EXT' : `${m.costoLiving} ft²`}
         </span>
       </div>
@@ -100,10 +100,10 @@ export default function ZonasPanel({
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.08em', color: '#A9ADAF', textTransform: 'uppercase' }}>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.08em', color: '#6E7375', textTransform: 'uppercase' }}>
           {puestas.length} {puestas.length === 1 ? 'zona' : 'zonas'} · {ft2Rest.toLocaleString('es-MX')} ft² libres
         </span>
-        <button onClick={onVerGuiado} style={{ marginLeft: 'auto', padding: '5px 10px', background: 'transparent', border: '1px solid #E4E1DD', color: '#8A8F91', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
+        <button onClick={onVerGuiado} style={{ marginLeft: 'auto', padding: '5px 10px', background: 'transparent', border: '1px solid #E4E1DD', color: '#5C6163', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
           Guiarme una por una
         </button>
       </div>
@@ -128,7 +128,7 @@ export default function ZonasPanel({
               <div style={{ fontWeight: 800, fontSize: '15px', letterSpacing: '0.02em', textTransform: 'uppercase', color: '#1C1E1F', marginBottom: '6px' }}>{foco.nombre}</div>
               <p style={{ margin: '0 0 4px', maxWidth: '46ch', fontSize: '13px', lineHeight: 1.6, color: '#505759' }}>{foco.nota || foco.nombreLargo}</p>
               {foco.sustituyeA ? (
-                <p style={{ margin: '6px 0 0', fontSize: '11.5px', color: '#8A8F91' }}>Sustituye a {foco.sustituyeA}</p>
+                <p style={{ margin: '6px 0 0', fontSize: '11.5px', color: '#5C6163' }}>Sustituye a {foco.sustituyeA}</p>
               ) : null}
               {foco.sugerida && foco.razon ? (
                 <p style={{ margin: '8px 0 0', fontSize: '11.5px', lineHeight: 1.5, color: '#8A2249' }}>De tu brief: {foco.razon}</p>
@@ -146,7 +146,7 @@ export default function ZonasPanel({
                     <img src={ICONO_TRAGALUZ} alt="" aria-hidden="true" style={{ width: 16, height: 16, objectFit: 'contain', filter: tragaluzPuesto ? 'invert(1) brightness(3)' : undefined }} />
                     {tragaluzPuesto ? 'Con tragaluz' : 'Agregar tragaluz'}
                   </button>
-                  <p style={{ margin: '7px 0 0', fontSize: '11px', lineHeight: 1.5, color: '#A9ADAF' }}>
+                  <p style={{ margin: '7px 0 0', fontSize: '11px', lineHeight: 1.5, color: '#6E7375' }}>
                     {orientacionHint} {tragaluces.length}/{maxTragaluces} usados.
                   </p>
                 </div>
@@ -158,7 +158,7 @@ export default function ZonasPanel({
         </div>
 
         <div className="lgp-panel-elegido" style={{ width: '230px', flex: 'none', borderLeft: '1px solid #E4E1DD', paddingLeft: '20px', alignSelf: 'stretch' }}>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#A9ADAF', textTransform: 'uppercase', marginBottom: '10px' }}>Zonas agregadas</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase', marginBottom: '10px' }}>Zonas agregadas</div>
           {puestas.length ? (
             /* Se recorta y se desplaza por dentro: con ocho zonas puestas esta
                columna estiraba la tarjeta entera y el paso se volvía un tobogán. */
@@ -168,12 +168,12 @@ export default function ZonasPanel({
               ))}
             </div>
           ) : (
-            <div style={{ fontSize: '12px', color: '#A9ADAF', lineHeight: 1.5 }}>Ninguna agregada. Elige una de la lista.</div>
+            <div style={{ fontSize: '12px', color: '#6E7375', lineHeight: 1.5 }}>Ninguna agregada. Elige una de la lista.</div>
           )}
         </div>
       </div>
 
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#A9ADAF', textTransform: 'uppercase', marginBottom: '8px' }}>Otras zonas</div>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase', marginBottom: '8px' }}>Otras zonas</div>
       {/* La lista tampoco crece sin fin: se desplaza dentro de su propia caja
           para que el paso conserve su altura. */}
       <div className="lgp-decision-lista lgp-zonas-lista" style={{ border: '1px solid #EAE7E3', maxWidth: '520px', overflowY: 'auto', overscrollBehavior: 'contain' }}>

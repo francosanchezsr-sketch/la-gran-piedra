@@ -41,7 +41,7 @@ export default function MoodboardPreview({
             <p style={{ margin: '0 0 6px', fontFamily: 'Archivo, sans-serif', fontWeight: 900, fontSize: '22px', letterSpacing: '-0.01em' }}>
               EL <em style={{ fontStyle: 'italic' }}>PLANO</em>
             </p>
-            <p style={{ margin: 0, maxWidth: '520px', fontSize: '13px', lineHeight: 1.6, color: '#8A8F91' }}>
+            <p style={{ margin: 0, maxWidth: '520px', fontSize: '13px', lineHeight: 1.6, color: '#5C6163' }}>
               {brief ? brief : 'Aún no escribiste tu brief en el paso 4 — esto es un resumen visual de lo que llevas elegido.'}
             </p>
           </div>
@@ -64,11 +64,11 @@ export default function MoodboardPreview({
         </div>
 
         <div style={{ margin: '26px 0 0', borderTop: '1px solid #EAE7E3' }}>
-          <p style={{ margin: 0, padding: '18px 26px 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.16em', color: '#A9ADAF', textTransform: 'uppercase' }}>Tu progreso</p>
+          <p style={{ margin: 0, padding: '18px 26px 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.16em', color: '#6E7375', textTransform: 'uppercase' }}>Tu progreso</p>
           <div style={{ padding: '10px 26px 26px' }}>
             {resumen.map((r, i) => (
               <div key={i} style={{ display: 'flex', gap: '16px', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid #F4F1ED' }}>
-                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', color: '#A9ADAF', textTransform: 'uppercase', flex: 'none' }}>{r.k}</span>
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase', flex: 'none' }}>{r.k}</span>
                 <span style={{ fontSize: '13px', lineHeight: 1.5, textAlign: 'right', color: '#1C1E1F' }}>{r.v}</span>
               </div>
             ))}

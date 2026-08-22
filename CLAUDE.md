@@ -53,13 +53,23 @@ del 473 real del townhouse.
   `.env.example`) — sin ellas responde 501 y la UI lo dice: nunca se le
   confirma al cliente un envío que no salió. Los archivos que sube el cliente
   siguen viviendo solo en memoria del navegador — no viajan en el correo.
+- En los lotes de la subdivisión la fachada no se elige: el reglamento la trae
+  puesta y el paso sale del recorrido (`REGLAS_LOTE.fachadaFija`). No hay dato
+  de **cuál** es esa fachada, así que en ningún lado se le pone un estilo del
+  catálogo — se dice "Definida por la subdivisión". Si el cliente da el estilo o
+  un render del townhouse de Enclave, ahí es donde entra.
+- El hero dice "7 pasos, cero sorpresas" y ya no es cierto: son 6 con lote
+  propio y 5 en Enclave. Falta que el cliente decida qué número publicar.
 - El sitio está solo en español y asume contexto local (pies, retiros de Texas,
   lada 956, cita presencial). Para el cliente internacional falta idioma,
   unidades, moneda y agenda remota.
 - El correo del pie ya es el real (`contact@lagranpiedrallc.com`). El teléfono
   (`(956) 000 0000`) y el enlace a `instagram.com` siguen siendo de relleno.
   Hasta que el teléfono sea real no se puede publicar JSON-LD de negocio
-  local — marcaría a Google un dato falso.
+  local — marcaría a Google un dato falso. Del mismo dato depende el botón de
+  WhatsApp del cierre: el código ya está, pero sin `NEXT_PUBLIC_LGP_WHATSAPP`
+  no se dibuja en producción. Un botón que abre un chat con un número
+  inventado es peor que no tenerlo.
 - Falta `NEXT_PUBLIC_SITE_URL` (o desplegar en Vercel, que inyecta la suya) para
   que las tarjetas al compartir apunten al dominio bueno.
 - Falta la foto real de acceso de Enclave on 107 en

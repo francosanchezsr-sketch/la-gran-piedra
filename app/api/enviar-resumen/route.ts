@@ -32,7 +32,7 @@ export async function GET() {
     },
     plan: { nombre: 'Townhouse 2 pisos', pisos: 2, livingBase: 1635, livingElegido: 1635 },
     cuartos: { recamaras: 2, banos: 3, recBase: 3, banosBase: 3 },
-    fachada: 'Escandinavo moderno',
+    fachada: 'Escandinavo',
     interior: { nombre: 'Piedra cálida', colores: ['#E8E1D6', '#B8A894', '#3A3733'] },
     zonas: [
       { nombre: 'Cocina concepto abierto', rango: 'sin muros extra', ft2: 0, exterior: false, incluida: true },

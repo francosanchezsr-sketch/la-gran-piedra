@@ -1,6 +1,6 @@
 // Ficha del arquitecto: el resumen completo de una configuración, en el formato
 // que se manda por correo. No se publica en el sitio — el cliente ve el resumen
-// corto del paso 7 y la ficha larga llega al buzón de La Gran Piedra, que es
+// corto del paso 6 y la ficha larga llega al buzón de La Gran Piedra, que es
 // donde la interpretan los arquitectos.
 //
 // El HTML es a propósito viejo: tablas, anchos en px y estilos en línea. Gmail
@@ -234,7 +234,7 @@ export function fichaHtml(f: Ficha, fechaTexto: string): string {
   <tr><td style="padding:30px 30px 24px;background:${TINTA}">
     <p style="margin:0 0 8px;font:700 10px/1 Arial,sans-serif;letter-spacing:2px;text-transform:uppercase;color:${MARCA}">La Gran Piedra · configuración recibida</p>
     <p style="margin:0 0 6px;font:700 25px/1.25 Arial,sans-serif;color:#fff">${esc(f.cliente.nombre)}</p>
-    <p style="margin:0;font:400 13px/1.5 Arial,sans-serif;color:#B7BABB">${esc(fechaTexto)} · ${esc(l.id)} · ${esc(f.plan.nombre)}</p>
+    <p style="margin:0;font:400 13px/1.5 Arial,sans-serif;color: #6E7375">${esc(fechaTexto)} · ${esc(l.id)} · ${esc(f.plan.nombre)}</p>
   </td></tr>
 
   ${bloque('Presupuesto habitable', barraPresupuesto(f.presupuesto))}
