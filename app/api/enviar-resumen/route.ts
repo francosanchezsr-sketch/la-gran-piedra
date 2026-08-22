@@ -96,9 +96,14 @@ export async function POST(request: Request) {
         text: fichaTexto(ficha, fecha),
       }),
     });
-    if (!res.ok) throw new Error('resend error ' + res.status);
+    if (!res.ok) {
+      const detalle = await res.text();
+      console.error('resend error', res.status, detalle);
+      throw new Error('resend error ' + res.status);
+    }
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (err) {
+    console.error('enviar-resumen falló', err);
     return NextResponse.json({ error: 'no se pudo enviar' }, { status: 502 });
   }
 }
