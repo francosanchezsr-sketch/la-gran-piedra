@@ -153,7 +153,7 @@ export default function HomeConfigurator() {
   // decide con qué lote se entra.
   const [ventanaAbierta, setVentanaAbierta] = useState(false);
   // Quién abrió la ventana: quien llega por "ya tengo mi lote" no quiere ver
-  // primero el catálogo de la subdivisión, quiere subir su plano.
+  // primero el catálogo de la subdivisión, quiere subir su lote.
   const [entradaPropia, setEntradaPropia] = useState(false);
   const [tragaluces, setTragaluces] = useState<string[]>([]);
   const [subdivisionKey, setSubdivisionKey] = useState<SubdivisionKey>(SUBDIVISIONES[0].key);
@@ -170,8 +170,6 @@ export default function HomeConfigurator() {
   const [verTodasZonas, setVerTodasZonas] = useState(false);
   const [lotePropio, setLotePropio] = useState<Lote | null>(null);
   const [loteFile, setLoteFile] = useState<{ nombre: string; dataUrl: string; mime: string; peso: number } | null>(null);
-  // Dirección que el usuario ya nos dio, aunque el análisis no haya corrido.
-  const [loteTextoCapturado, setLoteTextoCapturado] = useState<string | null>(null);
   const [loteLoading, setLoteLoading] = useState(false);
   const [loteError, setLoteError] = useState<string | null>(null);
   // 'info' = la vía manual sigue disponible (no pasó nada malo);
@@ -183,10 +181,9 @@ export default function HomeConfigurator() {
     confianza: string; nota: string; fuente: string;
     direccion?: string | null; coordenadas?: string | null;
   } | null>(null);
-  // Tres maneras de traer un lote propio: plano (PDF o imagen), medidas a mano
-  // o una descripción con dirección/coordenadas.
-  const [loteModo, setLoteModo] = useState<'plano' | 'medidas' | 'texto'>('plano');
-  const [loteTexto, setLoteTexto] = useState('');
+  // Dos maneras de traer un lote propio: una foto del terreno con las medidas
+  // escritas a mano (sirve para lotes irregulares) o las medidas a mano.
+  const [loteModo, setLoteModo] = useState<'foto' | 'medidas'>('foto');
   const [loteFrente, setLoteFrente] = useState('');
   const [loteFondo, setLoteFondo] = useState('');
   // Retiros editables: el cálculo de superficie construible sale de aquí, y
@@ -582,8 +579,9 @@ export default function HomeConfigurator() {
     }
   }
 
-  // Pantalla previa — el usuario trae su propio lote (plano en imagen o PDF).
-  // La IA lee las cotas y de ahí sale el presupuesto habitable del lote.
+  // Pantalla previa — el usuario trae su propio lote (foto de su terreno, con
+  // las medidas escritas a mano). La IA lee las cotas y de ahí sale el
+  // presupuesto habitable del lote.
   function onLoteFile(e: ChangeEvent<HTMLInputElement & HTMLTextAreaElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -733,34 +731,26 @@ export default function HomeConfigurator() {
     setLoteAnalisis(null);
     setLoteError(null);
     setLoteUbicacion(null);
-    setLoteTexto('');
-    setLoteTextoCapturado(null);
     setLoteFrente('');
     setLoteFondo('');
     setLote(null);
     setPlan(null);
   }
 
-  // Tres formas de traer el lote, pero no valen lo mismo: el plat trae las
-  // medidas y los retiros reales; la dirección sola no da ninguna de las dos.
-  // Presentarlas como tres pestañas iguales dejaba al cliente adivinando.
+  // Dos formas de traer el lote. La foto sirve sobre todo para el terreno
+  // irregular: la misma lectura por IA que leía planos lee las medidas que el
+  // cliente escribió a mano sobre la foto, y usa las dimensiones dominantes.
   const loteModos = [
     {
-      key: 'plano' as const,
-      label: 'Tengo el plano',
-      desc: 'PDF o foto del plat. Es lo más exacto: de ahí salen medidas y retiros.',
+      key: 'foto' as const,
+      label: 'Tengo una foto',
+      desc: 'Foto de tu terreno con las medidas escritas a mano. Sirve también si el lote es irregular.',
       sello: 'Lo mejor',
     },
     {
       key: 'medidas' as const,
       label: 'Sé las medidas',
       desc: 'Frente y fondo en pies. Con eso basta para calcular tu superficie.',
-      sello: null,
-    },
-    {
-      key: 'texto' as const,
-      label: 'Solo la dirección',
-      desc: 'Nos ubica el terreno, pero las medidas te las vamos a pedir igual.',
       sello: null,
     },
   ].map((m) => ({
@@ -1352,9 +1342,9 @@ export default function HomeConfigurator() {
     ...(tragaluces.length ? [{ k: 'Tragaluces', v: tragaluces.map((k) => (MODULOS.find((m) => m.key === k) || ({} as any)).corto).join(', ') }] : []),
     // Lo que el usuario adjuntó de su propio lote viaja al resumen para que el
     // arquitecto lo vea, aunque el análisis automático no haya corrido.
-    ...(loteFile ? [{ k: 'Plano adjunto', v: loteFile.nombre + ' · ' + pesoLegible(loteFile.peso) }] : []),
-    ...(loteUbicacion || loteTextoCapturado
-      ? [{ k: 'Ubicación del lote', v: loteUbicacion ? [loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ') : (loteTextoCapturado ?? '') }]
+    ...(loteFile ? [{ k: 'Foto del lote adjunta', v: loteFile.nombre + ' · ' + pesoLegible(loteFile.peso) }] : []),
+    ...(loteUbicacion
+      ? [{ k: 'Ubicación del lote', v: [loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ') }]
       : []),
     ...(brief ? [{ k: 'Brief', v: '“' + brief.slice(0, 150) + (brief.length > 150 ? '…' : '') + '”' }] : []),
     { k: 'Contacto', v: (lead.nombre || '—') + (lead.correo ? ' · ' + lead.correo : '') + (lead.tel ? ' · ' + lead.tel : '') },
@@ -1396,7 +1386,7 @@ export default function HomeConfigurator() {
         adjunto: loteFile ? `${loteFile.nombre} · ${pesoLegible(loteFile.peso)}` : null,
         ubicacion: loteUbicacion
           ? [loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ')
-          : loteTextoCapturado,
+          : null,
       },
       plan: {
         nombre: plan ? PLANES[plan].nombre : '—',
@@ -1550,8 +1540,8 @@ export default function HomeConfigurator() {
     const primero = lista.find((l) => l.status === 'disponible') ?? lista[0];
     if (primero) abrirDesdeLote(primero);
   };
-  // Entrar con lote propio: primero la pantalla previa, que es donde se sube el
-  // plano o se capturan las medidas. De ahí sigue al paso 1 como todos.
+  // Entrar con lote propio: primero la pantalla previa, que es donde se sube la
+  // foto o se capturan las medidas. De ahí sigue al paso 1 como todos.
   const abrirPropioLote = () => {
     setPaso(PREVIA);
     setEntradaPropia(true);
@@ -1590,13 +1580,11 @@ export default function HomeConfigurator() {
     setPlanLivingSel(null);
     setVerTodasZonas(false);
     setLoteFile(null);
-    setLoteTextoCapturado(null);
     setLoteLoading(false);
     setLoteError(null);
     setLoteErrorTipo('error');
     setLoteAnalisis(null);
-    setLoteModo('plano');
-    setLoteTexto('');
+    setLoteModo('foto');
     setLoteFrente('');
     setLoteFondo('');
     setRetiros(RETIROS_DEFAULT);
@@ -1841,7 +1829,7 @@ export default function HomeConfigurator() {
                 <p style={{margin: "0 0 8px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.12em", color: "#8A2249", textTransform: "uppercase"}}>&iquest;Ya tienes tu propio lote?</p>
                 <p style={{margin: "0 0 10px", fontSize: "clamp(18px,2.1vw,24px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Tráelo como lo tengas y calculamos cuánto cabe.</p>
                 <p style={{margin: "0", maxWidth: "52ch", fontSize: "15px", lineHeight: "1.6", color: "#5C6163"}}>
-                  El plano en PDF o foto, las medidas a mano, o la dirección del terreno. Al ser un lote fuera de la subdivisión se te abren los tres floorplans.
+                  Una foto de tu terreno con las medidas escritas a mano, o directo las medidas si ya las sabes. Al ser un lote fuera de la subdivisión se te abren los tres floorplans.
                 </p>
               </div>
               {/* Pasa de tinta a carmín. Abre el configurador igual que
@@ -2011,15 +1999,15 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
 
-                {loteModo === 'plano' ? (
+                {loteModo === 'foto' ? (
     <Fragment>
                 {/* El destello marca dónde tiene que tocar: es lo único que
                     falta para que el paso avance. */}
                 <label className={loteLoading || lotePropio ? '' : 'lgp-guia-activa'} style={{display: "inline-flex", alignItems: "center", gap: "10px", padding: "14px 20px", background: loteLoading ? "#F4F1ED" : "#1C1E1F", color: loteLoading ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: loteLoading ? "wait" : "pointer"}}>
-                  {loteLoading ? 'Analizando…' : '+ Subir plano o foto'}
+                  {loteLoading ? 'Analizando…' : '+ Subir foto de tu lote'}
                   <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" onChange={onLoteFile} disabled={loteLoading} style={{display: "none"}} />
                 </label>
-                <p style={{margin: "10px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.06em", color: "#6E7375", textTransform: "uppercase"}}>PDF · JPG · PNG · WEBP — hasta 8 MB</p>
+                <p style={{margin: "10px 0 0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.06em", color: "#6E7375", textTransform: "uppercase"}}>Con las medidas escritas a mano · JPG · PNG · WEBP · PDF — hasta 8 MB</p>
     </Fragment>
     ) : null}
 
@@ -2097,18 +2085,6 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
 
-                {loteModo === 'texto' ? (
-    <Fragment>
-                <textarea value={loteTexto} onChange={(e) => setLoteTexto(e.target.value)} rows={4} placeholder="Ej: Lote en Mission, TX, sobre la calle Los Ebanos. Mide 60 x 120 pies. Coordenadas 26.2159, -98.3253" style={{width: "100%", padding: "12px", border: "1px solid #E4E1DD", background: "#fff", fontFamily: "inherit", fontSize: "14px", lineHeight: 1.6, color: "#1C1E1F", resize: "vertical"}} />
-                <div style={{display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginTop: "12px"}}>
-                  <button onClick={() => { setLoteTextoCapturado(loteTexto.trim()); analizarLote({ texto: loteTexto }); }} disabled={loteLoading || !loteTexto.trim()} className="lgp-hover-zoom" style={{padding: "12px 18px", background: (loteLoading || !loteTexto.trim()) ? "#F4F1ED" : "#1C1E1F", border: 0, color: (loteLoading || !loteTexto.trim()) ? "#B7BABB" : "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "10px", fontWeight: "700", letterSpacing: "0.16em", textTransform: "uppercase", cursor: (loteLoading || !loteTexto.trim()) ? "not-allowed" : "pointer"}}>{loteLoading ? 'Analizando…' : 'Analizar descripción'}</button>
-                </div>
-                <p style={{margin: "10px 0 0", maxWidth: "480px", fontSize: "11px", lineHeight: 1.5, color: "#6E7375"}}>
-                  Incluye las medidas si las sabes. Una dirección o unas coordenadas solas no dicen cuánto mide el lote, así que en ese caso guardamos la ubicación y te pedimos el frente y el fondo.
-                </p>
-    </Fragment>
-    ) : null}
-
                 {/* Acuses de recibo. Van fuera de las pestañas para que sigan
                     visibles aunque el usuario cambie de modo o falle el análisis. */}
                 {loteFile ? (
@@ -2134,17 +2110,17 @@ export default function HomeConfigurator() {
     </Fragment>
     ) : null}
 
-                {loteUbicacion || loteTextoCapturado ? (
+                {loteUbicacion ? (
     <Fragment>
                 <div style={{marginTop: "12px", padding: "12px 14px", background: "#F4FBF6", border: "1px solid #CFE8D8"}}>
                   <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px"}}>
                     <span style={{flex: 1, minWidth: 0}}>
                       <span style={{display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#6B8F79", textTransform: "uppercase"}}>✓ Ubicación capturada</span>
                       <span style={{display: "block", marginTop: "4px", fontSize: "13px", lineHeight: 1.5, color: "#1C1E1F"}}>
-                        {loteUbicacion ? [loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ') : loteTextoCapturado}
+                        {[loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ')}
                       </span>
                     </span>
-                    <button onClick={() => { setLoteUbicacion(null); setLoteTextoCapturado(null); setLoteTexto(''); }} style={{flex: "none", padding: "7px 11px", background: "transparent", border: "1px solid #CFE8D8", color: "#6B8F79", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Quitar</button>
+                    <button onClick={() => setLoteUbicacion(null)} style={{flex: "none", padding: "7px 11px", background: "transparent", border: "1px solid #CFE8D8", color: "#6B8F79", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Quitar</button>
                   </div>
                 </div>
     </Fragment>
