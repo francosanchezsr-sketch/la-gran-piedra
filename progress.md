@@ -6,9 +6,11 @@ subdivisión propia **Enclave on 107** en McAllen. El sitio es un configurador
 donde el cliente arma su casa, dirigido a clientes locales e internacionales. El
 recorrido son 6 pasos con lote propio y 5 en la subdivisión (ver sección 16).
 
-Última actualización: zócalo de las maquetas de fachada, re-render de los cuatro sprites en Higgsfield y botón de WhatsApp en Contacto (sección 20).
-**De la sección 14 en adelante está todo sin commitear** — el último commit
-sigue siendo `fabdd9c`.
+Última actualización: el sitio ya está publicado en producción, y hay un
+prototipo (todavía sin integrar) para trazar lotes irregulares (sección 22).
+**Todo lo de las secciones 1–21 ya está commiteado y en GitHub** — el commit
+más reciente es `d9ea540`. La sección 22 en adelante es lo nuevo de esta
+conversación.
 
 ---
 
@@ -1286,3 +1288,85 @@ apagado en pantalla, y aquí no había ninguno. Se fue el bloque y la derivació
 | `lib/data.ts` | `WHATSAPP`, `WHATSAPP_MENSAJE`, `whatsappHref()` |
 | `components/HomeConfigurator.tsx` | `WhatsappGlifo` y el botón en la sección `#contacto` |
 | `.env.example` | `NEXT_PUBLIC_LGP_WHATSAPP`, documentada |
+
+## Sesión 22 — El sitio ya está en vivo, y un prototipo para el lote irregular
+
+Dos frentes. El primero es el sitio dejando de ser local: quedó publicado en
+`lagranpiedrallc.com`. El segundo es exploratorio — un prototipo aparte, fuera
+del repo, para la manera en que un lote con forma irregular entra al
+configurador.
+
+### 22.1 Publicación: dominio, correo y WhatsApp reales
+
+El dominio `lagranpiedrallc.com` está registrado en HostGator (`ns134` /
+`ns135.hostgator.mx`), no en Squarespace — Squarespace solo tenía el sitio
+viejo conectado ahí, y ese panel no sirve para nada de esto. El cambio real
+fue en la Zona DNS de HostGator:
+
+- **A** del dominio raíz → `76.76.21.21` (Vercel)
+- **CNAME** de `www` → `cname.vercel-dns.com` (Vercel)
+- Cuatro registros más (`TXT`/`CNAME`) para verificar el dominio en Resend y
+  habilitar SPF/DKIM/DMARC — sin tocar los `MX` existentes de Titan, que son
+  los que de verdad reciben el correo del negocio.
+
+El proyecto se importó a Vercel desde el repo de GitHub; cada push a `main`
+publica solo. `RESEND_API_KEY` y `LGP_CORREO_REMITENTE` quedaron configuradas
+ahí — el primer intento de envío falló con un 502 opaco porque el `catch` de
+`app/api/enviar-resumen/route.ts` no registraba el motivo real; se le agregó
+`console.error` con el cuerpo de la respuesta de Resend (commit `dbdd381`), lo
+que dejó ver que el remitente se había guardado con un salto de línea de más.
+Corregido el valor, un envío de prueba real llegó a `contact@lagranpiedrallc.com`.
+`NEXT_PUBLIC_LGP_WHATSAPP` quedó en `9564503175`, el número real del negocio.
+
+También se simplificó el paso 1 de "ya tengo mi lote": de tres vías
+(plano/medidas/dirección) a dos (**foto** — reutiliza el mismo análisis por
+IA que antes leía el plano formal — y **medidas**). La vía de solo-dirección
+se quitó por completo: nunca traía suficiente para calcular un presupuesto.
+Commit `f443b00`.
+
+### 22.2 Trazador de lote irregular — diseño aprobado, prototipo en curso
+
+El cliente compartió el caso real que la vía de "foto" no resuelve bien: un
+lote con forma de cuadrilátero irregular, no un rectángulo. Se armó un spec
+completo (`docs/superpowers/specs/2026-08-22-trazado-lote-irregular-design.md`,
+commit `d9ea540`) para una tercera tarjeta, **"Mi lote es irregular"**, que:
+
+1. Deja trazar el contorno tocando cada esquina — sin botón de "cerrar
+   forma": tocar cerca del punto de inicio cierra el trazo solo.
+2. Guía animada, en cinco pasos: frente → trasero → ¿retiros conocidos? →
+   ¿servidumbre adicional? → norte (una rosa de vientos que se arrastra para
+   girar). Las aristas por marcar corren con una lucecita en circuito, en el
+   mismo sentido del trazo.
+3. La foto se "arranca" como una calcomanía —el mismo mecanismo de
+   `clip-path` en diagonal que ya usa `.lgp-ventana` en `globals.css`— y deja
+   pegada la sombra del lote, que ya estaba dibujada ahí desde antes de
+   arrancar: no entra después, no se reencuadra, se queda exactamente donde
+   se trazó.
+4. La medida de cada arista se escribe en un campo flotante encima de esa
+   misma arista, ya sobre el diagrama.
+5. El área sale de la fórmula shoelace; la huella construible mete cada
+   arista hacia adentro por su retiro (más cualquier servidumbre marcada) y
+   corta los semiplanos resultantes — válido para lotes convexos, que es el
+   caso típico. Si el trazo da algo cóncavo, cae al mismo supuesto de 50%
+   que ya usa hoy la vía de foto para lotes irregulares.
+
+**Todavía no toca el código real.** Vive como un prototipo aislado (HTML +
+JS en un solo archivo, sin dependencias) publicado como Artifact de Claude,
+para que el cliente lo probara e iterara sin arriesgar nada del sitio en
+producción. Pasó por varias rondas con el cliente probándolo: el gesto de
+cerrar la forma, la animación de las aristas (se probó un efecto tipo agua,
+se regresó a las lucecitas en circuito porque esa ya gustaba), la rosa de
+vientos, y el arreglo del arranque tipo calcomanía. La lógica de trazo y
+geometría (`lib/poligono.ts` en el spec) todavía no se portó a
+`HomeConfigurator.tsx` — eso es lo que sigue, una vez que el cliente dé el
+visto bueno final al prototipo.
+
+## Archivos clave de la sesión 22
+
+| Archivo | Qué es |
+|---|---|
+| `docs/superpowers/specs/2026-08-22-trazado-lote-irregular-design.md` | El spec aprobado del trazador de lote irregular |
+| `components/HomeConfigurator.tsx` | Paso 1 de lote propio: 2 vías en vez de 3 (`loteModo: 'foto' \| 'medidas'`) |
+| `app/api/enviar-resumen/route.ts` | `console.error` del cuerpo de la respuesta de Resend en el `catch` |
+| `.env.local` (no versionado) | `NEXT_PUBLIC_LGP_WHATSAPP=9564503175`, para probar el botón en desarrollo |
+| *(fuera del repo)* | Prototipo del trazador — Artifact de Claude, HTML/JS aislado, sin integrar todavía |
