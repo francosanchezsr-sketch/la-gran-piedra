@@ -13,6 +13,10 @@ import {
   livingDeModulo,
   RETIROS_DEFAULT,
   huellaConstruible,
+  huellaDesplantada,
+  OCUPACION,
+  PATIO_CUBIERTO,
+  HABITABLE_CONSTRUIDO,
   GARAGE_2_AUTOS,
   GARAGE_1_AUTO,
   GARAGE_2_TOWNHOUSE,
@@ -513,17 +517,71 @@ export default function HomeConfigurator() {
 
   const garageFt = garage2 ? GARAGE_2_AUTOS : GARAGE_1_AUTO;
 
-  // Máximo habitable del lote. En un lote propio con huella calculada sale de
-  // la construcción real: huella x pisos del plan, menos garage y pórtico, que
-  // ocupan planta baja pero no son habitables. En los lotes del catálogo es el
-  // tope que fija la subdivisión.
+  // Máximo habitable del lote.
+  //
+  // ANTES esto partía del envolvente COMPLETO (`lote.huella`), como si la casa
+  // llenara hasta la última pulgada de lo que deja el municipio y además no
+  // tuviera patio cubierto. Sobre un lote de 50x95 prometía 1,999 ft²
+  // habitables; el Lot 76, construido en ese mismo lote, tiene 1,512. Un 32 %
+  // de más en el número central del producto.
+  //
+  // Ahora pasa por dos correcciones, las dos medidas en los ocho sets:
+  //   1. El envolvente se desplanta al ~82 %, no al 100 % (OCUPACION.tipica).
+  //   2. El patio cubierto ocupa huella y no es habitable. Los SIETE sets con
+  //      tabla de áreas lo traen; ninguno se construyó sin él.
+  //
+  // Contra el Lot 76: 2,480 de envolvente -> 2,034 desplantados -> 1,450
+  // habitables, contra los 1,511.83 reales. Se queda 4 % corto, que es del lado
+  // correcto: prometer de menos se corrige en la cita, prometer de más no.
   function maxLivingLote() {
     if (!lote) return 0;
     if (lote.huella && plan) {
       const pisos = PLANES[plan].pisos;
-      return Math.max(0, lote.huella * pisos - garageFt - PORCHE);
+      const desplantado = huellaDesplantada(lote.huella);
+      const habitablePlantaBaja = desplantado - garageFt - PORCHE - PATIO_CUBIERTO;
+      return Math.max(0, Math.round(habitablePlantaBaja * pisos));
     }
     return lote.maxLiving;
+  }
+
+  /**
+   * Las palancas, en el orden en que un arquitecto las movería: primero lo que
+   * no cambia la casa (la cochera), luego lo que la reparte (dos plantas),
+   * luego lo que le quita programa (una recámara), y al final el dato duro que
+   * el cliente merece saber aunque no le guste — de cuánto tendría que ser el
+   * lote. Solo se listan las que de verdad resuelven el faltante.
+   */
+  function salidasSiNoCabe(): string[] {
+    if (!lote || !plan) return [];
+    const pedido = livingDelPlan() + livingDeZonas() + livingDeCuartos();
+    const falta = pedido - maxLivingLote();
+    if (falta <= 0) return [];
+    const out: string[] = [];
+
+    // OJO: la cochera NO se ofrece como salida aunque bajarla de 2 a 1 auto
+    // liberaría 169 ft² — el configurador la muestra en el resumen pero no tiene
+    // ningún control para cambiarla, siempre son 2 autos. Sugerir una palanca
+    // que el cliente no puede mover es peor que no sugerir nada. Si algún día
+    // se agrega ese control, esta es la primera salida que debería listarse.
+    if (recamarasExtra > 0) {
+      out.push(`Quitar una recámara de las que agregaste: libera ${EXTRAS.recamara.living.toLocaleString('es-MX')} ft².`);
+    }
+    if (PLANES[plan].pisos === 1) {
+      out.push('Un plano de dos plantas: la casa apoya la mitad en el suelo, así que el mismo terreno rinde casi el doble.');
+    }
+    // De cuánto tendría que ser el lote. Es el único consejo que no está en sus
+    // manos, y por eso va al final — pero callarlo sería peor: puede estar a
+    // tiempo de elegir otro terreno.
+    if (lote.fondoFt && lote.frenteFt) {
+      const huellaNec = pedido / PLANES[plan].pisos + garageFt + PORCHE + PATIO_CUBIERTO;
+      const envNec = huellaNec / OCUPACION.tipica;
+      const largo = Math.max(1, lote.fondoFt - retiros.frente - retiros.fondo);
+      const frenteNec = Math.ceil(envNec / largo + retiros.lados * 2);
+      if (frenteNec > lote.frenteFt) {
+        out.push(`Con este plano completo, el lote tendría que tener unos ${frenteNec} pies de frente en vez de ${lote.frenteFt}.`);
+      }
+    }
+    return out;
   }
 
   function ft2Restantes() {
@@ -628,7 +686,13 @@ export default function HomeConfigurator() {
       orient: 'Por definir',
       maxft: Math.round(data.areaLote),
       // maxLiving definitivo lo calcula el paso 1 con los pisos y el garage.
-      maxLiving: data.maxLiving ?? (huella ? huella : Math.round(data.areaLote * 0.5)),
+      // Mientras tanto — y esto SE VE en la barra de presupuesto antes de
+      // elegir plano — tiene que ser ya el habitable de una planta, no el
+      // envolvente pelon: antes enseñaba 2,480 ft² “habitables” sobre un lote
+      // de 50x95 donde la casa real tiene 1,512.
+      maxLiving: data.maxLiving ?? (huella
+        ? Math.max(0, huellaDesplantada(huella) - GARAGE_2_AUTOS - PORCHE - PATIO_CUBIERTO)
+        : Math.round(data.areaLote * 0.5)),
       pisos: 'hasta 2 pisos',
       tipo: 'libre',
       status: 'disponible',
@@ -856,6 +920,17 @@ export default function HomeConfigurator() {
       huella: huellaConstruible(f, d, retiros),
       anchoUtil: Math.max(0, f - retiros.lados * 2),
       largoUtil: Math.max(0, d - retiros.frente - retiros.fondo),
+      // Lo que de verdad se desplanta. Va en el tablero porque si no, el
+      // cliente ve "construible 2,480" y luego la barra de presupuesto le
+      // habla de 1,450 sin que nada explique el brinco.
+      desplantado: huellaDesplantada(huellaConstruible(f, d, retiros)),
+      // El habitable que daría ese lote en una planta, para poder avisar cuando
+      // el terreno deja de ser lo que limita la casa.
+      habitable1p: Math.max(0, huellaDesplantada(huellaConstruible(f, d, retiros)) - GARAGE_2_AUTOS - PORCHE - PATIO_CUBIERTO),
+      // Lo que daría apretando hasta el techo histórico. No se usa para el
+      // presupuesto — se enseña con su advertencia, porque ese techo es
+      // exactamente lo que produjo los clósets chicos del Lot 76.
+      habitableTecho: Math.max(0, huellaDesplantada(huellaConstruible(f, d, retiros), 'techo') - GARAGE_2_AUTOS - PORCHE - PATIO_CUBIERTO),
     };
   })();
 
@@ -1871,7 +1946,7 @@ export default function HomeConfigurator() {
             {mostrarPresupuesto ? (
     <Fragment>
             <div style={{marginTop: "12px", marginBottom: "12px"}}>
-              <PresupuestoBar max={maxLivingLote()} segmentos={presupuestoSegmentos} sinLote={!lote} />
+              <PresupuestoBar max={maxLivingLote()} segmentos={presupuestoSegmentos} sinLote={!lote} salidas={salidasSiNoCabe()} />
             </div>
     </Fragment>
     ) : <div style={{height: "12px"}}></div>}
@@ -2038,8 +2113,9 @@ export default function HomeConfigurator() {
                     <RetirosDiagrama frente={previaMedidas.frente} fondo={previaMedidas.fondo} retiros={retiros} />
                     <div style={{flex: "1 1 190px", display: "grid", gap: "14px"}}>
                       {([
-                        { k: 'Lote', ft2: previaMedidas.areaLote, ancho: previaMedidas.frente, largo: previaMedidas.fondo, color: '#1C1E1F' },
-                        { k: 'Construible en planta baja', ft2: previaMedidas.huella, ancho: previaMedidas.anchoUtil, largo: previaMedidas.largoUtil, color: '#8A2249' },
+                        { k: 'Lote', ft2: previaMedidas.areaLote, sub: `${previaMedidas.frente}′ × ${previaMedidas.fondo}′`, color: '#1C1E1F' },
+                        { k: 'Hasta aquí te deja el municipio', ft2: previaMedidas.huella, sub: `${previaMedidas.anchoUtil}′ × ${previaMedidas.largoUtil}′`, color: '#5C6163' },
+                        { k: 'Lo que de verdad se desplanta', ft2: previaMedidas.desplantado, sub: `${Math.round(OCUPACION.tipica * 100)} % de lo anterior`, color: '#8A2249' },
                       ]).map((d) => (
     <Fragment key={d.k}>
                       <div>
@@ -2047,7 +2123,7 @@ export default function HomeConfigurator() {
                         <p style={{margin: "0 0 2px", fontFamily: "Archivo, sans-serif", fontWeight: 800, fontSize: "22px", letterSpacing: "-0.01em", color: d.color}}>
                           {d.ft2.toLocaleString('es-MX')} <span style={{fontSize: "13px", fontWeight: 400, color: "#5C6163"}}>ft²</span>
                         </p>
-                        <p style={{margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#5C6163"}}>{d.ancho}&apos; × {d.largo}&apos;</p>
+                        <p style={{margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.06em", color: "#5C6163"}}>{d.sub}</p>
                       </div>
     </Fragment>
     ))}
@@ -2072,8 +2148,26 @@ export default function HomeConfigurator() {
     </Fragment>
     ))}
                     <span style={{flex: "1 1 100%", fontSize: "11px", lineHeight: 1.5, color: "#5C6163"}}>
-                      Supuesto nuestro, no el reglamento de tu ciudad. El arquitecto lo verifica en la cita.
+                      Mediana de cinco planos aprobados del Valle, no el reglamento de tu ciudad — el plano de
+                      tu subdivisión manda sobre la ordenanza y puede pedir otra cosa. El arquitecto lo verifica en la cita.
                     </span>
+                    <span style={{flex: "1 1 100%", paddingTop: "9px", borderTop: "1px solid #EAE7E3", fontSize: "11px", lineHeight: 1.5, color: "#5C6163"}}>
+                      Una casa nunca llena el terreno hasta el límite: el patio, el hueco del pórtico y la entrada cubierta
+                      se comen entre 16&nbsp;% y 20&nbsp;%. Por eso contamos con el <strong style={{fontWeight: 700, color: "#1C1E1F"}}>{Math.round(OCUPACION.tipica * 100)}&nbsp;%</strong>,
+                      que es lo que ocuparon las dos casas que LGP construyó en un lote de 50 pies de frente.
+                    </span>
+                    <span style={{flex: "1 1 100%", paddingTop: "9px", borderTop: "1px solid #EAE7E3", fontSize: "11px", lineHeight: 1.5, color: "#5C6163"}}>
+                      Apretando se puede llegar al <strong style={{fontWeight: 700, color: "#1C1E1F"}}>{Math.round(OCUPACION.techo * 100)}&nbsp;%</strong>
+                      {' '}— unos {(previaMedidas.habitableTecho - previaMedidas.habitable1p).toLocaleString('es-MX')} ft² más. Es lo que hicimos en el Lot 76,
+                      y ahí los clósets salieron más chicos de lo que nos hubiera gustado. Se puede, pero algo cede.
+                    </span>
+                    {previaMedidas.habitable1p > HABITABLE_CONSTRUIDO.max ? (
+                    <span style={{flex: "1 1 100%", paddingTop: "9px", borderTop: "1px solid #EAE7E3", fontSize: "11px", lineHeight: 1.5, color: "#8A5A00"}}>
+                      Tu lote da para más casa de la que hemos construido — la más grande de nuestros planos aprobados
+                      tiene {Math.round(HABITABLE_CONSTRUIDO.max).toLocaleString('es-MX')} ft² habitables. Aquí el terreno ya
+                      no es lo que limita: lo que limita es hasta dónde quieras llevar la obra. Eso se define con el arquitecto.
+                    </span>
+                    ) : null}
                   </div>
                 </div>
     </Fragment>

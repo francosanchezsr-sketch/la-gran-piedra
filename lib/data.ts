@@ -139,38 +139,171 @@ export const PLANES = {
 // Componentes no habitables. El garage es la pieza que más mueve el cálculo,
 // por eso se elige aparte.
 //
-// 500 ft² es el doble garage estándar que construye La Gran Piedra y el que se
-// usa en lote propio. El townhouse del Lote 17 NO usa este número: su set
-// aprobado trae un garage de 473 ft² (es una huella angosta), y ese valor sigue
-// dentro de PLANES.TH.total, así que ese plano no se ve afectado por este tope.
-export const GARAGE_2_AUTOS = 500;
-export const GARAGE_1_AUTO = 250;
+// Los siete sets de `planos para base de datos/` que traen tabla de áreas dan
+// un garage de dos autos entre 393 y 431 ft². Ninguno llega a 500. La mediana
+// es 418.55 (Lot 76) y se redondea a 419.
+//
+//   Lot 124 393 · Imperial Oaks 404 · Shary 406 · Lot 76 418.55
+//   Lot 77 425.78 · Montecito 37 427 · New Frontier 430.90
+//
+// El 500 que había aquí no sale de ningún plano: estaba 16 % arriba del garage
+// más grande que LGP ha construido, y ese exceso se le restaba al presupuesto
+// habitable del cliente. El townhouse del Lote 17 sigue con su 473 propio.
+export const GARAGE_2_AUTOS = 419;
+export const GARAGE_1_AUTO = 250; // de data.ts original — ningún set trae cochera de un auto
 export const GARAGE_2_TOWNHOUSE = 473;
-export const PORCHE = 24;
 
-// Retiros (setbacks) por default. NO son el reglamento verificado de ninguna
-// ciudad: son valores de arranque razonables para lote residencial del Valle,
-// editables por el usuario en la pantalla previa. El cálculo de construible
-// sale de aquí, así que si el municipio pide otros hay que capturarlos.
-export const RETIROS_DEFAULT = { frente: 25, fondo: 20, lados: 6 };
+// Pórtico / entrada cubierta. Rango real de los siete sets: 34.67 (Lot 77) a
+// 80 (Shary 200), mediana 62.24 (Lot 76). El 24 que había aquí está por debajo
+// del pórtico más chico que existe en los planos.
+export const PORCHE = 62;
+
+// Patio cubierto. Los SIETE sets con tabla de áreas lo traen — no hay uno solo
+// sin él. Rango 86.88 a 125 ft², mediana 103.33. Ocupa huella y no es habitable,
+// así que tenía que entrar al cálculo: antes no existía y esos ft² se le
+// prometian al cliente como área habitable.
+export const PATIO_CUBIERTO = 103;
+
+// Clóset del equipo de aire. Cuatro de los ocho sets le dan uno interior
+// (10.0 a 16.1 ft², mínimo 3'-0" x 3'-4"), y los planos piden además 30" libres
+// de servicio frente a los controles (IRC M1305). Vive DENTRO del habitable:
+// no se resta aparte, se declara para que el arquitecto lo reserve.
+export const CLOSET_AC = 11;
+
+// Retiros (setbacks) por default. SIGUEN SIENDO UN SUPUESTO — el plat de cada
+// subdivisión manda sobre la ordenanza municipal, y ni siquiera es constante
+// dentro de una misma subdivisión — pero ya no son inventados: son la mediana
+// de los cinco site plans acotados de `planos para base de datos/`.
+//
+//   frente  10, 18, 18, 20, 20  -> mediana 18   (Lot 124, Lot 76, Lot 77, Montecito 37, New Frontier)
+//   fondo   15, 15, 15, 20, 20  -> mediana 15
+//   lados    5,  5,  5,  6,  6  -> mediana 5
+//
+// El 25 de frente que había aquí NO aparece en ninguno de los cinco: el máximo
+// observado es 20. Con 25 el envolvente se sub-estimaba ~5 ft x el ancho del lote.
+export const RETIROS_DEFAULT = { frente: 18, fondo: 15, lados: 5 };
 
 export type Retiros = { frente: number; fondo: number; lados: number };
 
 // Huella construible en planta baja: el terreno menos los retiros. Es el tope
-// físico real de lo que se puede desplantar, y de ahí sale todo lo demás.
+// LEGAL de lo que se puede desplantar — no lo que de verdad se desplanta.
 export function huellaConstruible(frenteFt: number, fondoFt: number, r: Retiros) {
   const ancho = Math.max(0, frenteFt - r.lados * 2);
   const largo = Math.max(0, fondoFt - r.frente - r.fondo);
   return Math.round(ancho * largo);
 }
 
-// Cuartos y baños que el usuario puede sumar o quitar en el paso 5. Las medidas
-// salen del set del Lote 17: recámara 2/3 = 10'6"×10'0" = 105 ft²; baño
-// secundario ≈ 50 ft². Quitar uno libera sus ft² para gastarlos en otra zona.
+// ---------- lo que de verdad se desplanta ----------
+// EL ENVOLVENTE NUNCA SE LLENA. Los recortes de patio, el hueco del pórtico y
+// la entrada cubierta se comen entre 16 % y 20 % en un lote apretado. Con sus
+// retiros reales:
+//
+//   Lot 77   1,993 ft² desplantados de 2,480 de envolvente  -> 80.4 %
+//   Lot 76   2,080 de 2,480                                  -> 83.9 %
+//   Lot 124  2,231 de 3,078 (lote en esquina, más holgado)   -> 72.5 %
+//   Mont. 37 2,265 de ~4,320 (lote grande)                   -> 52.4 %
+//
+// NO es un solo número, y tratarlo como tal fue el error original. Son dos, y
+// la diferencia entre ellos es exactamente la lección del Lot 76:
+//
+//   `tipica` (0.82) — lo que LGP construye normalmente en un lote apretado.
+//   `techo`  (0.839) — lo máximo que se ha llenado NUNCA, que es el Lot 76.
+//
+// Y el Lot 76 salió con los clósets chicos justamente por eso: su programa
+// exigía más de lo que el lote daba cómodo, y el clóset fue lo que cedió. Por
+// eso el presupuesto se calcula con `tipica` y el `techo` se enseña aparte, con
+// su advertencia — no como una meta a la que empujar al cliente.
+export const OCUPACION = { tipica: 0.82, techo: 0.839 };
+
+// Lo que cada lote llegó a ocupar de su envolvente, con los retiros de su plat.
+// Sirve para poder decirle al cliente "tu caso se parece a este".
+export const OCUPACION_REAL = [
+  { proyecto: 'Montecito 37', nota: '60×130, holgado', valor: 0.524 },
+  { proyecto: 'Lot 124', nota: 'esquina con chaflán', valor: 0.725 },
+  { proyecto: 'Lot 77', nota: '50×95', valor: 0.804 },
+  { proyecto: 'Lot 76', nota: '50×95, el más lleno', valor: 0.839 },
+] as const;
+
+// Los siete sets con tabla de áreas, para poder contrastar contra ellos.
+// habitable / huella cae SIEMPRE entre 71.3 % y 76.2 % (media 74.2): tres
+// despachos, cuatro años, ocho geometrías de lote, ±3 puntos. Es el hallazgo
+// más estable de todo el análisis.
+export const SETS_CONSTRUIDOS = [
+  { id: 'lot76',  nombre: 'Lot 76',            hab: 1511.83, huella: 2079.51 },
+  { id: 'lot77',  nombre: 'Lot 77',            hab: 1420.75, huella: 1993.49 },
+  { id: 'lot124', nombre: 'Lot 124',           hab: 1681,    huella: 2231 },
+  { id: 'mc37',   nombre: 'Montecito 37',      hab: 1672,    huella: 2265 },
+  { id: 'nf24',   nombre: 'New Frontier 24',   hab: 1860.88, huella: 2459.90 },
+  { id: 'io',     nombre: 'Imperial Oaks',     hab: 1672,    huella: 2242 },
+  { id: 'shary',  nombre: 'Shary Estates 200', hab: 1850,    huella: 2428 },
+] as const;
+
+// Se derivan, nunca se escriben a mano: redondear una banda a mano ya produjo
+// una vez un mensaje que se contradecía solo ("sale al 71.3 %, por debajo del
+// mínimo de 71.3 %").
+export const BANDA_HABITABLE = {
+  min: Math.min(...SETS_CONSTRUIDOS.map((s) => s.hab / s.huella)),
+  max: Math.max(...SETS_CONSTRUIDOS.map((s) => s.hab / s.huella)),
+};
+
+// El habitable de las siete casas: 1,420.75 a 1,860.88. Sirve para avisar
+// cuando el lote deja de ser lo que limita la casa — en un lote de 70x140 la
+// cuenta da 4,680 ft² habitables, más del doble de la casa más grande que LGP
+// ha construido. Ahí el límite ya no es el terreno sino el presupuesto de obra,
+// y decirlo es más honesto que enseñar un número que nadie ha construido.
+export const HABITABLE_CONSTRUIDO = {
+  min: Math.min(...SETS_CONSTRUIDOS.map((s) => s.hab)),
+  max: Math.max(...SETS_CONSTRUIDOS.map((s) => s.hab)),
+};
+
+// Las siete huellas caen entre 1,993 y 2,460 ft² sobre lotes de 4,750 a 7,600.
+// El tamaño de la casa lo fija el programa, no el terreno: por eso este rango
+// sirve de prueba de cordura de cualquier combinación que arme el cliente.
+export const HUELLA_CONSTRUIDA = {
+  min: Math.min(...SETS_CONSTRUIDOS.map((s) => s.huella)),
+  max: Math.max(...SETS_CONSTRUIDOS.map((s) => s.huella)),
+};
+
+/**
+ * Los ft² que la casa apoya de verdad en el suelo, a partir del envolvente
+ * legal. No es lo mismo que `huellaConstruible`: aquella dice hasta dónde deja
+ * el municipio, esta dice hasta dónde llega una casa de LGP.
+ */
+export function huellaDesplantada(envolventeFt2: number, modo: 'tipica' | 'techo' = 'tipica') {
+  return Math.round(envolventeFt2 * OCUPACION[modo]);
+}
+
+/**
+ * Qué porcentaje del envolvente exige una huella dada. Es la cadena corrida al
+ * revés, que es como la corre un arquitecto: no "cuánto cabe aquí" sino "esto
+ * que el cliente pidió, ¿qué le exige al terreno?". Arriba de `techo` no cabe;
+ * cerca de `techo` cabe pero apretado, y eso hay que decirlo.
+ */
+export function ocupacionExigida(huellaFt2: number, envolventeFt2: number) {
+  return envolventeFt2 > 0 ? huellaFt2 / envolventeFt2 : Infinity;
+}
+
+// Cuartos y baños que el usuario puede sumar o quitar en el paso 5.
+//
+// La recámara pasó de 105 a 132 ft². El 105 salía de UN set (el Lote 17,
+// 10'6"x10'0") y resultó ser el cuarto MÁS CHICO de los once medidos en los
+// ocho sets — no el estándar. Las once: 105.4, 122.8, 128.4, 130.3, 132.0,
+// 132.2, 138.1, 140.7, 140.7, 142.2, 157.5. Mediana 132.2.
+//
+// El baño pasó de 50 a 55: mediana de seis baños estándar (41.8 a 68.0).
+//
+// Los dos son el CUARTO SOLO. El clóset va aparte (ver CLOSET_RECAMARA) y la
+// circulación para llegar tampoco está incluida.
 export const EXTRAS = {
-  recamara: { key: 'recamara', nombre: 'Recámara', living: 105, nota: '10’6×10’0 — medida real del set arquitectónico', max: 3 },
-  bano:     { key: 'bano',     nombre: 'Baño',     living: 50,  nota: 'Baño secundario del set arquitectónico', max: 3 },
+  recamara: { key: 'recamara', nombre: 'Recámara', living: 132, nota: 'Mediana de 11 recámaras de los sets construidos', max: 3 },
+  bano:     { key: 'bano',     nombre: 'Baño',     living: 55,  nota: 'Mediana de 6 baños estándar de los sets construidos', max: 3 },
 } as const;
+
+// Clóset de recámara. PISO ABSOLUTO 15.3 ft² — el del Lot 76, que el cliente
+// marcó como error por chico (7'-8" x 2'-0", el único bajo 2'-3½" de fondo en
+// los ocho sets). Lo recomendado es la mediana de los otros siete: 18.3.
+export const CLOSET_RECAMARA = { min: 15.3, recomendado: 18.3 };
+export const CLOSET_MASTER = { min: 40.4, recomendado: 50.1 };
 
 export const FACHADAS = [
   // Las `key` NO se renombran aunque el nombre visible sí: son lo que se guarda
