@@ -15,6 +15,9 @@ import {
   huellaConstruible,
   huellaDesplantada,
   OCUPACION,
+  ftPorRecamara,
+  ESCALERA_POR_PLANTA,
+  REPARTO_PLANTA_BAJA,
   PATIO_CUBIERTO,
   HABITABLE_CONSTRUIDO,
   GARAGE_2_AUTOS,
@@ -511,8 +514,12 @@ export default function HomeConfigurator() {
     }, 0);
   }
 
+  // Una recámara de más NO cuesta 132 ft²: cuesta su parte del núcleo también.
+  // Con los 132 (el cuarto solo) 11 recámaras daban una casa de 2,704 ft², que no
+  // existe — por densidad del plano son ~4,900. Ver ftPorRecamara en data.ts.
   function livingDeCuartos() {
-    return recamarasExtra * EXTRAS.recamara.living + banosExtra * EXTRAS.bano.living;
+    const porRec = plan ? ftPorRecamara(plan) : EXTRAS.recamara.living;
+    return recamarasExtra * porRec + banosExtra * EXTRAS.bano.living;
   }
 
   const garageFt = garage2 ? GARAGE_2_AUTOS : GARAGE_1_AUTO;
@@ -539,7 +546,14 @@ export default function HomeConfigurator() {
       const pisos = PLANES[plan].pisos;
       const desplantado = huellaDesplantada(lote.huella);
       const habitablePlantaBaja = desplantado - garageFt - PORCHE - PATIO_CUBIERTO;
-      return Math.max(0, Math.round(habitablePlantaBaja * pisos));
+      if (habitablePlantaBaja <= 0) return 0;
+      // En una planta, lo de abajo es todo. En dos NO se multiplica por 2: la
+      // planta alta del único caso medido (Lot 17) es el 45 % del habitable, no
+      // el 50 %, porque las dobles alturas se la comen. Y de ese total, 160 ft²
+      // se los lleva la escalera en las dos plantas.
+      if (pisos === 1) return Math.round(habitablePlantaBaja);
+      const total = habitablePlantaBaja / REPARTO_PLANTA_BAJA;
+      return Math.max(0, Math.round(total));
     }
     return lote.maxLiving;
   }
@@ -551,6 +565,19 @@ export default function HomeConfigurator() {
    * el cliente merece saber aunque no le guste — de cuánto tendría que ser el
    * lote. Solo se listan las que de verdad resuelven el faltante.
    */
+  /**
+   * Lo que el plano de dos plantas se lleva y no se ve. Va como nota, no como
+   * resta: el `living` del plano YA lo incluye — pero el cliente que compara
+   * 1,780 contra 1,635 merece saber que 160 de esos son escalera.
+   */
+  function notaDosPlantas(): string | null {
+    if (!plan || PLANES[plan].pisos < 2) return null;
+    const esc = ESCALERA_POR_PLANTA * PLANES[plan].pisos;
+    return `De este plano, unos ${esc} ft\u00b2 son la escalera: ocupa lugar abajo y otra vez arriba. `
+      + `Y la planta alta rinde menos que la baja \u2014 en el townhouse de Enclave son 729 contra 906, `
+      + `porque la sala y el comedor van a doble altura.`;
+  }
+
   function salidasSiNoCabe(): string[] {
     if (!lote || !plan) return [];
     const pedido = livingDelPlan() + livingDeZonas() + livingDeCuartos();
@@ -1947,6 +1974,9 @@ export default function HomeConfigurator() {
     <Fragment>
             <div style={{marginTop: "12px", marginBottom: "12px"}}>
               <PresupuestoBar max={maxLivingLote()} segmentos={presupuestoSegmentos} sinLote={!lote} salidas={salidasSiNoCabe()} />
+              {notaDosPlantas() ? (
+                <p style={{margin: "8px 0 0", fontSize: "11px", lineHeight: 1.55, color: "#5C6163"}}>{notaDosPlantas()}</p>
+              ) : null}
             </div>
     </Fragment>
     ) : <div style={{height: "12px"}}></div>}

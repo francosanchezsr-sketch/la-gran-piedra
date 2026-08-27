@@ -305,6 +305,40 @@ export const EXTRAS = {
 export const CLOSET_RECAMARA = { min: 15.3, recomendado: 18.3 };
 export const CLOSET_MASTER = { min: 40.4, recomendado: 50.1 };
 
+// ---------- dos plantas ----------
+// Del Lot 17 (Enclave on 107), el único set de dos plantas de la base. Es UN
+// caso, no un estándar — pero es lo único medido que existe y sin ello una casa
+// de dos plantas sale sistemáticamente más barata de lo que cuesta.
+//
+// La escalera se paga DOS VECES: abajo los escalones, arriba el hueco con
+// barandal. 11'-2" x 7'-2" = 80 ft² por planta, 160 en total — casi el 10 % del
+// habitable de esa casa.
+export const ESCALERA_POR_PLANTA = 80;
+
+// Y el habitable NO se parte 50/50: el Lot 17 hace 906 abajo y 729 arriba
+// porque living, dining y foyer van a doble altura y se comen 177 ft² de planta
+// alta. Un vacío se paga dos veces: ocupa abajo y quita arriba.
+export const REPARTO_PLANTA_BAJA = 906 / 1635; // 0.554
+
+// El balcón del Lot 17 es CANTILEVER: 37 ft² de exterior con cero huella. Es la
+// única zona exterior de toda la base que no gasta lote.
+export const BALCON = 37;
+
+/**
+ * Cuánto crece de verdad una casa al ganar una recámara: no solo el cuarto y su
+ * clóset, también su parte de sala, cocina, baño y pasillo. Se cobra la DENSIDAD
+ * DEL PLANO ELEGIDO, que es la proporción que ese plano ya tiene.
+ *
+ * `EXTRAS.recamara.living` (132) es el CUARTO SOLO — unidad de presupuesto, no
+ * predictor. Usarlo para agregar cuartos da casas que no existen: 11 recámaras
+ * salían en 2,704 ft² cuando por densidad son ~4,900. En las nueve casas
+ * construidas cada recámara arrastra entre 463 y 560 ft².
+ */
+export function ftPorRecamara(planKey: keyof typeof PLANES) {
+  const p = PLANES[planKey];
+  return Math.round(p.living / p.rec);
+}
+
 export const FACHADAS = [
   // Las `key` NO se renombran aunque el nombre visible sí: son lo que se guarda
   // en localStorage, así que cambiarlas dejaría inservible la configuración a
