@@ -4,6 +4,7 @@ import FloorplanDiagram from '@/components/FloorplanDiagram';
 import type { PlanDiagramKey } from '@/components/FloorplanDiagram';
 import { ModuloIcon } from '@/components/ConfigIcons';
 import { PHOTO_BY_MODULE } from '@/lib/modulePhotos';
+import { useT } from '@/components/ProveedorIdioma';
 
 export type ModuloRef = {
   iconKey: string;
@@ -75,6 +76,7 @@ export default function MoodboardCollage({
   modulosSeleccionados: ModuloRef[];
   compact?: boolean;
 }) {
+  const t = useT();
   const shown = modulosSeleccionados.slice(0, 4);
   const extra = modulosSeleccionados.length - shown.length;
   const left = shown.slice(0, 2);
@@ -132,7 +134,7 @@ export default function MoodboardCollage({
             <div key={i} style={{ width: compact ? '30px' : '52px', height: compact ? '30px' : '52px', borderRadius: '50%', background: c, border: '1px solid rgba(28,30,31,0.08)' }} />
           ))
         ) : (
-          <p style={{ margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.08em', color: '#6E7375', textTransform: 'uppercase' }}>Sin paleta elegida</p>
+          <p style={{ margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.08em', color: '#6E7375', textTransform: 'uppercase' }}>{t('Sin paleta elegida')}</p>
         )}
       </div>
     </div>

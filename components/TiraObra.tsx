@@ -104,7 +104,7 @@ export default function TiraObra() {
       </div>
 
       {puedeIzq ? (
-        <button type="button" onClick={() => desplazar(-1)} className="lgp-tira-flecha" style={{ left: 'max(6px, calc((100% - var(--lgp-ancho)) / 2 - 22px))' }} aria-label="Ver fotos anteriores">
+        <button type="button" onClick={() => desplazar(-1)} className="lgp-tira-flecha" style={{ left: 'max(6px, calc((100% - var(--lgp-ancho)) / 2 - 22px))' }} aria-label={t('Ver fotos anteriores')}>
           <Chevron dir="izq" />
         </button>
       ) : null}

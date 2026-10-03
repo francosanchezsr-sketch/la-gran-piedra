@@ -1,3 +1,9 @@
+'use client';
+
+// Lleva texto —los rotulos de las plantas y las zonas— y ese texto se
+// traduce, asi que el diagrama tiene que correr en el cliente.
+import { useT } from '@/components/ProveedorIdioma';
+
 export type PlanDiagramKey = 'TH' | 'A' | 'B' | 'C' | 'D';
 
 type FloorplanDiagramProps = {
@@ -6,6 +12,7 @@ type FloorplanDiagramProps = {
 };
 
 export default function FloorplanDiagram({ planKey, style }: FloorplanDiagramProps) {
+  const t = useT();
   const base = { width: '100%', height: 'auto', display: 'block' as const, ...style };
 
   // TH — townhouse real del Lote 17: 27' de frente x 65'6" de fondo, garage al
@@ -28,10 +35,10 @@ export default function FloorplanDiagram({ planKey, style }: FloorplanDiagramPro
         </g>
         <g fill="#D5D7D8" opacity="0.55"><rect x="52" y="144" width="60" height="24"></rect></g>
         <g fill="#F67599" opacity="0.45"><rect x="188" y="152" width="60" height="16"></rect></g>
-        <text x="55" y="159" fontFamily="IBM Plex Mono, monospace" fontSize="7" letterSpacing="0.4" fill="#6B6E70">GARAGE</text>
-        <text x="191" y="163" fontFamily="IBM Plex Mono, monospace" fontSize="7" letterSpacing="0.4" fill="#8A2249">BALCÓN</text>
-        <text x="52" y="186" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.5" fill="#8A8F91">PLANTA BAJA</text>
-        <text x="188" y="186" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.5" fill="#8A8F91">PLANTA ALTA</text>
+        <text x="55" y="159" fontFamily="IBM Plex Mono, monospace" fontSize="7" letterSpacing="0.4" fill="#6B6E70">{t('GARAGE')}</text>
+        <text x="191" y="163" fontFamily="IBM Plex Mono, monospace" fontSize="7" letterSpacing="0.4" fill="#8A2249">{t('BALCÓN')}</text>
+        <text x="52" y="186" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.5" fill="#8A8F91">{t('PLANTA BAJA')}</text>
+        <text x="188" y="186" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.5" fill="#8A8F91">{t('PLANTA ALTA')}</text>
       </svg>
     );
   }
@@ -58,9 +65,9 @@ export default function FloorplanDiagram({ planKey, style }: FloorplanDiagramPro
           <path d="M104 92h24M104 100h24M104 108h24M104 116h24M104 124h24"></path>
           <rect x="104" y="86" width="24" height="46"></rect>
         </g>
-        <text x="35" y="160" fontFamily="IBM Plex Mono, monospace" fontSize="7" letterSpacing="0.4" fill="#6B6E70">GARAGE</text>
-        <text x="20" y="186" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.5" fill="#8A8F91">PLANTA BAJA</text>
-        <text x="160" y="186" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.5" fill="#8A8F91">PLANTA ALTA · 4 REC</text>
+        <text x="35" y="160" fontFamily="IBM Plex Mono, monospace" fontSize="7" letterSpacing="0.4" fill="#6B6E70">{t('GARAGE')}</text>
+        <text x="20" y="186" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.5" fill="#8A8F91">{t('PLANTA BAJA')}</text>
+        <text x="160" y="186" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.5" fill="#8A8F91">{t('PLANTA ALTA · 4 REC')}</text>
       </svg>
     );
   }
@@ -87,7 +94,7 @@ export default function FloorplanDiagram({ planKey, style }: FloorplanDiagramPro
         {/* El patio, colgado del fondo y no recortado del centro. */}
         <g fill="#F67599" opacity="0.5"><rect x="96" y="142" width="108" height="34"></rect></g>
         <g fill="none" stroke="#8A2249" strokeWidth="1"><rect x="96" y="142" width="108" height="34"></rect></g>
-        <text x="104" y="163" fontFamily="IBM Plex Mono, monospace" fontSize="7" letterSpacing="0.3" fill="#8A2249">PATIO TECHADO 87 FT²</text>
+        <text x="104" y="163" fontFamily="IBM Plex Mono, monospace" fontSize="7" letterSpacing="0.3" fill="#8A2249">{t('PATIO TECHADO 87 FT²')}</text>
       </svg>
     );
   }
@@ -124,7 +131,7 @@ export default function FloorplanDiagram({ planKey, style }: FloorplanDiagramPro
         <g fill="none" stroke="#8A8F91" strokeWidth="1" strokeDasharray="3 3">
           <path d="M155 70v50"></path>
         </g>
-        <text x="126" y="100" fontFamily="IBM Plex Mono, monospace" fontSize="6.5" letterSpacing="0.3" fill="#6B6E70">CORREDOR TECHADO</text>
+        <text x="126" y="100" fontFamily="IBM Plex Mono, monospace" fontSize="6.5" letterSpacing="0.3" fill="#6B6E70">{t('CORREDOR TECHADO')}</text>
       </svg>
     );
   }
@@ -146,7 +153,7 @@ export default function FloorplanDiagram({ planKey, style }: FloorplanDiagramPro
       <rect x="122" y="58" width="56" height="74" fill="none" stroke="#7A6A12" strokeWidth="1.2"></rect>
       <circle cx="150" cy="95" r="9" fill="none" stroke="#7A6A12" strokeWidth="1.2"></circle>
       <path d="M150 86v-8M143 79l7 7 7-7" stroke="#7A6A12" strokeWidth="1"></path>
-      <text x="127" y="146" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.4" fill="#7A6A12">PATIO CENTRAL</text>
+      <text x="127" y="146" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.4" fill="#7A6A12">{t('PATIO CENTRAL')}</text>
     </svg>
   );
 }

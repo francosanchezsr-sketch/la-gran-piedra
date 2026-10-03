@@ -254,7 +254,7 @@ export default function RetirosDiagrama({
 
       {/* La calle va del lado del retiro frontal, que es contra lo que se mide */}
       <line x1={x0 - 4} y1={y0 - 7} x2={x0 + lw + 4} y2={y0 - 7} stroke="#C9CBCC" strokeWidth={2} />
-      <text x={x0 + lw / 2} y={y0 - 11} textAnchor="middle" {...cota}>CALLE</text>
+      <text x={x0 + lw / 2} y={y0 - 11} textAnchor="middle" {...cota}>{t('CALLE')}</text>
 
       {/* LAS MEDIDAS DEL LOTE: las mismas dos que el cliente escribió arriba.
           Van por fuera del terreno y de lado a lado completo, para que se lean

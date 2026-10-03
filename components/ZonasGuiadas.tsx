@@ -168,7 +168,7 @@ export default function ZonasGuiadas({
           ))}
         </span>
         <button onClick={() => onVerTodas(!verTodas)} style={{ marginLeft: 'auto', padding: '5px 10px', background: 'transparent', border: '1px solid #E4E1DD', color: '#5C6163', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
-          {verTodas ? 'Ver una a la vez' : 'Ver todas'}
+          {verTodas ? t('Ver una a la vez') : t('Ver todas')}
         </button>
       </div>
 

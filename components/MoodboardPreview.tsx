@@ -2,6 +2,7 @@
 
 import MoodboardCollage, { type InteriorRef, type ModuloRef } from '@/components/MoodboardCollage';
 import type { PlanDiagramKey } from '@/components/FloorplanDiagram';
+import { useT } from '@/components/ProveedorIdioma';
 
 type ResumenRow = { k: string; v: string };
 
@@ -24,6 +25,7 @@ export default function MoodboardPreview({
   brief: string;
   resumen: ResumenRow[];
 }) {
+  const t = useT();
   if (!open) return null;
 
   return (
@@ -39,7 +41,7 @@ export default function MoodboardPreview({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', padding: '26px 26px 0' }}>
           <div>
             <p style={{ margin: '0 0 6px', fontFamily: 'Archivo, sans-serif', fontWeight: 900, fontSize: '22px', letterSpacing: '-0.01em' }}>
-              EL <em style={{ fontStyle: 'italic' }}>PLANO</em>
+              {t('EL')} <em style={{ fontStyle: 'italic' }}>{t('PLANO')}</em>
             </p>
             <p style={{ margin: 0, maxWidth: '520px', fontSize: '13px', lineHeight: 1.6, color: '#5C6163' }}>
               {brief ? brief : 'Aún no escribiste tu brief en el paso 4 — esto es un resumen visual de lo que llevas elegido.'}
@@ -64,7 +66,7 @@ export default function MoodboardPreview({
         </div>
 
         <div style={{ margin: '26px 0 0', borderTop: '1px solid #EAE7E3' }}>
-          <p style={{ margin: 0, padding: '18px 26px 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.16em', color: '#6E7375', textTransform: 'uppercase' }}>Tu progreso</p>
+          <p style={{ margin: 0, padding: '18px 26px 0', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.16em', color: '#6E7375', textTransform: 'uppercase' }}>{t('Tu progreso')}</p>
           <div style={{ padding: '10px 26px 26px' }}>
             {resumen.map((r, i) => (
               <div key={i} style={{ display: 'flex', gap: '16px', justifyContent: 'space-between', padding: '11px 0', borderBottom: '1px solid #F4F1ED' }}>

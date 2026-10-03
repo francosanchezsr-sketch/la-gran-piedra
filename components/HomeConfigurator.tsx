@@ -2469,7 +2469,7 @@ export default function HomeConfigurator() {
           <h2 style={{margin: "0 0 34px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "13px", letterSpacing: "0.22em", textTransform: "uppercase"}}>{t('Por qué nosotros')}</h2>
           <p style={{margin: "0 0 44px", maxWidth: "660px", fontSize: "clamp(19px,2.3vw,28px)", lineHeight: "1.36", letterSpacing: "-0.012em", textWrap: "pretty"}}>{idioma === 'en'
             ? (<Fragment>Nobody knows what you want better than you do. That is why <em style={{fontStyle: "italic"}}>you</em> design your home here: simple, with none of the back and forth that wears you down.</Fragment>)
-            : (<Fragment>Nadie mejor que tú sabe cómo quiere las cosas, por eso aquí diseñas tu casa <em style={{fontStyle: "italic"}}>tú mismo</em>: fácil y sin procesos que te fastidien.</Fragment>)}</p>
+            : (<Fragment>{t('Nadie mejor que tú sabe cómo quiere las cosas, por eso aquí diseñas tu casa')} <em style={{fontStyle: "italic"}}>{t('tú mismo')}</em>{t(': fácil y sin procesos que te fastidien.')}</Fragment>)}</p>
           {/* Tres razones paralelas, no una secuencia: por eso se fueron los
               rótulos 01/02/03 y la caja que las envolvía. Quedan columnas
               divididas por un filete vertical — la misma división que usa un
@@ -2525,7 +2525,7 @@ export default function HomeConfigurator() {
               <div style={{position: "absolute", inset: 0, pointerEvents: "none", background: "linear-gradient(180deg, rgba(18,19,20,0) 45%, rgba(18,19,20,0.62) 100%)"}}></div>
               <div style={{position: "absolute", left: "22px", right: "22px", bottom: "18px", pointerEvents: "none"}}>
                 <p style={{margin: "0 0 6px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "clamp(24px,3.4vw,36px)", letterSpacing: "-0.02em", textTransform: "uppercase", color: "#fff"}}>{subdivisionActiva.nombre}</p>
-                <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "rgba(255,255,255,0.82)", textTransform: "uppercase"}}>{subdivisionActiva.zona} · {subdivisionActiva.direccion}</p>
+                <p style={{margin: "0", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.08em", color: "rgba(255,255,255,0.82)", textTransform: "uppercase"}}>{t(subdivisionActiva.zona)} · {subdivisionActiva.direccion}</p>
               </div>
             </div>
             <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap", padding: "22px"}}>
@@ -2716,7 +2716,7 @@ export default function HomeConfigurator() {
                       <button onClick={usarLotePropio} className="lgp-hover-zoom" style={{padding: "8px 13px", background: "#1C1E1F", border: "0", color: "#FBFBFA", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>{t('Usar este lote')}</button>
     </Fragment>
     )}
-                      <button onClick={quitarLotePropio} style={{padding: "8px 13px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>Quitar</button>
+                      <button onClick={quitarLotePropio} style={{padding: "8px 13px", background: "transparent", border: "1px solid #DDD9D4", color: "#505759", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: "700", letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer"}}>{t('Quitar')}</button>
                     </div>
                   </div>
                   {!lotePropioActivo ? (
@@ -2830,7 +2830,7 @@ export default function HomeConfigurator() {
                       onClick={() => setCajones((c) => Math.min(cajonesMax, c + 1))}
                       disabled={!conGarage || cajones >= cajonesMax}
                       aria-label={t('Un lugar más de garage')}
-                      title={!conGarage ? 'Marca la casilla para ponerle cochera' : (cajones >= cajonesMax ? 'Tres lugares es el máximo' : 'Un lugar más')}
+                      title={!conGarage ? t('Marca la casilla para ponerle cochera') : (cajones >= cajonesMax ? t('Tres lugares es el máximo') : t('Un lugar más'))}
                       style={{width: "34px", height: "24px", display: "grid", placeItems: "center", padding: 0, background: "#fff", border: "1px solid #DDD9D4", borderBottom: "0", color: (!conGarage || cajones >= cajonesMax) ? "#C3C0BC" : "#1C1E1F", cursor: (!conGarage || cajones >= cajonesMax) ? "not-allowed" : "pointer"}}
                     >
                       <svg viewBox="0 0 12 8" width="11" height="7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 6.2 6 1.6l5 4.6" /></svg>
@@ -2839,7 +2839,7 @@ export default function HomeConfigurator() {
                       onClick={() => setCajones((c) => Math.max(cajonesMin, c - 1))}
                       disabled={!conGarage || cajones <= cajonesMin}
                       aria-label={t('Un lugar menos de garage')}
-                      title={!conGarage ? 'Marca la casilla para ponerle cochera' : (cajones <= cajonesMin ? 'Quita la casilla si no quieres cochera' : 'Un lugar menos')}
+                      title={!conGarage ? t('Marca la casilla para ponerle cochera') : (cajones <= cajonesMin ? t('Quita la casilla si no quieres cochera') : t('Un lugar menos'))}
                       style={{width: "34px", height: "24px", display: "grid", placeItems: "center", padding: 0, background: "#fff", border: "1px solid #DDD9D4", color: (!conGarage || cajones <= cajonesMin) ? "#C3C0BC" : "#1C1E1F", cursor: (!conGarage || cajones <= cajonesMin) ? "not-allowed" : "pointer"}}
                     >
                       <svg viewBox="0 0 12 8" width="11" height="7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M1 1.8 6 6.4l5-4.6" /></svg>
@@ -3036,7 +3036,7 @@ export default function HomeConfigurator() {
                     <span style={{display: "block", fontFamily: "Archivo, sans-serif", fontWeight: 700, fontSize: "13px", color: "#1C1E1F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>✓ {loteFile.nombre}</span>
                     <span style={{display: "block", marginTop: "2px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.08em", color: "#6B8F79", textTransform: "uppercase"}}>Archivo cargado · {pesoLegible(loteFile.peso)}</span>
                   </span>
-                  <button onClick={() => { setLoteFile(null); setLoteError(null); }} style={{flex: "none", padding: "7px 11px", background: "transparent", border: "1px solid #CFE8D8", color: "#6B8F79", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Quitar</button>
+                  <button onClick={() => { setLoteFile(null); setLoteError(null); }} style={{flex: "none", padding: "7px 11px", background: "transparent", border: "1px solid #CFE8D8", color: "#6B8F79", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>{t('Quitar')}</button>
                 </div>
     </Fragment>
     ) : null}
@@ -3046,12 +3046,12 @@ export default function HomeConfigurator() {
                 <div style={{marginTop: "12px", padding: "12px 14px", background: "#F4FBF6", border: "1px solid #CFE8D8"}}>
                   <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px"}}>
                     <span style={{flex: 1, minWidth: 0}}>
-                      <span style={{display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#6B8F79", textTransform: "uppercase"}}>✓ Ubicación capturada</span>
+                      <span style={{display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", letterSpacing: "0.1em", color: "#6B8F79", textTransform: "uppercase"}}>✓ {t('Ubicación capturada')}</span>
                       <span style={{display: "block", marginTop: "4px", fontSize: "13px", lineHeight: 1.5, color: "#1C1E1F"}}>
                         {[loteUbicacion.direccion, loteUbicacion.coordenadas].filter(Boolean).join(' · ')}
                       </span>
                     </span>
-                    <button onClick={() => setLoteUbicacion(null)} style={{flex: "none", padding: "7px 11px", background: "transparent", border: "1px solid #CFE8D8", color: "#6B8F79", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>Quitar</button>
+                    <button onClick={() => setLoteUbicacion(null)} style={{flex: "none", padding: "7px 11px", background: "transparent", border: "1px solid #CFE8D8", color: "#6B8F79", fontFamily: "Archivo, sans-serif", fontSize: "9px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", cursor: "pointer"}}>{t('Quitar')}</button>
                   </div>
                 </div>
     </Fragment>
@@ -3071,7 +3071,10 @@ export default function HomeConfigurator() {
               {planFijo ? (
     <Fragment>
               <p
-                title={`El lote ${loteId} se entrega con la casa ya diseñada y aprobada por la subdivisión, así que ni el floorplan ni la fachada se cambian. Lo que sí personalizas es el interior y las áreas que quepan en el presupuesto — por eso tu recorrido son ${totalPasos} pasos y no ${PASO_NOMBRES.length}.`}
+                title={t('El lote {lote} se entrega con la casa ya diseñada y aprobada por la subdivisión, así que ni el floorplan ni la fachada se cambian. Lo que sí personalizas es el interior y las áreas que quepan en el presupuesto — por eso tu recorrido son {pasos} pasos y no {total}.')
+                  .replace('{lote}', String(loteId))
+                  .replace('{pasos}', String(totalPasos))
+                  .replace('{total}', String(PASO_NOMBRES.length))}
                 style={{margin: "0 0 18px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", textTransform: "uppercase", color: "#6E7375", cursor: "help"}}
               >
                 {loteId} · {t('plano y fachada los fija la subdivisión')}
@@ -3103,7 +3106,7 @@ export default function HomeConfigurator() {
                     const menor = delTipo.reduce((a, b) => (pide(a.key) <= pide(b.key) ? a : b));
                     return (
                       <li key={pisos} style={{fontSize: "13px", lineHeight: 1.6, color: "#5C6163"}}>
-                        De <strong style={{fontWeight: 700, color: "#1C1E1F"}}>{pisos === 1 ? 'una planta' : 'dos plantas'}</strong> tu lote da hasta{' '}
+                        De <strong style={{fontWeight: 700, color: "#1C1E1F"}}>{pisos === 1 ? t('una planta') : t('dos plantas')}</strong> tu lote da hasta{' '}
                         {maxLivingPara(pisos, menor.key).toLocaleString('es-MX')} ft² habitables, y la casa más chica ({menor.nombre}) pide{' '}
                         {pide(menor.key).toLocaleString('es-MX')}.
                       </li>
@@ -3410,7 +3413,7 @@ export default function HomeConfigurator() {
                   de `.lgp-btn`, que es lo único que hace falta para que el
                   `width` siga mandando. */}
               <button onClick={() => setBriefConfirmado(true)} className={'lgp-hover-zoom lgp-btn lgp-btn-carmin' + claseLuz('confirmarBrief')} style={{display: "flex", width: "100%", maxWidth: "320px", minHeight: "48px", marginTop: "18px", letterSpacing: "0.16em"}}>
-                {brief.trim() ? 'Confirmar' : 'No tengo comentarios'}
+                {brief.trim() ? t('Confirmar') : t('No tengo comentarios')}
               </button>
 
               {/* Sin análisis por IA: el brief son comentarios para el
