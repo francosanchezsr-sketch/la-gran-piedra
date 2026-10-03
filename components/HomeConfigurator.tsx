@@ -1296,8 +1296,24 @@ export default function HomeConfigurator() {
     if (i === -1) return dir === 1 ? (pasosDelRecorrido.find((n) => n > p) ?? p) : (pasosDelRecorrido.filter((n) => n < p).pop() ?? p);
     return pasosDelRecorrido[i + dir] ?? p;
   };
-  // Desde el floorplan solo hay "atrás" para quien tiene previa que ver.
-  const atras = () => setPaso((p) => (p <= pasosDelRecorrido[0] ? (entradaPropia ? PREVIA : p) : vecino(p, -1)));
+  // "Atrás" NUNCA se queda sin hacer nada. Tiene tres destinos, en este
+  // orden:
+  //
+  //   1. En la previa —el primer paso de todos— no hay paso anterior, así que
+  //      atrás es SALIR: cierra el configurador y devuelve al cliente a la
+  //      página. Antes aquí se llamaba a sí mismo (`setPaso(PREVIA)` estando
+  //      ya en PREVIA) y el botón se veía encendido sin responder, que es la
+  //      peor版 de las dos: un botón muerto que parece vivo.
+  //   2. En el primer paso del recorrido, atrás es la previa, pero solo para
+  //      quien tiene lote propio que revisar.
+  //   3. En cualquier otro, el paso anterior DEL RECORRIDO, que no siempre es
+  //      el número de abajo: con la fachada fuera, el anterior del interior es
+  //      el floorplan.
+  const atras = () => {
+    if (esPrevia) { cerrarVentana(); return; }
+    if (paso <= pasosDelRecorrido[0]) { if (entradaPropia) setPaso(PREVIA); else cerrarVentana(); return; }
+    setPaso(vecino(paso, -1));
+  };
   // En la previa el lote todavía se está capturando —se traza o se escriben
   // frente y fondo— y hasta que no se confirma NO hay lote: `lote` sigue en
   // null y todo lo que viene después (qué floorplans caben, cuánta superficie
