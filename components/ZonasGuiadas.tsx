@@ -3,6 +3,7 @@
 import { Fragment, useState } from 'react';
 import { ModuloIcon } from '@/components/ConfigIcons';
 import { ICONO_ZONA } from '@/lib/assets';
+import { useT } from '@/components/ProveedorIdioma';
 
 export type ZonaMod = {
   iconKey: string;
@@ -12,8 +13,20 @@ export type ZonaMod = {
   rango: string;
   min: number;
   costoLiving: number;
+  /**
+   * Lo que la zona ocupa en terreno sin ser habitable: la alberca entera, el
+   * BBQ entero, los 37 ft² de balcón del master.
+   *
+   * Existe porque "Exterior" a secas no es una respuesta a "¿cuánto me cuesta
+   * esto?". El cliente ve una fila donde todas las demás traen un número y esa
+   * trae una palabra, y no tiene manera de comparar. Cuesta cero HABITABLE,
+   * que no es lo mismo que costar cero.
+   */
+  costoExterior: number;
   on: boolean;
   incluida: boolean;
+  /** Incluye el "no cabe" por presupuesto: en zonas eso apaga la fila y punto —
+   *  el camino es quitar una zona puesta, no insistir sobre ésta. */
   disabled: boolean;
   disabledReason: string | null;
   bloqueadaPorReglamento: boolean;
@@ -24,11 +37,19 @@ export type ZonaMod = {
   onToggle: () => void;
 };
 
-/** Atajo para hacer espacio cuando el presupuesto ya está en cero. */
+/**
+ * Cuánto espacio devolvería quitar una recámara. Es SOLO texto: sirve para
+ * decirle al cliente de dónde puede salir el espacio que le falta.
+ *
+ * Aquí vivía además un botón que lo hacía de un golpe, y se quitó por decisión
+ * del cliente. El camino no se pierde: el mismo "−" de recámaras está arriba,
+ * en el contador, que es donde se toman esas decisiones. El atajo repetía un
+ * control que ya existe y lo repetía en carmín, el color que este sistema
+ * reserva para lo que confirma o alarma.
+ */
 export type LiberarEspacio = {
   etiqueta: string;
   ft2: number;
-  onLiberar: () => void;
 };
 
 function Icono({ k, size }: { k: string; size: number }) {
@@ -64,6 +85,7 @@ export default function ZonasGuiadas({
   onVerTodas: (v: boolean) => void;
   liberar?: LiberarEspacio | null;
 }) {
+  const t = useT();
   const [saltadas, setSaltadas] = useState<string[]>([]);
 
   const puestas = mods.filter((m) => m.on && !m.incluida);
@@ -99,9 +121,9 @@ export default function ZonasGuiadas({
       <span style={{ width: '18px', height: '18px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
         <Icono k={m.iconKey} size={14} />
       </span>
-      {m.nombre}
+      {t(m.nombre)}
       {quitable ? (
-        <button onClick={m.onToggle} title={`Quitar ${m.nombre}`} style={{ marginLeft: '2px', padding: 0, width: '14px', height: '14px', lineHeight: 1, border: 0, background: 'transparent', color: '#5C6163', fontSize: '13px', cursor: 'pointer' }}>×</button>
+        <button onClick={m.onToggle} title={`${t('Quitar')} ${m.nombre}`} style={{ marginLeft: '2px', padding: 0, width: '14px', height: '14px', lineHeight: 1, border: 0, background: 'transparent', color: '#5C6163', fontSize: '13px', cursor: 'pointer' }}>×</button>
       ) : (
         <span style={{ marginLeft: '2px', fontSize: '8px', letterSpacing: '0.08em', color: '#5C6163' }}>INCL</span>
       )}
@@ -124,17 +146,12 @@ export default function ZonasGuiadas({
           <span style={{ width: '24px', height: '24px', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.45 }}>
             <Icono k={m.iconKey} size={19} />
           </span>
-          <span style={{ flex: 1, minWidth: 0, fontSize: '12.5px', color: '#505759' }}>{m.nombre}</span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: '12.5px', color: '#505759' }}>{t(m.nombre)}</span>
           <span style={{ flex: 'none', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.06em', color: '#6E7375', textTransform: 'uppercase' }}>
-            Faltan {(m.costoLiving - ft2Rest).toLocaleString('es-MX')} ft²
+            {m.costoLiving.toLocaleString('es-MX')} ft²
           </span>
         </div>
       ))}
-      {liberar ? (
-        <button onClick={liberar.onLiberar} className="lgp-hover-zoom" style={{ display: 'block', width: '100%', padding: '13px', margin: '12px 0 6px', background: 'transparent', border: '1px solid #F2004B', color: '#F2004B', fontFamily: 'Archivo, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', cursor: 'pointer' }}>
-          {liberar.etiqueta} · +{liberar.ft2} ft²
-        </button>
-      ) : null}
     </div>
   ) : null;
 
@@ -143,7 +160,7 @@ export default function ZonasGuiadas({
       {/* Progreso: cuántas decisiones van y cuántas faltan */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.08em', color: '#6E7375', textTransform: 'uppercase' }}>
-          {total === 0 ? 'Sin espacio libre' : actual ? `Zona ${revisadas + 1} de ${total}` : `${total} de ${total} revisadas`}
+          {total === 0 ? 'Sin espacio libre' : actual ? `Área ${revisadas + 1} de ${total}` : `${total} de ${total} revisadas`}
         </span>
         <span style={{ display: 'flex', gap: '4px' }}>
           {preguntables.map((m, i) => (
@@ -176,12 +193,17 @@ export default function ZonasGuiadas({
                   frase en la mitad de los casos. */}
               ¿Agregas {actual.nombre}?
             </p>
+            {actual.nota === '' ? null : (
             <p style={{ margin: '0 0 12px', maxWidth: '420px', marginLeft: 'auto', marginRight: 'auto', fontSize: '13px', lineHeight: 1.6, color: '#5C6163' }}>
               {actual.nota || actual.nombreLargo}
             </p>
+            )}
             <p style={{ margin: 0, fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.06em', color: '#8A2249', textTransform: 'uppercase' }}>
+              {/* La exterior también dice cuánto ocupa. "No usa ft² habitables"
+                  contesta lo que NO cuesta y deja sin contestar lo que sí: una
+                  alberca son 400 ft² del terreno del cliente. */}
               {actual.costoLiving === 0
-                ? `No usa ft² habitables · te quedan ${ft2Rest.toLocaleString('es-MX')} libres`
+                ? `Ocupa ${actual.costoExterior.toLocaleString('es-MX')} ft² de terreno, ninguno habitable · te quedan ${ft2Rest.toLocaleString('es-MX')} libres`
                 : `Usa ${actual.costoLiving.toLocaleString('es-MX')} ft² · deja ${Math.max(0, ft2Rest - actual.costoLiving).toLocaleString('es-MX')} libres`}
             </p>
             {actual.sustituyeA ? (
@@ -191,14 +213,14 @@ export default function ZonasGuiadas({
 
           {siguientes.length ? (
             <div style={{ padding: '14px 16px 4px' }}>
-              <p style={{ margin: '0 0 8px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase' }}>Lo que sigue</p>
+              <p style={{ margin: '0 0 8px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase' }}>{t('Lo que sigue')}</p>
               {siguientes.map((m) => (
     <Fragment key={m.iconKey}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', background: '#FBFBFA', border: '1px solid #F0EDE9', marginBottom: '6px' }}>
                   <span style={{ width: '26px', height: '26px', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.5 }}>
                     <Icono k={m.iconKey} size={20} />
                   </span>
-                  <span style={{ flex: 1, fontWeight: 700, fontSize: '13px' }}>{m.nombre}</span>
+                  <span style={{ flex: 1, fontWeight: 700, fontSize: '13px' }}>{t(m.nombre)}</span>
                   <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', color: '#6E7375' }}>{m.costoLiving} ft²</span>
                 </div>
     </Fragment>
@@ -225,7 +247,7 @@ export default function ZonasGuiadas({
             </p>
             <p style={{ margin: '0 auto', maxWidth: '440px', fontSize: '13px', lineHeight: 1.6, color: '#5C6163' }}>
               El plano con los cuartos que llevas ocupa todos los ft² habitables que
-              permite este lote, así que no queda presupuesto para zonas nuevas.
+              permite este lote, así que no queda presupuesto para áreas nuevas.
               {sinEspacio.length
                 ? ' Abajo está lo que podrías agregar y cuánto espacio te falta para cada cosa.'
                 : ' Puedes seguir al brief y platicarlo con el arquitecto.'}
@@ -234,7 +256,7 @@ export default function ZonasGuiadas({
         </div>
       ) : (
         <div style={{ padding: '26px 22px', background: '#F4FBF6', border: '1px solid #CFE8D8', textAlign: 'center' }}>
-          <p style={{ margin: '0 0 6px', fontFamily: 'Archivo, sans-serif', fontWeight: 800, fontSize: '15px' }}>Ya viste todas las zonas</p>
+          <p style={{ margin: '0 0 6px', fontFamily: 'Archivo, sans-serif', fontWeight: 800, fontSize: '15px' }}>{t('Ya viste todas las áreas')}</p>
           <p style={{ margin: '0 0 14px', fontSize: '13px', lineHeight: 1.6, color: '#6B8F79' }}>
             Llevas {puestas.length} {puestas.length === 1 ? 'agregada' : 'agregadas'} y te quedan {ft2Rest.toLocaleString('es-MX')} ft² habitables libres.
           </p>

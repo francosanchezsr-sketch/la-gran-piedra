@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { useVentanaModal } from '@/lib/useVentanaModal';
+import { useT } from '@/components/ProveedorIdioma';
 
 // La hoja aterriza a los 780ms, pero el canto levantado espera 540 y tarda otros
 // 400 en cerrarse: la fase no puede acabar antes que la última pieza del gesto,
@@ -50,6 +51,7 @@ export default function VentanaEnfocada({
   children: ReactNode;
   pie?: ReactNode;
 }) {
+  const t = useT();
   const cajaRef = useRef<HTMLDivElement | null>(null);
   // --- Fases de apertura y cierre ------------------------------------------
   // La ventana sigue montada mientras sale: si se desmontara con `abierto`,
@@ -125,8 +127,8 @@ export default function VentanaEnfocada({
           type="button"
           className="lgp-hoja-canto"
           onClick={onCerrar}
-          aria-label="Cerrar"
-          title="Cerrar"
+          aria-label={t('Cerrar')}
+          title={t('Cerrar')}
         />
 
         {cabecera ? (

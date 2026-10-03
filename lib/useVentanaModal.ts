@@ -39,7 +39,7 @@ export function useVentanaModal({
   // y como la limpieza del efecto de historial llama a `history.back()`, la
   // ventana se cerraría sola al primer re-render.
   const onCerrarRef = useRef(onCerrar);
-  onCerrarRef.current = onCerrar;
+  useEffect(() => { onCerrarRef.current = onCerrar; });
 
   // --- Bloqueo del scroll de fondo -----------------------------------------
   useEffect(() => {

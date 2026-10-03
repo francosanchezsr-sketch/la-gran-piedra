@@ -1,4 +1,4 @@
-export type PlanDiagramKey = 'TH' | 'B' | 'C' | 'D';
+export type PlanDiagramKey = 'TH' | 'A' | 'B' | 'C' | 'D';
 
 type FloorplanDiagramProps = {
   planKey: PlanDiagramKey;
@@ -61,6 +61,33 @@ export default function FloorplanDiagram({ planKey, style }: FloorplanDiagramPro
         <text x="35" y="160" fontFamily="IBM Plex Mono, monospace" fontSize="7" letterSpacing="0.4" fill="#6B6E70">GARAGE</text>
         <text x="20" y="186" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.5" fill="#8A8F91">PLANTA BAJA</text>
         <text x="160" y="186" fontFamily="IBM Plex Mono, monospace" fontSize="7.5" letterSpacing="0.5" fill="#8A8F91">PLANTA ALTA · 4 REC</text>
+      </svg>
+    );
+  }
+
+  // A - el compacto: un rectangulo sin recortes y el patio techado pegado atras.
+  // El patio son los 86.88 ft2 del recorte en U trasero del Lot 76, el mas chico
+  // de los siete sets. Se dibuja PEGADO al volumen y no metido dentro, porque esa
+  // es justo la diferencia con los otros dos: no le come huella al centro de la
+  // casa, se cuelga del fondo.
+  if (planKey === 'A') {
+    return (
+      <svg viewBox="0 0 300 190" style={base}>
+        <g fill="none" stroke="#505759" strokeWidth="1.6">
+          <rect x="14" y="14" width="272" height="128"></rect>
+        </g>
+        <g fill="none" stroke="#C9CBCC" strokeWidth="1">
+          <rect x="26" y="26" width="96" height="48"></rect>
+          <rect x="26" y="84" width="96" height="46"></rect>
+          <rect x="134" y="26" width="68" height="48"></rect>
+          <rect x="134" y="84" width="68" height="46"></rect>
+          <rect x="214" y="26" width="60" height="42"></rect>
+          <rect x="214" y="78" width="60" height="52"></rect>
+        </g>
+        {/* El patio, colgado del fondo y no recortado del centro. */}
+        <g fill="#F67599" opacity="0.5"><rect x="96" y="142" width="108" height="34"></rect></g>
+        <g fill="none" stroke="#8A2249" strokeWidth="1"><rect x="96" y="142" width="108" height="34"></rect></g>
+        <text x="104" y="163" fontFamily="IBM Plex Mono, monospace" fontSize="7" letterSpacing="0.3" fill="#8A2249">PATIO TECHADO 87 FT²</text>
       </svg>
     );
   }

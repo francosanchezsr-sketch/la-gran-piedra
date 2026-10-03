@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { ImageResponse } from 'next/og';
 import { fichaHtml, fichaTexto, type Ficha } from '@/lib/ficha';
+import { laminaJSX, LAMINA_ANCHO, LAMINA_ALTO } from '@/lib/lamina';
 
 // Manda la ficha completa al buzón de La Gran Piedra. El cliente no recibe copia
 // a propósito: la ficha larga es la herramienta de trabajo del arquitecto, no un
@@ -18,10 +20,13 @@ const CORREO_ARQUITECTOS_DEFAULT = 'contact@lagranpiedrallc.com';
 // Vista previa de la ficha con datos de muestra, para poder iterar el correo sin
 // mandarlo. Solo en desarrollo: en producción este endpoint únicamente recibe
 // POST.
-export async function GET() {
+export async function GET(request: Request) {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'no disponible' }, { status: 404 });
   }
+  // `?lamina=1` devuelve la imagen que viaja adjunta; sin parámetro, el HTML
+  // del cuerpo. Las dos vistas sobre los mismos datos de muestra.
+  const verLamina = new URL(request.url).searchParams.get('lamina') === '1';
   const muestra: Ficha = {
     cliente: { nombre: 'María Elena Cavazos', correo: 'maria@correo.com', tel: '(956) 000 0000' },
     lote: {
@@ -33,7 +38,8 @@ export async function GET() {
     plan: { nombre: 'Townhouse 2 pisos', pisos: 2, livingBase: 1635, livingElegido: 1635 },
     cuartos: { recamaras: 2, banos: 3, recBase: 3, banosBase: 3 },
     fachada: 'Escandinavo',
-    interior: { nombre: 'Piedra cálida', colores: ['#E8E1D6', '#B8A894', '#3A3733'] },
+    interior: { nombre: 'Nogal + Mármol Crema', colores: ['#BD8E70', '#EFE7DA', '#9B9B9F'] },
+    claves: { plan: 'TH', fachada: 'esc', interior: 'nogal-marmol' },
     zonas: [
       { nombre: 'Cocina concepto abierto', rango: 'sin muros extra', ft2: 0, exterior: false, incluida: true },
       { nombre: 'Master con balcón', rango: "balcón real 4'3×8'8", ft2: 224, exterior: false, incluida: true },
@@ -47,7 +53,29 @@ export async function GET() {
     brief: 'Queremos que la cocina quede viendo al patio y usar el comodín como gym.\nSomos cuatro y trabajamos desde casa.',
   };
   const fecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'long', timeStyle: 'short', timeZone: 'America/Chicago' }).format(new Date());
+  if (verLamina) {
+    return new ImageResponse(await laminaJSX(muestra, fecha), { width: LAMINA_ANCHO, height: LAMINA_ALTO });
+  }
   return new Response(fichaHtml(muestra, fecha), { headers: { 'content-type': 'text/html; charset=utf-8' } });
+}
+
+/**
+ * La lámina, rasterizada a PNG para adjuntarla.
+ *
+ * Si falla NO se cae el envío: el correo sale igual con su HTML, que ya trae
+ * todos los datos. La lámina es el complemento visual, no la información —
+ * perder el adjunto es un correo más pobre; perder el correo es un cliente que
+ * llenó todo para nada.
+ */
+async function laminaPng(ficha: Ficha, fecha: string): Promise<string | null> {
+  try {
+    const img = new ImageResponse(await laminaJSX(ficha, fecha), { width: LAMINA_ANCHO, height: LAMINA_ALTO });
+    const buf = Buffer.from(await img.arrayBuffer());
+    return buf.toString('base64');
+  } catch (err) {
+    console.error('no se pudo rasterizar la lámina', err);
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -79,6 +107,9 @@ export async function POST(request: Request) {
     timeZone: 'America/Chicago',
   }).format(new Date());
 
+  const lamina = await laminaPng(ficha, fecha);
+  const nombreArchivo = `LGP-${(ficha.cliente.nombre || 'cliente').replace(/[^\w-]+/g, '-')}-${ficha.lote.id}.png`;
+
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -94,6 +125,9 @@ export async function POST(request: Request) {
         subject: `Configuración de ${ficha.cliente.nombre} · ${ficha.lote.id} · ${ficha.plan.nombre}`,
         html: fichaHtml(ficha, fecha),
         text: fichaTexto(ficha, fecha),
+        // La lámina va adjunta, no incrustada: incrustarla obliga a `cid:` y
+        // la mitad de los clientes de correo la bloquean por defecto.
+        attachments: lamina ? [{ filename: nombreArchivo, content: lamina }] : undefined,
       }),
     });
     if (!res.ok) {

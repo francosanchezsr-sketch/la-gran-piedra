@@ -6,6 +6,7 @@ import { FOTOS_OBRA } from '@/lib/obra';
 
 import { Chevron, Lupa } from './IconosTira';
 import VisorObra from './VisorObra';
+import { useT } from '@/components/ProveedorIdioma';
 
 /**
  * La tira de "La obra": fotos que se deslizan, con flechas para quien no
@@ -17,6 +18,7 @@ import VisorObra from './VisorObra';
  * de que hay más, en el extremo no tiene nada que avisar.
  */
 export default function TiraObra() {
+  const t = useT();
   const tiraRef = useRef<HTMLDivElement | null>(null);
   const [puedeIzq, setPuedeIzq] = useState(false);
   const [puedeDer, setPuedeDer] = useState(false);
@@ -84,12 +86,12 @@ export default function TiraObra() {
             type="button"
             onClick={() => setAbierta(i)}
             className="lgp-obra-pieza lgp-obra-abrir"
-            aria-label={`Ver a pantalla completa: ${foto.alt}`}
+            aria-label={`${t('Ver a pantalla completa')}: ${t(foto.alt)}`}
             style={{ flex: 'none', padding: 0, border: 0, background: '#F0EDE9', scrollSnapAlign: 'start', cursor: 'zoom-in' }}
           >
             <img
               src={foto.src}
-              alt={foto.alt}
+              alt={t(foto.alt)}
               /* La primera entra con la sección; las quince restantes solo si el
                  cliente decide deslizar. */
               loading={i === 0 ? undefined : 'lazy'}
@@ -108,7 +110,7 @@ export default function TiraObra() {
       ) : null}
 
       {puedeDer ? (
-        <button type="button" onClick={() => desplazar(1)} className="lgp-tira-flecha" style={{ right: '6px' }} aria-label="Ver más fotos">
+        <button type="button" onClick={() => desplazar(1)} className="lgp-tira-flecha" style={{ right: '6px' }} aria-label={t('Ver más fotos')}>
           <Chevron dir="der" />
         </button>
       ) : null}

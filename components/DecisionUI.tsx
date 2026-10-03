@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useT } from '@/components/ProveedorIdioma';
 
 /**
  * Las piezas visuales del prototipo de Claude Design. El movimiento vive en
@@ -30,7 +31,6 @@ export function useAnimacionAlterna(valor: unknown, a: string, b: string): strin
 export function FilaOpcion({
   icono,
   tipoVisual = 'muestra',
-  modo = 'toggle',
   nombre,
   estado,
   on,
@@ -49,13 +49,6 @@ export function FilaOpcion({
    * interior lo convertiría en otro color.
    */
   tipoVisual?: 'icono' | 'muestra';
-  /**
-   * Sin efecto sobre el gesto — el comportamiento es el mismo en toda tabla: el
-   * "+" gira hasta volverse "×", y esa "×" es el único punto que deshace la
-   * elección. Tocar el resto de la fila ya no la borra, porque un roce
-   * accidental deshacía una decisión sin avisar.
-   */
-  modo?: 'toggle' | 'unico';
   nombre: string;
   estado?: string;
   on: boolean;
@@ -67,6 +60,7 @@ export function FilaOpcion({
   onEnter?: () => void;
   onLeave?: () => void;
 }) {
+  const t = useT();
   const marca = tipoVisual === 'icono' ? { 'data-zone-icon': on ? '1' : '0' } : { 'data-zone-swatch': on ? '1' : '0' };
   const quitable = on && !disabled;
   const elegible = !on && !disabled;
@@ -88,7 +82,7 @@ export function FilaOpcion({
         <button
           type="button"
           aria-disabled={disabled || undefined}
-          aria-label={`Agregar ${nombre}`}
+          aria-label={`${t('Agregar')} ${nombre}`}
           onClick={() => { if (!disabled) onClick(); }}
           onFocus={onEnter}
           onBlur={onLeave}
@@ -119,8 +113,8 @@ export function FilaOpcion({
         {quitable ? (
           <button
             type="button"
-            aria-label={`Quitar ${nombre}`}
-            title={`Quitar ${nombre}`}
+            aria-label={`${t('Quitar')} ${nombre}`}
+            title={`${t('Quitar')} ${nombre}`}
             onClick={onClick}
             onFocus={onEnter}
             onBlur={onLeave}

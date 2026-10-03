@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { ModuloIcon } from '@/components/ConfigIcons';
 import { ICONO_ZONA, ICONO_TRAGALUZ } from '@/lib/assets';
 import { FilaOpcion, CifraFt2, useAnimacionAlterna } from '@/components/DecisionUI';
-import type { ZonaMod, LiberarEspacio } from '@/components/ZonasGuiadas';
+import type { ZonaMod } from '@/components/ZonasGuiadas';
+import { useT } from '@/components/ProveedorIdioma';
 
 function Icono({ k, size }: { k: string; size: number }) {
   if (ICONO_ZONA[k]) {
@@ -15,6 +16,7 @@ function Icono({ k, size }: { k: string; size: number }) {
 
 /** Una zona ya puesta, con el barrido carmín cuando acaba de entrar. */
 function ZonaPuesta({ m }: { m: ZonaMod }) {
+  const t = useT();
   const sweep = useAnimacionAlterna(m.on ? m.iconKey : null, 'fxSweepA', 'fxSweepB');
   const texto = useAnimacionAlterna(m.on ? m.iconKey : null, 'fxTextA', 'fxTextB');
   return (
@@ -24,9 +26,11 @@ function ZonaPuesta({ m }: { m: ZonaMod }) {
         <span style={{ width: '22px', height: '22px', flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icono k={m.iconKey} size={22} />
         </span>
-        <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '11.5px', color: '#1C1E1F' }}>{m.nombre}</span>
+        <span style={{ flex: 1, minWidth: 0, fontWeight: 700, fontSize: '11.5px', color: '#1C1E1F' }}>{t(m.nombre)}</span>
+        {/* Decía "EXT" cuando no costaba habitable. Ahora dice lo que ocupa:
+            una alberca son 400 ft² de terreno, y "EXT" los hacía ver gratis. */}
         <span style={{ flex: 'none', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', color: '#5C6163' }}>
-          {m.incluida ? 'INCL' : m.costoLiving === 0 ? 'EXT' : `${m.costoLiving} ft²`}
+          {m.incluida ? 'INCL' : `${(m.costoLiving || m.costoExterior).toLocaleString('es-MX')} ft²`}
         </span>
       </div>
     </div>
@@ -45,7 +49,6 @@ function ZonaPuesta({ m }: { m: ZonaMod }) {
 export default function ZonasPanel({
   mods,
   ft2Rest,
-  liberar,
   tragaluces,
   maxTragaluces,
   orientacionHint,
@@ -54,13 +57,13 @@ export default function ZonasPanel({
 }: {
   mods: ZonaMod[];
   ft2Rest: number;
-  liberar?: LiberarEspacio | null;
   tragaluces: string[];
   maxTragaluces: number;
   orientacionHint: string;
   onToggleTragaluz: (key: string) => void;
   onVerGuiado: () => void;
 }) {
+  const t = useT();
   const [hover, setHover] = useState<string | null>(null);
 
   const puestas = mods.filter((m) => m.on);
@@ -79,32 +82,41 @@ export default function ZonasPanel({
   const tragaluzLleno = tragaluces.length >= maxTragaluces;
   const colorCifra = !foco ? '#8A8F91' : foco.on ? '#8A8F91' : cabe ? '#F2004B' : '#B7BABB';
 
+  /**
+   * Qué número enseñar de una zona.
+   *
+   * Antes, cualquier zona que no costara habitable decía "Exterior" y "0 ft²
+   * habitables". Es verdad y no sirve: el cliente está comparando filas para
+   * decidir, todas las demás traen una cifra, y esa traía una palabra. Una
+   * alberca son 400 ft² de su terreno — no cuesta CASA, que no es lo mismo que
+   * no costar. Ahora dice lo que ocupa, y que es exterior lo dice el texto de
+   * abajo, que es donde cabe explicarlo.
+   */
+  const cuestaFoco = foco ? foco.costoLiving || foco.costoExterior : 0;
   const cifra = foco
     ? foco.on
-      ? { etiqueta: 'Ya la llevas', valor: foco.incluida ? 'Incluida' : `${foco.costoLiving.toLocaleString('es-MX')} ft²` }
+      ? { etiqueta: t('Ya la llevas'), valor: foco.incluida ? t('Incluida') : `${cuestaFoco.toLocaleString('es-MX')} ft²` }
       : foco.costoLiving === 0
-        ? { etiqueta: 'Zona exterior', valor: '0 ft² habitables' }
+        ? { etiqueta: t('Ocupa en tu terreno'), valor: `${cuestaFoco.toLocaleString('es-MX')} ft²` }
         : cabe
-          ? { etiqueta: 'Usa', valor: `${foco.costoLiving.toLocaleString('es-MX')} ft²` }
-          : { etiqueta: 'Te faltan', valor: `${(foco.costoLiving - ft2Rest).toLocaleString('es-MX')} ft²` }
+          ? { etiqueta: t('Usa'), valor: `${foco.costoLiving.toLocaleString('es-MX')} ft²` }
+          : { etiqueta: t('Te faltan'), valor: `${(foco.costoLiving - ft2Rest).toLocaleString('es-MX')} ft²` }
     : null;
 
   const estadoFila = (m: ZonaMod) => {
-    if (m.incluida) return 'Incluida';
-    if (m.on) return 'Puesta';
-    if (m.costoLiving === 0) return 'Exterior';
-    if (m.disabled) return `Faltan ${(m.costoLiving - ft2Rest).toLocaleString('es-MX')} ft²`;
-    return `${m.costoLiving.toLocaleString('es-MX')} ft²`;
+    if (m.incluida) return t('Incluida');
+    if (m.on) return t('Puesta');
+    return `${(m.costoLiving || m.costoExterior).toLocaleString('es-MX')} ft²`;
   };
 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
         <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.08em', color: '#6E7375', textTransform: 'uppercase' }}>
-          {puestas.length} {puestas.length === 1 ? 'zona' : 'zonas'} · {ft2Rest.toLocaleString('es-MX')} ft² libres
+          {puestas.length} {puestas.length === 1 ? t('área') : t('áreas')} · {ft2Rest.toLocaleString('es-MX')} ft² {t('libres')}
         </span>
         <button onClick={onVerGuiado} style={{ marginLeft: 'auto', padding: '5px 10px', background: 'transparent', border: '1px solid #E4E1DD', color: '#5C6163', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer' }}>
-          Guiarme una por una
+          {t('Guiarme una por una')}
         </button>
       </div>
 
@@ -126,7 +138,9 @@ export default function ZonasPanel({
           {foco ? (
             <>
               <div style={{ fontWeight: 800, fontSize: '15px', letterSpacing: '0.02em', textTransform: 'uppercase', color: '#1C1E1F', marginBottom: '6px' }}>{foco.nombre}</div>
-              <p style={{ margin: '0 0 4px', maxWidth: '46ch', fontSize: '13px', lineHeight: 1.6, color: '#505759' }}>{foco.nota || foco.nombreLargo}</p>
+              {foco.nota === '' ? null : (
+                <p style={{ margin: '0 0 4px', maxWidth: '46ch', fontSize: '13px', lineHeight: 1.6, color: '#505759' }}>{foco.nota || foco.nombreLargo}</p>
+              )}
               {foco.sustituyeA ? (
                 <p style={{ margin: '6px 0 0', fontSize: '11.5px', color: '#5C6163' }}>Sustituye a {foco.sustituyeA}</p>
               ) : null}
@@ -144,7 +158,7 @@ export default function ZonasPanel({
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: tragaluzPuesto ? '#1C1E1F' : '#fff', border: '1px solid ' + (tragaluzPuesto ? '#1C1E1F' : '#DDD9D4'), color: tragaluzPuesto ? '#FBFBFA' : !tragaluzPuesto && tragaluzLleno ? '#B7BABB' : '#505759', fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', textTransform: 'uppercase', cursor: !tragaluzPuesto && tragaluzLleno ? 'not-allowed' : 'pointer' }}
                   >
                     <img src={ICONO_TRAGALUZ} alt="" aria-hidden="true" style={{ width: 16, height: 16, objectFit: 'contain', filter: tragaluzPuesto ? 'invert(1) brightness(3)' : undefined }} />
-                    {tragaluzPuesto ? 'Con tragaluz' : 'Agregar tragaluz'}
+                    {tragaluzPuesto ? t('Con tragaluz') : t('Agregar tragaluz')}
                   </button>
                   <p style={{ margin: '7px 0 0', fontSize: '11px', lineHeight: 1.5, color: '#6E7375' }}>
                     {orientacionHint} {tragaluces.length}/{maxTragaluces} usados.
@@ -153,12 +167,12 @@ export default function ZonasPanel({
               ) : null}
             </>
           ) : (
-            <div style={{ minHeight: '76px', fontSize: '12.5px', color: '#C4C0BA', lineHeight: 1.6 }}>No queda ninguna zona por decidir.</div>
+            <div style={{ minHeight: '76px', fontSize: '12.5px', color: '#C4C0BA', lineHeight: 1.6 }}>{t('No queda ninguna área por decidir.')}</div>
           )}
         </div>
 
         <div className="lgp-panel-elegido" style={{ width: '230px', flex: 'none', borderLeft: '1px solid #E4E1DD', paddingLeft: '20px', alignSelf: 'stretch' }}>
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase', marginBottom: '10px' }}>Zonas agregadas</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase', marginBottom: '10px' }}>{t('Áreas agregadas')}</div>
           {puestas.length ? (
             /* Se recorta y se desplaza por dentro: con ocho zonas puestas esta
                columna estiraba la tarjeta entera y el paso se volvía un tobogán. */
@@ -168,12 +182,12 @@ export default function ZonasPanel({
               ))}
             </div>
           ) : (
-            <div style={{ fontSize: '12px', color: '#6E7375', lineHeight: 1.5 }}>Ninguna agregada. Elige una de la lista.</div>
+            <div style={{ fontSize: '12px', color: '#6E7375', lineHeight: 1.5 }}>{t('Ninguna agregada. Elige una de la lista.')}</div>
           )}
         </div>
       </div>
 
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase', marginBottom: '8px' }}>Otras zonas</div>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '9px', letterSpacing: '0.1em', color: '#6E7375', textTransform: 'uppercase', marginBottom: '8px' }}>{t('Otras áreas')}</div>
       {/* La lista tampoco crece sin fin: se desplaza dentro de su propia caja
           para que el paso conserve su altura. */}
       <div className="lgp-decision-lista lgp-zonas-lista" style={{ border: '1px solid #EAE7E3', maxWidth: '520px', overflowY: 'auto', overscrollBehavior: 'contain' }}>
@@ -208,13 +222,6 @@ export default function ZonasPanel({
         ))}
       </div>
 
-      {/* Si hay algo que no cabe, la salida está aquí y no escondida en los
-          contadores de arriba. */}
-      {liberar && listadas.some((m) => m.disabled) ? (
-        <button onClick={liberar.onLiberar} className="lgp-hover-zoom" style={{ display: 'block', maxWidth: '520px', width: '100%', padding: '13px', marginTop: '12px', background: 'transparent', border: '1px solid #F2004B', color: '#F2004B', fontFamily: 'Archivo, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', cursor: 'pointer' }}>
-          {liberar.etiqueta} · +{liberar.ft2} ft²
-        </button>
-      ) : null}
     </div>
   );
 }

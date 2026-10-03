@@ -33,6 +33,14 @@ export type Ficha = {
   cuartos: { recamaras: number; banos: number; recBase: number; banosBase: number };
   fachada: string;
   interior: { nombre: string; colores: string[] };
+  /**
+   * Las CLAVES de lo elegido (no los nombres). Solo las usa la lámina que
+   * viaja adjunta —`lib/lamina.tsx`— para saber qué render cargar; el HTML
+   * del correo se arma con los nombres de arriba. Es opcional a propósito:
+   * un guardado viejo o el GET de muestra no la traen, y la lámina sale sin
+   * renders en vez de tronar.
+   */
+  claves?: { plan: string | null; fachada: string | null; interior: string | null };
   zonas: FichaZona[];
   tragaluces: string[];
   presupuesto: { maxLiving: number; plan: number; cuartos: number; zonas: number; libre: number };
@@ -118,7 +126,7 @@ function barraPresupuesto(p: Ficha['presupuesto']): string {
 }
 
 /**
- * Lote y huella construible: el rectángulo exterior es el lote y el interior lo
+ * Lote y zona construible: el rectángulo exterior es el lote y el interior lo
  * que queda después de los retiros. Es un croquis a escala aproximada, no un
  * plano: sirve para leer de un vistazo cuánto terreno queda libre alrededor.
  */
@@ -136,7 +144,7 @@ function croquisLote(l: Ficha['lote']): string {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">
             <tr>
               <td height="86" align="center" valign="middle" style="background:#fff;border:2px solid ${MARCA};font:700 12px/1.5 Arial,sans-serif;color:${TINTA}">
-                Huella construible${l.huella ? `<br><span style="font-weight:400;color:${GRIS}">${num(l.huella)} ft² por planta</span>` : ''}
+                Zona construible${l.huella ? `<br><span style="font-weight:400;color:${GRIS}">${num(l.huella)} ft² por planta</span>` : ''}
               </td>
             </tr>
           </table>
@@ -239,7 +247,7 @@ export function fichaHtml(f: Ficha, fechaTexto: string): string {
 
   ${bloque('Presupuesto habitable', barraPresupuesto(f.presupuesto))}
   ${bloque('La casa', `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">${datos}</table>`)}
-  ${croquisLote(l) ? bloque('Lote y huella', croquisLote(l)) : ''}
+  ${croquisLote(l) ? bloque('Lote y zona construible', croquisLote(l)) : ''}
   ${bloque('Zonas', tablaZonas(f.zonas, f.tragaluces))}
   ${bloque('Paleta interior', paleta(f.interior))}
   ${

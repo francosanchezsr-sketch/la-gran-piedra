@@ -28,7 +28,15 @@ export type ConfigGuardada = {
   recamarasExtra: number;
   banosExtra: number;
   planLivingSel: number | null;
-  garage2: boolean;
+  // Cuántos cajones de cochera. Antes era `garage2: boolean` (había dos
+  // opciones y ningún control para cambiarlas); los guardados viejos lo traen
+  // y se traducen al hidratar.
+  cajones: number;
+  /** Si el cliente no marca la casilla, su casa no lleva cochera. */
+  conGarage: boolean;
+  /** La dirección del lote, tal como la escribió el cliente en el paso 5. */
+  direccionLote?: string;
+  garage2?: boolean;
   brief: string;
   lead: { nombre: string; correo: string; tel: string };
 };
