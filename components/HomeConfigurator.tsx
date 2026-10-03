@@ -53,6 +53,7 @@ import { CamaIcon, BanoIcon, CarroIcon, EscaleraIcon, PlantasIcon, ModuloIcon } 
 import CarpetaHistorial from '@/components/CarpetaHistorial';
 import PasosBarra from '@/components/PasosBarra';
 import VentanaEnfocada from '@/components/VentanaEnfocada';
+import VentanaAviso from '@/components/VentanaAviso';
 import TiraObra from '@/components/TiraObra';
 import CarruselSubdivision from '@/components/CarruselSubdivision';
 import PlanDiagram from '@/components/FloorplanDiagram';
@@ -195,6 +196,11 @@ export default function HomeConfigurator() {
   // Cita rápida del header: es un camino aparte del configurador, porque quien
   // pulsa "Agenda una cita" normalmente todavía no ha elegido lote ni floorplan.
   const [citaEnviada, setCitaEnviada] = useState(false);
+  // El acuse flotante va aparte de `citaEnviada` porque son dos cosas: el
+  // estado "ya mandó" se queda (y es lo que impide reenviar), y la ventana
+  // se cierra. Con una sola bandera, cerrar el aviso devolvía el formulario
+  // vacío y parecía que no había pasado nada.
+  const [avisoCita, setAvisoCita] = useState(false);
   const [citaEnviando, setCitaEnviando] = useState(false);
   const [citaError, setCitaError] = useState<string | null>(null);
   const citaNombreRef = useRef<HTMLInputElement | null>(null);
@@ -2245,6 +2251,7 @@ export default function HomeConfigurator() {
       });
       if (res.ok) {
         setCitaEnviada(true);
+        setAvisoCita(true);
         return;
       }
       // Mismo trato que en el paso 7: nunca se confirma un envío que no salió.
@@ -3597,19 +3604,24 @@ export default function HomeConfigurator() {
       <section id="contacto" data-screen-label="Contacto" style={{position: "relative", padding: "var(--lgp-y-tema) var(--lgp-canal) 0", overflow: "hidden"}}>
         <div data-nofx="1" style={{maxWidth: "660px", margin: "0 auto", textAlign: "center"}}>
           <p style={{margin: "0 0 26px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", letterSpacing: "0.16em", color: "#6E7375", textTransform: "uppercase"}}>{t('Contacto')}</p>
-          <p style={{margin: "0 0 40px", fontSize: "clamp(20px,2.5vw,30px)", lineHeight: "1.34", letterSpacing: "-0.014em", textWrap: "pretty"}}>{t('Trae tus ideas y nos encargamos de materializarlas.')}</p>
+          {/* El titular invita a escribir; una vez que el cliente escribio,
+              deja de tener a quien invitar y se va. Lo que queda es el acuse,
+              que es la unica informacion nueva de esta pantalla. */}
+          {citaEnviada ? null : (
+            <p style={{margin: "0 0 40px", fontSize: "clamp(20px,2.5vw,30px)", lineHeight: "1.34", letterSpacing: "-0.014em", textWrap: "pretty"}}>{t('Trae tus ideas y nos encargamos de materializarlas.')}</p>
+          )}
           {citaEnviada ? (
     <Fragment>
 
           <div style={{maxWidth: "460px", margin: "0 auto", padding: "30px 28px", border: "1px solid #EAE7E3", background: "#fff", textAlign: "left"}}>
             <p style={{margin: "0 0 10px", fontFamily: "Archivo, sans-serif", fontWeight: "800", fontSize: "11px", letterSpacing: "0.18em", color: "#8A2249", textTransform: "uppercase"}}>{t('Cita solicitada')}</p>
-            <p style={{margin: "0 0 14px", fontSize: "clamp(18px,2.1vw,23px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>Listo, {leadPrimerNombre}. Te buscamos en menos de 24 horas.</p>
-            <p style={{margin: "0", fontSize: "15px", lineHeight: "1.65", color: "#505759"}}>{configCompleta ? 'El arquitecto llega a la llamada con tu configuración ya revisada.' : 'Si mientras tanto quieres adelantar, arma tu casa en el configurador y llegamos con algo concreto que enseñarte.'}</p>
-            {configCompleta ? null : (
-    <Fragment>
-            <p style={{margin: "16px 0 0"}}><a href="#personaliza" style={{fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.1em", color: "#5C6163", textTransform: "uppercase", borderBottom: "1px solid #E4E1DD"}}>{t('Personalizar mi casa ↗')}</a></p>
-    </Fragment>
-    )}
+            <p style={{margin: "0 0 14px", fontSize: "clamp(18px,2.1vw,23px)", lineHeight: "1.35", letterSpacing: "-0.01em"}}>{t('Listo, {nombre}. Te buscamos en menos de 24 horas.').replace('{nombre}', leadPrimerNombre)}</p>
+            {/* Aqui vivian dos cosas mas: "si mientras tanto quieres
+                adelantar, arma tu casa en el configurador" y el enlace
+                "Personalizar mi casa". Se fueron por decision del cliente.
+                El acuse responde una sola pregunta -- "¿llego?" -- y cada
+                renglon de mas la tapa. Quien quiera seguir configurando tiene
+                la barra de navegacion ahi abajo. */}
           </div>
 
     </Fragment>
@@ -3732,6 +3744,11 @@ export default function HomeConfigurator() {
     ))}
         </div>
       </div>
+
+      {/* El acuse de la cita. Va al final del árbol y no dentro de la sección
+          de Contacto: flota sobre toda la página, y colgarlo de la sección lo
+          dejaba atrapado en su contexto de apilamiento. */}
+      <VentanaAviso abierto={avisoCita} onCerrar={() => setAvisoCita(false)} titulo={t('Nos pondremos en contacto contigo.')} />
 
     </div>
   );

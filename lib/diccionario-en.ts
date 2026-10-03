@@ -508,4 +508,6 @@ export const EN: Record<string, string> = {
   // El correo de ejemplo del formulario: en inglés 'correo.com' se lee como
   // un dominio real que no es nuestro. El nombre propio no se traduce.
   'maria@correo.com': 'maria@email.com',
+  'Nos pondremos en contacto contigo.': 'We will get in touch with you.',
+  'Listo, {nombre}. Te buscamos en menos de 24 horas.': 'All set, {nombre}. We will reach out within 24 hours.',
 };

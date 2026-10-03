@@ -3090,3 +3090,34 @@ body:has(input:focus, textarea:focus) .lgp-bottom-nav-wrap {
     transition: none;
   }
 }
+
+/* ---------- la ventana de acuse ("nos pondremos en contacto") ----------
+   Entra suave porque aparece sin que nadie la pida: una ventana que se
+   planta de golpe encima de la página se lee como un error del navegador,
+   no como la respuesta a lo que el cliente acaba de hacer. */
+@keyframes lgpAvisoTelon {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lgpAvisoPanel {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+.lgp-aviso-telon {
+  animation: lgpAvisoTelon 180ms ease both;
+}
+.lgp-aviso-panel {
+  animation: lgpAvisoPanel 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lgp-aviso-x:hover,
+.lgp-aviso-x:focus-visible {
+  color: #1c1e1f;
+}
+/* Quien pidió menos movimiento la recibe quieta: el aviso sigue siendo
+   igual de claro sin el deslizamiento. */
+@media (prefers-reduced-motion: reduce) {
+  .lgp-aviso-telon,
+  .lgp-aviso-panel {
+    animation-duration: 1ms;
+  }
+}
