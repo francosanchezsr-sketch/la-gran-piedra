@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ProveedorIdioma } from '@/components/ProveedorIdioma';
 import { Archivo, IBM_Plex_Mono, Work_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -35,9 +36,14 @@ const siteUrl =
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : "http://localhost:3000");
 
-const titulo = "La Gran Piedra | Casas Custom · Rio Grande Valley";
+// En inglés, porque es el idioma con el que sale el sitio. Esto es lo que ve
+// Google y lo que se pinta en la tarjeta cuando alguien pega el enlace en un
+// chat: es una sola versión y tiene que ser la de salida. Para el visitante
+// que elige español, `ProveedorIdioma` cambia el título de la pestaña en
+// caliente — la tarjeta al compartir no, porque la arma el servidor.
+const titulo = "La Gran Piedra | Custom Homes · Rio Grande Valley";
 const descripcion =
-  "Casas custom en el Rio Grande Valley. Aquí el cliente firma el plano: personaliza lote, floorplan, fachada, interiores y módulos antes de construir.";
+  "Custom homes in the Rio Grande Valley. Here the client signs off on the plan: choose lot, floorplan, facade, interiors and modules before we build.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -76,11 +82,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // El sitio sale en inglés y el selector lo cambia en caliente (ver
+    // `lib/idioma.ts`). Este atributo tiene que coincidir con el idioma del
+    // PRIMER render, o React marca una discrepancia de hidratación.
     <html
-      lang="es"
+      lang="en"
       className={`${archivo.variable} ${ibmPlexMono.variable} ${workSans.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        {/* El idioma envuelve TODA la página: el selector está en la cabecera
+            pero el texto a traducir vive en veinte componentes. Ver
+            `components/ProveedorIdioma.tsx`. */}
+        <ProveedorIdioma>{children}</ProveedorIdioma>
+      </body>
     </html>
   );
 }

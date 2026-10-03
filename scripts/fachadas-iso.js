@@ -27,9 +27,16 @@ const path = require('path');
 const ORIGEN = path.join(__dirname, '..', '..', 'visuales', 'fachada');
 const DESTINO = path.join(__dirname, '..', 'public', 'fachadas');
 
-// Aire alrededor de la casa, en proporción a su lado mayor.
-const MARGEN = 0.14;
+// Aire alrededor de la casa, en proporción a su lado mayor. Bajó de 0.14 a
+// 0.06: la tarjeta del paso 2 mide lo que mide, así que la única forma de que
+// la maqueta se vea más grande sin deformarla es darle menos aire dentro del
+// mismo lienzo cuadrado. Recorte, no estirón.
+const MARGEN = 0.06;
 const LADO = 640;
+// Las líneas del canto, un poco más marcadas — como en las maquetas de
+// floorplan, que tienen el contorno bastante más oscuro. Solo se oscurece lo
+// que ya era gris: el blanco de los muros se queda blanco.
+const CONTRASTE = 1.5;
 // La miniatura pelea contra 30 px: casi todo el aire se va, y el contraste
 // sube para que la línea del canto no se disuelva en el blanco de la placa.
 const MARGEN_MINI = 0.03;
@@ -120,6 +127,21 @@ function zocalo(data, info, { alto, gris }) {
   });
 }
 
+/**
+ * Marca más el dibujo. Se hace a mano sobre el píxel y no con `linear()`, que
+ * también tocaría el alfa y le comería el borde suave a la maqueta. El blanco
+ * se queda en blanco: solo se oscurece lo que ya era gris, así que lo que gana
+ * peso son las líneas del canto y las sombras, no los muros.
+ */
+function contrasta({ data, info }, factor) {
+  for (let p = 0; p < info.width * info.height; p++) {
+    const i = p * info.channels;
+    for (let ch = 0; ch < 3; ch++) {
+      data[i + ch] = Math.max(0, Math.round(255 - (255 - data[i + ch]) * factor));
+    }
+  }
+}
+
 async function procesar(archivo, clave) {
   const src = path.join(ORIGEN, `${archivo}.png`);
   const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -173,21 +195,14 @@ async function procesar(archivo, clave) {
   };
 
   const grande = await (await recorte(MARGEN, LADO)).raw().toBuffer({ resolveWithObject: true });
+  contrasta(grande, CONTRASTE);
   zocalo(grande.data, grande.info, ZOCALO);
   await sharp(grande.data, { raw: grande.info })
     .webp({ quality: 88, alphaQuality: 100 })
     .toFile(path.join(DESTINO, `${clave}.webp`));
 
-  // El contraste se sube a mano sobre el píxel y no con `linear()`, que también
-  // tocaría el alfa y le comería el borde a la maqueta. El blanco se queda en
-  // blanco: solo se oscurece lo que ya era gris.
   const mini = await (await recorte(MARGEN_MINI, LADO_MINI)).raw().toBuffer({ resolveWithObject: true });
-  for (let p = 0; p < mini.info.width * mini.info.height; p++) {
-    const i = p * mini.info.channels;
-    for (let ch = 0; ch < 3; ch++) {
-      mini.data[i + ch] = Math.max(0, Math.round(255 - (255 - mini.data[i + ch]) * CONTRASTE_MINI));
-    }
-  }
+  contrasta(mini, CONTRASTE_MINI);
   zocalo(mini.data, mini.info, ZOCALO_MINI);
   await sharp(mini.data, { raw: mini.info })
     .webp({ quality: 92, alphaQuality: 100 })

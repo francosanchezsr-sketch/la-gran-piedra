@@ -42,6 +42,14 @@ export type Lote = {
   fondoFt?: number;
   retiros?: Retiros;
   huella?: number;
+  /**
+   * Cómo se nombran las medidas del lote en pantalla. Existe porque un lote
+   * TRAZADO no tiene frente × fondo: tiene cinco lados, una curva y un canto
+   * diagonal, y escribir "— × —" ahí se lee como un dato que se perdió. Solo
+   * lo llenan los lotes que no son rectángulos; el resto sigue armando la
+   * cadena con frente y fondo como siempre.
+   */
+  medida?: string;
 };
 
 // Reglas de construcción por tipo de lote. Son restricciones del reglamento de
@@ -71,7 +79,7 @@ export const REGLAS_LOTE: Record<LoteTipo, {
     motivoFachada: 'La casa del townhouse se entrega con su fachada ya diseñada y aprobada por la subdivisión',
   },
   libre: {
-    planes: ['B', 'C', 'D'],
+    planes: ['A', 'B', 'C', 'D'],
     zonasBloqueadas: [],
     motivo: '',
     fachadaFija: false,
@@ -121,19 +129,26 @@ export type SubdivisionKey = (typeof SUBDIVISIONES)[number]['key'];
 // `incluidas` son zonas que el plano aprobado YA trae, así que su área ya está
 // dentro de `living` y no se vuelven a cobrar. En el townhouse del Lote 17 eso
 // es el balcón del master (37 ft², puerta corrediza 8'×8' desde la recámara
-// principal) y la cocina de concepto abierto al living/dining de doble altura.
+// principal). La cocina de concepto abierto también viene en ese plano, pero
+// dejó de ser una zona del catálogo —el cliente no elige entre abierta y
+// cerrada— así que ya no se declara aquí.
 //
 // `recMin`/`banosMin` son los cuartos y baños que no se pueden quitar. El
 // resto sí: liberarlos devuelve sus ft² al presupuesto, que es como el usuario
 // cambia una recámara por un game room o un walking closet.
 // Solo TH declara zonas incluidas, porque son las que el set arquitectónico del
-// Lote 17 realmente trae aprobadas (balcón del master y cocina abierta). B, C y
-// D se entregan como lienzo en blanco: el usuario arma sus zonas desde cero.
+// Lote 17 realmente trae aprobadas. B, C y D se entregan como lienzo en blanco:
+// el usuario arma sus zonas desde cero.
 export const PLANES = {
-  TH: { key: 'TH', nombre: 'Townhouse 2 pisos', living: 1635, total: 2249, rec: 3, banos: 3, pisos: 2, fijo: true,  incluidas: ['masterbalcon', 'cocinaabierta'], recMin: 1, banosMin: 2 },
+  TH: { key: 'TH', nombre: 'Townhouse 2 pisos', living: 1635, total: 2249, rec: 3, banos: 3, pisos: 2, fijo: true,  incluidas: ['masterbalcon'], recMin: 1, banosMin: 2 },
   B:  { key: 'B',  nombre: 'Corredor en patio', living: 1575, total: 2168, rec: 3, banos: 3, pisos: 1, fijo: false, incluidas: [] as string[],                    recMin: 1, banosMin: 2 },
   C:  { key: 'C',  nombre: 'Patio central',     living: 1635, total: 2249, rec: 3, banos: 3, pisos: 1, fijo: false, incluidas: [] as string[],                    recMin: 1, banosMin: 2 },
   D:  { key: 'D',  nombre: '2 pisos',           living: 1780, total: 2394, rec: 4, banos: 3, pisos: 2, fijo: false, incluidas: [] as string[],                    recMin: 1, banosMin: 2 },
+  // El plano compacto. Su patio son los 86.88 ft² del recorte en U trasero del
+  // Lot 76 — el más chico de los siete sets con tabla de áreas— y por eso es el
+  // que más casa deja sobre el mismo terreno: 16 ft² más que el patio cubierto
+  // mediano, 21 más que el patio central y 113 más que los dos patios.
+  A:  { key: 'A',  nombre: 'Patio techado atrás', living: 1512, total: 2081, rec: 3, banos: 2, pisos: 1, fijo: false, incluidas: [] as string[],                   recMin: 1, banosMin: 1 },
 } as const;
 
 // Componentes no habitables. El garage es la pieza que más mueve el cálculo,
@@ -150,8 +165,66 @@ export const PLANES = {
 // más grande que LGP ha construido, y ese exceso se le restaba al presupuesto
 // habitable del cliente. El townhouse del Lote 17 sigue con su 473 propio.
 export const GARAGE_2_AUTOS = 419;
-export const GARAGE_1_AUTO = 250; // de data.ts original — ningún set trae cochera de un auto
 export const GARAGE_2_TOWNHOUSE = 473;
+
+// Cochera de uno y de tres autos: NINGÚN set de la base trae una. Los siete
+// medidos son de dos autos. Así que estos dos números no son medidos — se
+// derivan de la geometría que sí lo está, y salen marcados como supuesto en
+// pantalla.
+//
+// El fondo es el mismo para las tres: un coche mide lo que mide. De los siete
+// sets, ancho interior típico 19'-8" y área mediana 419 ft² → fondo 21'-4"
+// (419 ÷ 19.667). Ese fondo cae dentro del rango medido de 20'-0" a 21'-11".
+//
+//   Cajón suelto = 9'-10" × 21'-4" = 209 ft²  (medio ancho interior medido)
+//
+//   1 auto  12'-0" × 21'-4" = 256   el ancho no se puede sacar partiendo el
+//                                   doble a la mitad: dos coches comparten la
+//                                   circulación del centro y uno solo no. 12'-0"
+//                                   es la puerta de 9' que sí está medida
+//                                   (Montecito 14) más sus jambas. SUPUESTO.
+//   3 autos 29'-6" × 21'-4" = 628   los 419 medidos más un cajón. SUPUESTO,
+//                                   pero el más firme de los dos: solo extiende
+//                                   el módulo que ya está en los planos.
+export const GARAGE_1_AUTO = 256;
+export const GARAGE_3_AUTOS = 628;
+
+/**
+ * Las tres cocheras que se le ofrecen al cliente. El configurador enseñaba
+ * "2 autos" en el resumen como si fuera una elección y nunca hubo dónde
+ * cambiarlo; esta tabla es lo que alimenta ese control.
+ */
+export const CAJONES_GARAGE = [
+  {
+    cajones: 1,
+    titulo: 'Un auto',
+    ft2: GARAGE_1_AUTO,
+    medida: '12′ × 21′4″',
+    nota: 'Lo que más te deja de casa. Un solo coche bajo techo.',
+    supuesto: true,
+  },
+  {
+    cajones: 2,
+    titulo: 'Dos autos',
+    ft2: GARAGE_2_AUTOS,
+    medida: '19′8″ × 21′4″',
+    nota: 'Lo que llevan las siete casas que ya construimos. Es lo normal aquí.',
+    supuesto: false,
+  },
+  {
+    cajones: 3,
+    titulo: 'Tres autos',
+    ft2: GARAGE_3_AUTOS,
+    medida: '29′6″ × 21′4″',
+    nota: 'Dos coches y un lugar de sobra para camioneta, taller o bodega.',
+    supuesto: true,
+  },
+] as const;
+
+/** ft² de cochera según cuántos cajones pidió el cliente. */
+export function garageFt2(cajones: number): number {
+  return (CAJONES_GARAGE.find((g) => g.cajones === cajones) ?? CAJONES_GARAGE[1]).ft2;
+}
 
 // Pórtico / entrada cubierta. Rango real de los siete sets: 34.67 (Lot 77) a
 // 80 (Shary 200), mediana 62.24 (Lot 76). El 24 que había aquí está por debajo
@@ -185,12 +258,162 @@ export const RETIROS_DEFAULT = { frente: 18, fondo: 15, lados: 5 };
 
 export type Retiros = { frente: number; fondo: number; lados: number };
 
-// Huella construible en planta baja: el terreno menos los retiros. Es el tope
+// ---------- retiros por ciudad del Rio Grande Valley ----------
+// NO hay un solo número correcto para el RGV. Sobre un mismo lote la zona
+// construible se mueve más de 1,000 ft² según qué juego se aplique, así que
+// preguntar la ciudad no es un lujo: es la diferencia entre un número que
+// sirve y uno decorativo.
+//
+// ⚠️ ESTA TABLA ESTÁ DUPLICADA a propósito en `public/trazador/index.html`
+// (`PRESETS_RETIROS`), porque ese archivo se sirve como HTML estático y no
+// puede importar de aquí. **Si se corrige un número, se corrige en los dos**
+// — si divergen, el mismo lote da dos áreas distintas según por qué camino
+// entre el cliente, que es justo la contradicción que esta tabla vino a
+// quitar. El trazador usa además `esquina` y `cochera`, que solo tienen
+// sentido sobre una forma trazada; el camino rectangular usa los tres de
+// `Retiros`.
+//
+// Lo que MANDA no es la ordenanza sino el plat: las Reglas de Subdivisión de
+// Hidalgo County exigen que los retiros cumplan con el plano de la
+// subdivisión. Por eso la ciudad es un punto de partida declarado, no una
+// respuesta — y por eso cada renglón lleva su `fuente`.
+export type PresetRetiros = {
+  id: string;
+  ciudad: string;
+  /** Cómo se le habla al cliente: "Ya aparté lo que McAllen te obliga a dejar". */
+  nombreCorto: string | null;
+  retiros: Retiros;
+  /** Fracción del lote que la ciudad deja cubrir. null = sin tope publicado. */
+  coberturaMax: number | null;
+  fuente: string;
+  /** La salvedad de esa ciudad. Sale impresa en el resultado, nunca se calla. */
+  nota: string | null;
+};
+
+export const PRESETS_RETIROS: PresetRetiros[] = [
+  {
+    id: 'mcallen',
+    ciudad: 'McAllen',
+    nombreCorto: 'McAllen',
+    retiros: { frente: 25, fondo: 10, lados: 6 },
+    coberturaMax: null,
+    fuente: 'Ordenanza de McAllen, distrito R-1 (§ 138-356)',
+    nota: 'La ordenanza dice "o más si hay servidumbre" en cada retiro — manda el mayor, nunca la suma.',
+  },
+  {
+    id: 'mission',
+    ciudad: 'Mission',
+    nombreCorto: 'Mission',
+    retiros: { frente: 20, fondo: 10, lados: 6 },
+    coberturaMax: null,
+    fuente: 'Código de Mission, distrito R-1 (§ 1.371)',
+    nota: null,
+  },
+  {
+    id: 'alton',
+    ciudad: 'Alton',
+    nombreCorto: 'Alton',
+    retiros: { frente: 25, fondo: 20, lados: 6 },
+    coberturaMax: 0.35,
+    fuente: 'UDC de Alton 2024, tabla § 3.6.3, distrito R-1',
+    nota: 'Alton además topa la construcción al 35 % del lote — en un lote chico ese tope manda sobre los retiros. El frente sube a 40′ si tu calle es colectora o mayor.',
+  },
+  {
+    id: 'edinburg-hh',
+    ciudad: 'Edinburg',
+    nombreCorto: 'Edinburg',
+    retiros: { frente: 10, fondo: 15, lados: 5 },
+    coberturaMax: null,
+    // El chip dice solo "Edinburg", pero estos números salen del plano
+    // aprobado de UNA subdivisión, no de la ordenanza municipal. La salvedad
+    // vive aquí y en `fuente`, y las dos salen impresas en pantalla.
+    nota: 'Estos números salen del plano aprobado de una subdivisión de Edinburg, no de una regla general de la ciudad — otra subdivisión puede pedir otra cosa.',
+    fuente: 'Plano aprobado del Lot 124, 4701 S Brazos Rd',
+  },
+  {
+    id: 'san-juan',
+    ciudad: 'San Juan',
+    nombreCorto: 'San Juan',
+    // OJO: estos números NO son de San Juan. Son los de McAllen R-1, y están
+    // aquí como punto de partida declarado mientras no se verifique la
+    // ordenanza propia de San Juan.
+    //
+    // Su tabla vive en el eCode360 de la ciudad (código SA6471, "District Use
+    // and Area Regulations") y ese sitio bloquea la consulta automática, así
+    // que no se pudo leer la fuente oficial. Inventar el número era la otra
+    // salida y no es una salida: en este proyecto un retiro sin fuente no se
+    // publica. Se hace lo que ya hace "No estoy seguro" — partir de la
+    // ordenanza verificada más cercana y decirlo en pantalla.
+    //
+    // Para cerrarlo hace falta una de dos: abrir el eCode a mano en un
+    // navegador, o pedirle la tabla a Planificación de San Juan.
+    retiros: { frente: 25, fondo: 10, lados: 6 },
+    coberturaMax: null,
+    fuente: 'supuesto — referencia de McAllen R-1 (§ 138-356); la ordenanza de San Juan no está verificada',
+    nota: 'San Juan publica su propia tabla de retiros y todavía no la hemos verificado contra la fuente oficial. Partimos de McAllen R-1, la ordenanza verificada más cercana del mismo condado, y lo confirmamos con tu plano antes de mover un solo número.',
+  },
+  {
+    id: 'brownsville',
+    ciudad: 'Brownsville',
+    nombreCorto: 'Brownsville',
+    // Verificado en la UDC de la ciudad: frente 25′, lado 5′, trasero 5′, y
+    // tope de cobertura del 50 % contando cocheras y bodegas.
+    retiros: { frente: 25, fondo: 5, lados: 5 },
+    coberturaMax: 0.5,
+    fuente: 'UDC de Brownsville (25 nov 2020), § 4.3, distrito R-1',
+    // Dos salvedades que no se pueden callar. La segunda es la que más pesa:
+    // Brownsville es Cameron County, y toda la lógica de este proyecto sobre
+    // "el plat manda" viene de las Reglas de Subdivisión de Hidalgo, que allá
+    // no aplican. El plano de la subdivisión sigue mandando, pero por otra
+    // regla.
+    nota: 'Brownsville topa la construcción al 50 % del lote, contando cochera y bodegas — en un lote chico ese tope manda sobre los retiros. En lote de esquina el frente de la calle secundaria baja a 20′. Y ojo: Brownsville es Cameron County, no Hidalgo, así que aquí manda el plat de tu subdivisión bajo las reglas de ese condado.',
+  },
+];
+
+// El que no sabe su ciudad NUNCA se queda atorado: se le da el juego
+// verificado de la ciudad más grande del Valle como punto de partida y se
+// declara como supuesto. Es lo que hace un arquitecto en anteproyecto — no
+// inventarse una regla nueva, y tampoco detener el trabajo.
+export const PRESET_NO_SE: PresetRetiros = {
+  id: 'noSe',
+  ciudad: 'No estoy seguro',
+  nombreCorto: null,
+  retiros: PRESETS_RETIROS[0].retiros,
+  coberturaMax: null,
+  fuente: 'referencia de McAllen R-1 (§ 138-356) — supuesto, no tu ciudad',
+  nota: 'No identificaste tu ciudad: partimos de McAllen R-1, la ordenanza verificada más común del Valle. Lo confirmamos con tu plano — en otra ciudad el número puede moverse más de 1,000 ft².',
+};
+
+export const OPCIONES_CIUDAD: PresetRetiros[] = [...PRESETS_RETIROS, PRESET_NO_SE];
+
+export function presetPorId(id: string | null): PresetRetiros | null {
+  if (!id) return null;
+  return OPCIONES_CIUDAD.find((p) => p.id === id) ?? null;
+}
+
+// La ZONA CONSTRUIBLE en planta baja: el terreno menos los retiros. Es el tope
 // LEGAL de lo que se puede desplantar — no lo que de verdad se desplanta.
-export function huellaConstruible(frenteFt: number, fondoFt: number, r: Retiros) {
+//
+// En pantalla esto se llama SIEMPRE "zona construible", nunca "huella": es el
+// mismo nombre que usa el trazador (`zonaConstruible`), y antes cada camino le
+// decía distinto a la misma cifra. La función conserva `huella` en su nombre
+// por historia; el rótulo no la sigue.
+//
+// `coberturaMax` es el tope de ocupación que publican algunas ciudades (Alton
+// topa al 35 % del lote). Cuando existe compite con los retiros y manda el
+// más restrictivo de los dos: son dos reglas sobre la misma cosa, no dos
+// recortes que se sumen.
+export function huellaConstruible(
+  frenteFt: number,
+  fondoFt: number,
+  r: Retiros,
+  coberturaMax?: number | null,
+) {
   const ancho = Math.max(0, frenteFt - r.lados * 2);
   const largo = Math.max(0, fondoFt - r.frente - r.fondo);
-  return Math.round(ancho * largo);
+  const porRetiros = ancho * largo;
+  const tope = coberturaMax ? frenteFt * fondoFt * coberturaMax : Infinity;
+  return Math.round(Math.min(porRetiros, tope));
 }
 
 // ---------- lo que de verdad se desplanta ----------
@@ -295,8 +518,15 @@ export function ocupacionExigida(huellaFt2: number, envolventeFt2: number) {
 // Los dos son el CUARTO SOLO. El clóset va aparte (ver CLOSET_RECAMARA) y la
 // circulación para llegar tampoco está incluida.
 export const EXTRAS = {
-  recamara: { key: 'recamara', nombre: 'Recámara', living: 132, nota: 'Mediana de 11 recámaras de los sets construidos', max: 3 },
-  bano:     { key: 'bano',     nombre: 'Baño',     living: 55,  nota: 'Mediana de 6 baños estándar de los sets construidos', max: 3 },
+  // `max` es cuántos se pueden AGREGAR sobre la casa de arranque (1 recámara y
+  // 1 baño). Cinco lleva el programa hasta seis recámaras, que es donde la
+  // calculadora del arquitecto avisa que su desglose empieza a fallar: de seis
+  // en adelante una casa ya no tiene UNA sola sala ni UN solo comedor, y
+  // seguir sumando de a 170 ft² produciría una casa que no existe. Ahí el
+  // programa deja de ser configurable y pasa a ser una plática con el
+  // arquitecto. El tope real, antes que éste, es el presupuesto del lote.
+  recamara: { key: 'recamara', nombre: 'Recámara', living: 121, nota: 'Recámara de 11 x 11 pies; las once medidas van de 105 a 157', max: 5 },
+  bano:     { key: 'bano',     nombre: 'Baño',     living: 55,  nota: 'Mediana de 6 baños estándar de los sets construidos', max: 5 },
 } as const;
 
 // Clóset de recámara. PISO ABSOLUTO 15.3 ft² — el del Lot 76, que el cliente
@@ -334,6 +564,331 @@ export const BALCON = 37;
  * salían en 2,704 ft² cuando por densidad son ~4,900. En las nueve casas
  * construidas cada recámara arrastra entre 463 y 560 ft².
  */
+// ---------- la casa se calcula desde el programa ----------
+//
+// ANTES el floorplan traía la casa hecha: elegir "Patio central" te daba 1,635
+// ft², 3 recámaras y 3 baños, y lo único que podías hacer era agregar encima.
+// Eso ponía el programa al revés. El floorplan es la IDEA ORGANIZADORA —dónde
+// va el patio, si la casa sube— y el programa lo arma el cliente en el paso de
+// cuartos y zonas. El arquitecto acomoda lo demás.
+//
+// El modelo sale de `scripts/programa.py` de la skill `arquitecto`, que arma la
+// casa cuarto por cuarto con las medianas de los nueve sets construidos y le
+// suma su 11.5 % de circulación y muros. Sobre esa calculadora el habitable es
+// LINEAL en recámaras y baños, y estos tres números la reproducen exacta:
+//
+//   1 rec / 2 baños  1,242    3 rec / 1 baño   1,521
+//   3 rec / 2 baños  1,582    3 rec / 3 baños  1,644
+//   6 rec / 2 baños  2,093
+//
+// La prueba que importa: 3 recámaras y 3 baños dan 1,643, y el "Patio central"
+// que LGP construyó de verdad tiene 1,635. El modelo cae a 8 ft² de la casa
+// que existe.
+// Lo que TODA casa lleva, tenga una recámara o seis. Son las medianas de los
+// nueve sets, cada una con cuántos cuartos reales la sostienen: un n de 11 es
+// un estándar, un n de 2 es una referencia, y eso hay que poder decirlo si
+// alguien pregunta de dónde sale un número.
+//
+// El `n` es cuántos cuartos reales sostienen cada mediana. NO se enseña en
+// pantalla: es un diagnóstico del banco de planos, útil para decidir si un
+// número aguanta una decisión de obra, y al cliente que está comprando una
+// casa no le dice nada — "solo 2 casos medidos" junto a su medio baño solo
+// siembra duda sobre un número que de todos modos no puede evaluar. Vive aquí
+// para quien tenga que justificar el dato.
+export const NUCLEO_PIEZAS = [
+  { nombre: 'Sala',              ft2: 267, n: 5, nota: 'Mucha dispersión: de 204 a 334 ft²' },
+  { nombre: 'Comedor',           ft2: 140, n: 4, nota: null },
+  { nombre: 'Cocina',            ft2: 126, n: 3, nota: 'El dato más flojo de la base — es referencia, no estándar' },
+  { nombre: 'Lavandería',        ft2: 50,  n: 4, nota: null },
+  { nombre: 'Despensa',          ft2: 13,  n: 3, nota: null },
+  { nombre: 'Clóset del aire',   ft2: 11,  n: 4, nota: 'Va adentro; si no se reserva, termina estorbando' },
+] as const;
+
+// El vestíbulo NO va en el núcleo: crece con la casa. Es el espacio que
+// reparte hacia los cuartos, así que no tiene sentido cobrarlo entero en una
+// casa de una recámara — ahí la entrada se resuelve contra la sala.
+//
+// Los 74 ft² de mediana salen de casas de tres recámaras, así que se reparten
+// entre esas tres: cada recámara carga con su tercio, la principal incluida. En
+// una casa de tres el total vuelve a dar 74, que es de donde salió.
+export const VESTIBULO_POR_RECAMARA = 74 / 3;
+
+// ---------- lo que una casa grande tiene y una chica no ----------
+//
+// El desglose cuarto por cuarto suma UNA sala, UN comedor y UNA cocina por más
+// recámaras que se agreguen, y por eso se rompe en programas grandes: contra la
+// densidad real de las casas construidas (531 ft² por recámara) se quedaba 19 %
+// corto en cinco recámaras y 24 % en seis. Una casa de seis recámaras no tiene
+// una sola sala.
+//
+// Se cierra agregando las estancias que ese programa SÍ tendría. Van con el
+// mínimo medido de la base y no con la mediana —una segunda sala es más chica
+// que la principal— y con eso los cinco tamaños vuelven a caer dentro del 15 %
+// de la densidad: 3 rec −3 %, 4 rec 10 %, 5 rec 10 %, 6 rec 12 %.
+export const SALA_SEGUNDA = 204;    // sala más chica de los nueve sets (203.6)
+export const COMEDOR_DIARIO = 127;  // comedor más chico de los nueve sets (127.4)
+
+/** Las estancias extra que exige un programa de este tamaño. */
+export function estanciasDeProgramaGrande(recamaras: number) {
+  const out: { nombre: string; ft2: number }[] = [];
+  if (recamaras >= 5) out.push({ nombre: 'Segunda sala', ft2: SALA_SEGUNDA });
+  if (recamaras >= 6) out.push({ nombre: 'Comedor de diario', ft2: COMEDOR_DIARIO });
+  return out;
+}
+
+// La primera recámara no es una recámara cualquiera: es la principal, con su
+// clóset y su baño. Por eso la casa de una recámara no cuesta lo mismo que
+// sumarle una recámara a otra casa.
+export const SUITE_PRINCIPAL = { recamara: 187, closet: 50, bano: 95 };
+// La recámara secundaria: 121 ft² = 11'-0" x 11'-0".
+//
+// NO es la mediana. Las once recámaras medidas van de 105.4 a 157.5 con mediana
+// 132.2, y ese 132 era lo que se cobraba antes. Se bajó a 121 por decisión del
+// cliente, y el número no se inventó: los 11'-0" de ancho caen dentro del rango
+// medido (9'-2" a 12'-5½") y los 11'-0" de fondo son exactamente el fondo más
+// chico de los once (Lot 77 rec. 3). Es un cuarto más ajustado que la mediana y
+// bastante por encima del piso de 105 del Lot 17.
+//
+// Lo que implica, dicho de frente: el modelo promete un poco MÁS casa por lote
+// que antes. Contra la densidad medida de 531 ft² por recámara se queda 13 %
+// corto a cinco recámaras y 15 % a seis — justo en el umbral que la skill del
+// arquitecto marca para enseñar los dos números. De tres para abajo sigue
+// clavado: 3 recámaras y 3 baños dan 1,583 contra los 1,635 del Lote 17
+// construido, que además está hecho en medidas mínimas.
+export const RECAMARA_EXTRA = { cuarto: 121, closet: 18.3 };
+export const BANO_EXTRA = 54.5;
+
+// Circulación y muros: 11.5 % del habitable. La suma de los cuartos NUNCA da el
+// habitable — omitirlo produce casas que no existen. Va como divisor y no como
+// porcentaje sumado porque el 11.5 % se mide sobre el total, no sobre la suma.
+export const CIRCULACION = 0.115;
+
+export const NUCLEO_SUMA = NUCLEO_PIEZAS.reduce((s, x) => s + x.ft2, 0);
+
+/**
+ * MEDIDA COMPACTA — el mismo programa, apretado.
+ *
+ * Sale del set completo del **Lot 35 4-Plex Apartments** (Atwood Village,
+ * 918 N. Blair Ave., Edinburg; 2GC Construcción y Diseño, 26 de mayo de 2023).
+ * Es vivienda de renta, así que cada cuarto está llevado al mínimo que se
+ * construye de verdad — justo lo que hace falta cuando el lote no da para las
+ * medianas de casa.
+ *
+ * El ancla dura es la tabla de la hoja índice: la unidad de 2 recámaras y 2
+ * baños mide **902 SF** y la de 2 recámaras con estudio **1,087 SF**. La de 902
+ * mide 31'-9" x 28'-5", que da 902.3 — cuadra al pie.
+ *
+ * Los cuartos salen de las cadenas de cotas de la hoja 1.2:
+ *
+ *   Sala        12'-2" x 10'-1"   Recámara 1   11'-0" x 10'-1"
+ *   Comedor     12'-4" x  9'-0"   Recámara 2    9'-6" x  9'-10"
+ *   Cocina      12'-4" x  9'-4"   Baño          5'-4" x  7'-8"
+ *   Lavandería   3'-7" x  6'-2"   Clóset        4'-4" x  ~5'
+ *
+ * Para comparar: la recámara secundaria de la casa cotiza 121 ft² y aquí son
+ * 93; la sala mediana son 267 y aquí 123.
+ */
+export const COMPACTO = {
+  sala: 123, comedor: 111, cocina: 115, lavanderia: 22, despensa: 8, closetAire: 9,
+  masterRecamara: 111, masterCloset: 22, masterBano: 41,
+  recamara: 93, closet: 22, bano: 41,
+  vestibuloPorRecamara: 15,
+} as const;
+
+/**
+ * Circulación de la medida compacta: 18.2 %, contra el 11.5 % de la casa.
+ *
+ * NO es un supuesto libre: es el factor que hace que el desglose reproduzca las
+ * dos áreas que el plano imprime. Con él, 2 recámaras y 2 baños dan 914 ft²
+ * contra los 902 impresos, y 3 cuartos con 2 baños dan 1,073 contra 1,087. Los
+ * dos dentro del 1.5 %. Un departamento gasta más pasillo por pie que una casa
+ * — este set tiene un HALL corrido que sirve a los dos dormitorios— y por eso
+ * el factor sube.
+ */
+export const CIRCULACION_COMPACTA = 0.182;
+
+/**
+ * Debajo de esto el lote se considera apretado y el configurador cambia a la
+ * medida compacta. Son 2,000 ft² de zona construible: con los retiros típicos
+ * del Valle eso es un lote de unos 4,600 ft², que es donde LGP ya ha
+ * construido y donde el modelo de medianas contestaba "no cabe".
+ */
+export const UMBRAL_COMPACTO = 2000;
+
+/**
+ * El habitable que pide un programa, armado pieza por pieza.
+ *
+ * Con 3 recámaras y 3 baños da 1,583 ft² contra los 1,635 del townhouse del
+ * Lote 17, que tiene ese mismo programa y está construido: 52 ft² por debajo,
+ * que es el lado correcto. Con la recámara a mediana (132) daba 1,643, 8 ft²
+ * por encima — y ese exceso era justo lo que impedía armar en el configurador
+ * la casa que el arquitecto ya había firmado.
+ */
+export function habitableDelPrograma(
+  recamaras: number,
+  banos: number,
+  medida: 'holgada' | 'compacta' = 'holgada',
+) {
+  const rec = Math.max(1, recamaras);
+  const ban = Math.max(1, banos);
+  if (medida === 'compacta') {
+    const c = COMPACTO;
+    const crudoC =
+      c.sala + c.comedor + c.cocina + c.lavanderia + c.despensa + c.closetAire
+      + c.masterRecamara + c.masterCloset + c.masterBano
+      + rec * c.vestibuloPorRecamara
+      + (rec - 1) * (c.recamara + c.closet)
+      + (ban - 1) * c.bano;
+    return Math.round(crudoC / (1 - CIRCULACION_COMPACTA));
+  }
+  const crudo =
+    NUCLEO_SUMA
+    + SUITE_PRINCIPAL.recamara + SUITE_PRINCIPAL.closet + SUITE_PRINCIPAL.bano
+    + rec * VESTIBULO_POR_RECAMARA
+    + (rec - 1) * (RECAMARA_EXTRA.cuarto + RECAMARA_EXTRA.closet)
+    + (ban - 1) * BANO_EXTRA
+    + estanciasDeProgramaGrande(rec).reduce((s, x) => s + x.ft2, 0);
+  return Math.round(crudo / (1 - CIRCULACION));
+}
+
+/** Lo que cuesta una recámara más: el cuarto, su clóset, su parte del vestíbulo
+ *  y su parte de la circulación. */
+export const FT2_POR_RECAMARA = Math.round((RECAMARA_EXTRA.cuarto + RECAMARA_EXTRA.closet + VESTIBULO_POR_RECAMARA) / (1 - CIRCULACION));
+/** Lo que cuesta un baño más, ya con su parte de circulación. */
+export const FT2_POR_BANO = Math.round(BANO_EXTRA / (1 - CIRCULACION));
+/** Lo indispensable: núcleo + suite principal + su baño, con circulación. */
+export const FT2_INDISPENSABLE = habitableDelPrograma(1, 1);
+
+/**
+ * Las tres cifras de arriba, pero para la medida que toque.
+ *
+ * En medida compacta la casa mínima baja de 1,089 a 705 ft² y la recámara de
+ * 185 a 132: es la diferencia entre las medianas de nueve casas de LGP y las
+ * cotas del 4-plex de Atwood Village. Van como funciones y no como constantes
+ * para que el contador, la barra y el filtro de planos no puedan quedarse con
+ * una medida distinta de la del presupuesto.
+ */
+export type Medida = 'holgada' | 'compacta';
+
+export function ft2Indispensable(medida: Medida = 'holgada') {
+  return habitableDelPrograma(1, 1, medida);
+}
+export function ft2PorRecamara(medida: Medida = 'holgada') {
+  return habitableDelPrograma(2, 1, medida) - habitableDelPrograma(1, 1, medida);
+}
+export function ft2PorBano(medida: Medida = 'holgada') {
+  return habitableDelPrograma(1, 2, medida) - habitableDelPrograma(1, 1, medida);
+}
+
+/**
+ * De qué está hecho el costo de un cuarto más, para poder enseñarlo.
+ *
+ * Los 185 de una recámara se parecían demasiado a los 187 de la principal y se
+ * leían como si al cliente le estuvieran cobrando un master cada vez. No es
+ * eso: es un cuarto normal de 121 más su clóset y más lo que arrastra de
+ * pasillo y muros. Las tres cifras suman exactamente lo que se descuenta.
+ */
+export const DESGLOSE_RECAMARA = [
+  { que: 'el cuarto', ft2: RECAMARA_EXTRA.cuarto },
+  { que: 'su clóset', ft2: Math.round(RECAMARA_EXTRA.closet) },
+  { que: 'pasillos y muros', ft2: FT2_POR_RECAMARA - RECAMARA_EXTRA.cuarto - Math.round(RECAMARA_EXTRA.closet) },
+] as const;
+
+export const DESGLOSE_BANO = [
+  { que: 'el baño', ft2: Math.round(BANO_EXTRA) },
+  { que: 'muros y pasillo', ft2: FT2_POR_BANO - Math.round(BANO_EXTRA) },
+] as const;
+
+// ---------- lo que cuesta la idea de cada plano ----------
+//
+// Es lo ÚNICO que el floorplan cobra ahora. Un patio es un vacío: ocupa suelo y
+// no es habitable, así que se descuenta de la capacidad del lote igual que el
+// patio cubierto. La escalera del plano de dos plantas sí es habitable y se
+// suma al programa — y se paga en las DOS plantas.
+/**
+ * `cobro` — de dónde salen los ft² de la idea del plano:
+ *   'patio'   del suelo del lote, porque un patio ocupa terreno y no se habita.
+ *   'ninguno' de ningún lado: el número existe y se enseña, pero no se resta.
+ *
+ * La escalera es 'ninguno' y ese es el arreglo del 31 de agosto de 2026. Antes
+ * era 'habitable' y se le cobraban 160 ft² al presupuesto. Estaba mal por dos
+ * veces: `habitableDelPrograma()` se construyó con los OCHO planos de una
+ * planta, y el techo contra el que se compara —los 1,635 del Lote 17, o el
+ * reparto 906/1635 que usa `maxLivingPara` para dos plantas— sale de una casa
+ * que YA tiene su escalera adentro. Cobrarla aparte era contarla dos veces.
+ *
+ * Lo destapó el cliente con el plano en la mano: el Lote 17 mete 3 recámaras y
+ * 3 baños en 1,635 ft² —MASTER BEDROOM, BEDROOM 2, BEDROOM 3, MASTER BATHROOM,
+ * BATHRM 2, BATHRM 3, tabla de áreas del set firmado— y el configurador le
+ * contestaba que no cabían. La escalera sigue enseñándose en la tarjeta y en
+ * `notaDosPlantas()`, porque el dato es cierto y vale saberlo; lo que ya no
+ * hace es descontarse.
+ */
+export const IDEA_PLAN: Record<string, { que: string; etiqueta: string; ft2: number; cobro: 'patio' | 'ninguno'; fuente: string; supuesto: boolean }> = {
+  A: {
+    que: 'Un patio techado atrás, pegado a la sala — el que más casa deja',
+    etiqueta: 'Patio techado atrás',
+    ft2: 87,
+    cobro: 'patio',
+    fuente: 'Recorte en U trasero del Lot 76: 86.88 ft², el patio más chico de los siete sets con tabla de áreas.',
+    supuesto: false,
+  },
+  B: {
+    que: 'Dos patios chicos con un corredor techado entre las alas',
+    // Cómo se nombra en la tarjeta. El número solo —"200 ft²"— no se puede
+    // leer: el cliente no tiene manera de saber si son los pies de la casa,
+    // del patio o del lote. Un número sin sustantivo no es un dato.
+    etiqueta: 'Dos patios',
+    ft2: 200,
+    cobro: 'patio',
+    fuente: 'Cada patio sale del recorte en U de Lot 76, Lot 77 y New Frontier (87 a 112 ft²); que sean dos es un supuesto nuestro.',
+    supuesto: true,
+  },
+  C: {
+    que: 'Un patio en el centro, abierto a la sala y a la recámara principal',
+    etiqueta: 'Un patio',
+    ft2: 108,
+    cobro: 'patio',
+    fuente: 'Patio central del Lot 124, acotado: 10 pies de ancho, 108 ft².',
+    supuesto: false,
+  },
+  D: {
+    que: 'La casa sube: la planta alta libera suelo y la escalera se paga dos veces',
+    etiqueta: 'Escalera, arriba y abajo',
+    ft2: ESCALERA_POR_PLANTA * 2,
+    cobro: 'ninguno',
+    fuente: 'Escalera del Lot 17: 80 ft² abajo y otros 80 arriba de hueco con barandal. Es un solo set medido.',
+    supuesto: false,
+  },
+  TH: {
+    que: 'La casa del townhouse ya viene diseñada por la subdivisión',
+    etiqueta: 'Escalera, arriba y abajo',
+    ft2: ESCALERA_POR_PLANTA * 2,
+    cobro: 'ninguno',
+    fuente: 'Escalera del Lot 17, que es este mismo townhouse.',
+    supuesto: false,
+  },
+};
+
+/**
+ * El patio de la casa, contado UNA vez.
+ *
+ * El patio de la idea del plano y `PATIO_CUBIERTO` no son dos huecos: son el
+ * mismo. En el Lote 124 la tabla de áreas trae un solo renglón —`patio_cubierto:
+ * 108 ft², tipo PATIO CENTRAL`— y ese 108 es el que el plano "Patio central"
+ * cobra como su idea.
+ *
+ * Cuando el plano declara su patio, ése manda. La mediana de 103 es el respaldo
+ * de cuando todavía no hay plano elegido, o de un plano que no organiza la casa
+ * alrededor de un patio (el de dos plantas) — porque patio cubierto lo traen
+ * los SIETE sets con tabla, ninguno se construyó sin uno.
+ */
+export function patioDeLaCasa(planKey: string | null): number {
+  const idea = planKey ? IDEA_PLAN[planKey] : null;
+  if (idea && idea.cobro === 'patio') return idea.ft2;
+  return PATIO_CUBIERTO;
+}
+
 export function ftPorRecamara(planKey: keyof typeof PLANES) {
   const p = PLANES[planKey];
   return Math.round(p.living / p.rec);
@@ -419,12 +974,28 @@ export const MODULOS: Modulo[] = [
   { key: 'comodin', nombre: 'Comodín room', corto: 'Comodín room', rango: '7×10 mínimo — gym, visitas, taller, lo que decidas', area: '70+', prop: '7:10', min: 70, nota: 'Cuéntanos en el brief para qué lo quieres y el arquitecto lo aterriza contigo' },
 
   // Variantes de floorplan (consumen del mismo presupuesto; algunas son mutuamente excluyentes o requieren otra zona)
-  { key: 'cocinaabierta', nombre: 'Cocina concepto abierto', corto: 'Cocina abierta', rango: 'sin muros extra', area: '168', prop: '3:4', min: 168, nota: '', grupo: 'cocina' },
-  { key: 'cocinacerrada', nombre: 'Cocina concepto cerrado', corto: 'Cocina cerrada', rango: '168 + 56 de muros', area: '224', prop: '3:4', min: 224, nota: 'Incluye muros y circulación extra', grupo: 'cocina' },
   { key: 'masterpatio', nombre: 'Master con conexión al patio', corto: 'Master + patio', rango: 'recámara estándar', area: '224', prop: '—', min: 224, nota: 'Se abre al patio del floorplan', grupo: 'master', soloEnPlanes: ['B', 'C'] },
   { key: 'masterbalcon', nombre: 'Master con balcón', corto: 'Master + balcón', rango: 'balcón real 4’3×8’8 (37 ft²)', area: '261', prop: 'balcón 1:2', min: 261, living: 224, nota: 'Del total, 37 ft² son balcón: no consumen área habitable', grupo: 'master', minPisos: 2 },
 
   // Zonas opcionales (add-on sobre el presupuesto restante)
+  // El medio baño salió del núcleo el 31 de agosto de 2026 y llegó aquí.
+  //
+  // Estaba cobrándose como indispensable y no lo es: de los NUEVE planos de la
+  // base solo DOS lo traen — el half bath del Lot 124 (26.3 ft²) y el POWDER
+  // de 6'-0" x 5'-10" de Montecito 37 (35). Era la pieza con menos respaldo de
+  // todo el núcleo y la única que se le cobraba a todos.
+  //
+  // Lo destapó el townhouse del Lote 17: su set trae MASTER BATHROOM, BATHRM 2
+  // y BATHRM 3 y ningún medio baño, así que un cliente que pedía "3 baños"
+  // acababa pagando cuatro piezas sanitarias. Con esto fuera, el programa de
+  // 3 recámaras y 3 baños cabe en los 1,635 ft² del plano aprobado, que es lo
+  // que el arquitecto ya había construido.
+  //
+  // Cuesta 35 y no 31 porque aquí las zonas se cobran a secas, sin pasar por
+  // la circulación de `habitableDelPrograma()`: 31 de mediana con su parte de
+  // pasillo y muros son los mismos 35 del POWDER medido. Moverlo de sitio no
+  // le cambia el precio al cliente.
+  { key: 'mediobano', nombre: 'Medio baño de visitas', corto: 'Medio baño', rango: "5×5 – 6×6", area: '26–35', prop: '5:6', min: 35, nota: '' },
   { key: 'walkingcloset', nombre: 'Walking closet secundario', corto: 'Walking closet', rango: '6×8 – 8×10', area: '48–80', prop: '3:4', min: 48, nota: 'El closet del master ya está incluido' },
   { key: 'alberca', nombre: 'Alberca con deck perimetral', corto: 'Alberca', rango: '12×24 – 16×32', area: '400–700', prop: '1:2', min: 400, nota: 'Zona exterior: ocupa terreno, no área habitable', exterior: true },
   { key: 'bbq', nombre: 'Zona BBQ compacta', corto: 'Zona BBQ', rango: '8×8 – 10×10', area: '64–100', prop: '1:1', min: 64, nota: 'Zona exterior: ocupa terreno, no área habitable', exterior: true },
@@ -434,29 +1005,44 @@ export const MODULOS: Modulo[] = [
 
 export const FAQS = [
   { q: '¿Qué es exactamente una casa custom de La Gran Piedra?', a: 'Partes de un lote con reglas conocidas y de floorplans que ya validamos estructural y térmicamente. Sobre esa base decides fachada, interiores y qué módulos añadir. No es un catálogo cerrado ni un lienzo en blanco: es libertad con guardarraíles.' },
-  { q: '¿Cuánto tiempo toma construir?', a: 'Entre 9 y 13 meses desde la firma, según el floorplan y los módulos. El calendario se comparte completo antes de arrancar y se actualiza cada semana.' },
+  { q: '¿Cuánto tiempo toma construir?', a: 'Entre 5 y 9 meses desde la firma, según el floorplan y los módulos. El calendario se comparte completo antes de arrancar y se actualiza cada semana.' },
   { q: '¿Puedo cambiar cosas después de configurar en la web?', a: 'Sí. El configurador es el punto de partida de la conversación, no un contrato. Todo se revisa con el arquitecto en la cita presencial en el lote.' },
   { q: '¿Qué pasa con lo que escribo en el brief?', a: 'Llega tal cual al arquitecto, con tus palabras. No lo resumimos ni lo interpretamos: es lo que se platica contigo en la cita. Las zonas las eliges tú en el paso 4, con el presupuesto de pies cuadrados a la vista.' },
-  { q: '¿Los lotes son de ustedes?', a: 'Sí. Enclave on 107 en McAllen es nuestra subdivisión, lo que nos permite garantizar reglas de diseño y evitar sorpresas de servidumbres o permisos.' },
   { q: '¿Trabajan con financiamiento?', a: 'Trabajamos con prestamistas de construcción locales del Valle. Te conectamos, pero el crédito lo contratas tú directo — nosotros no cobramos comisión por eso.' },
-  { q: '¿Qué incluye el smart home?', a: 'Clima por zonas, control de accesos, riego, iluminación e infraestructura de red, todo cableado desde obra gris. Sin adhesivos ni dispositivos improvisados al final.' },
-  { q: '¿Construyen fuera del Rio Grande Valley?', a: 'Hoy operamos en McAllen, Edinburg y Mission. Tenemos visión de crecer a otros mercados de Texas — si tu terreno está fuera del Valle, escríbenos y lo evaluamos caso por caso.' },
+  { q: '¿Qué incluye el smart home?', a: 'En función de tus necesidades pensamos cómo hacer tu casa smart.' },
 ];
 
-// WhatsApp del negocio, para el botón del cierre de la página.
+// EL TELÉFONO DE LA GRAN PIEDRA. Dato real, dado por el cliente.
 //
-// El número vive en variable de entorno y no en el código por una razón dura:
-// hoy NO hay número real. El `(956) 000 0000` del pie es relleno, y un botón de
-// WhatsApp que abre un chat con un número inventado es peor que no tener botón
-// — el cliente escribe, nadie contesta, y la primera impresión ya se gastó.
-// Mientras `NEXT_PUBLIC_LGP_WHATSAPP` esté vacía el botón no se dibuja en
-// producción; en desarrollo sí aparece, apagado y diciendo qué le falta, para
-// que no se olvide.
+// Vive en el código y no en una variable de entorno, y es a propósito: no es
+// un secreto —va impreso en la página, es como quieren que les llamen— y
+// atarlo a la configuración de Vercel es lo que tuvo el botón de WhatsApp sin
+// dibujarse durante meses. La variable sigue existiendo para poder cambiarlo
+// sin tocar código, pero ya no hace falta para que el botón exista.
 //
+// Durante mucho tiempo aquí hubo un `(956) 000 0000` de relleno y la regla
+// era dura: un botón de WhatsApp que abre un chat con un número inventado es
+// peor que no tener botón, porque el cliente escribe, nadie contesta, y la
+// primera impresión ya se gastó. La regla sigue en pie; lo que cambió es que
+// ahora el número es de verdad.
+export const TELEFONO = '(956) 450 3175';
+/** Para `tel:` y `wa.me`: código de país y dígitos, sin nada más. */
+export const TELEFONO_E164 = '19564503175';
+
 // Formato: código de país y dígitos, que es lo que pide wa.me (`19561234567`).
 // `whatsappHref` limpia todo lo que no sea dígito, así que también acepta
 // "+1 (956) 123-4567" tal como se copia del teléfono.
-export const WHATSAPP = (process.env.NEXT_PUBLIC_LGP_WHATSAPP ?? '').replace(/\D/g, '');
+function soloDigitos(n: string) { return n.replace(/\D/g, ''); }
+
+// wa.me exige código de país: con los diez dígitos pelones el enlace abre un
+// chat con un número que no existe, y eso pasó — la variable de entorno traía
+// "9564503175" sin el 1. Un número de diez dígitos es de Estados Unidos, que
+// es donde está el negocio, así que se le antepone aquí en vez de confiar en
+// cómo quedó capturado.
+export const WHATSAPP = (() => {
+  const n = soloDigitos(process.env.NEXT_PUBLIC_LGP_WHATSAPP || TELEFONO_E164);
+  return n.length === 10 ? `1${n}` : n;
+})();
 
 // El mensaje ya escrito le quita al cliente el trabajo de arrancar la
 // conversación, y de paso le dice a quien contesta de dónde viene.
@@ -485,12 +1071,15 @@ export const NAV = [
 // El lote dejó de ser un paso: quien entra por la subdivisión ya lo trae
 // resuelto, y quien trae el suyo lo captura en una pantalla previa, antes de
 // que el contador empiece. El configurador arranca donde empieza la casa.
-export const PASO_NOMBRES = ['Floorplan', 'Fachada', 'Interior y zonas', 'Brief', 'Tu casa', 'Tus datos'];
+// "Tu casa" salió del recorrido: la lámina que ocupaba ese paso entero
+// ahora solo viaja por correo al arquitecto, y el resumen que el cliente ve
+// es la carpeta del brief. Un paso menos para llegar a enviar.
+export const PASO_NOMBRES = ['Floorplan', 'Fachada', 'Interior y zonas', 'Brief', 'Tus datos'];
 export const PASO_HINTS = [
   'Variantes curadas para tu lote',
   'Selecciona un estilo de fachada',
   'Elige tu paleta y arma tus zonas',
   'Comenta o pide algo especial, o sáltalo',
-  'Así quedó tu casa',
   'Solo pedimos datos al final',
 ];
+

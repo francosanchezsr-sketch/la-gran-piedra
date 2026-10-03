@@ -6,6 +6,7 @@
 // propio y usa el mismo isométrico de dos pisos que el plan D.
 export const RENDER_PLAN: Record<string, string> = {
   TH: '/floorplans/D.webp',
+  A: '/floorplans/A.webp',
   B: '/floorplans/B.webp',
   C: '/floorplans/C.webp',
   D: '/floorplans/D.webp',

@@ -6,6 +6,7 @@ import { useVentanaModal } from '@/lib/useVentanaModal';
 import type { FotoObra } from '@/lib/obra';
 
 import { Chevron, Cruz } from './IconosTira';
+import { useT } from '@/components/ProveedorIdioma';
 
 /**
  * La foto a pantalla completa.
@@ -32,6 +33,7 @@ export default function VisorObra({
   onIr: (i: number) => void;
   onCerrar: () => void;
 }) {
+  const t = useT();
   const cajaRef = useRef<HTMLDivElement | null>(null);
   const abierto = indice !== null;
   // El montaje va un fotograma por detrás para que la entrada tenga de dónde
@@ -63,7 +65,7 @@ export default function VisorObra({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`Foto ${indice + 1} de ${fotos.length}: ${foto.alt}`}
+      aria-label={`${t('Foto')} ${indice + 1} / ${fotos.length}: ${t(foto.alt)}`}
       className="lgp-visor"
       /* Tinta sólida, no translúcida: con un 4% de transparencia el hero y la
          cabecera seguían leyéndose por debajo y le competían a la foto, que es
@@ -81,9 +83,9 @@ export default function VisorObra({
           <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.14em', color: 'rgba(255,255,255,0.72)', textTransform: 'uppercase', paddingLeft: '6px' }}>
             {String(indice + 1).padStart(2, '0')} / {String(fotos.length).padStart(2, '0')}
           </span>
-          <button type="button" onClick={onCerrar} className="lgp-visor-btn" aria-label="Cerrar la foto">
+          <button type="button" onClick={onCerrar} className="lgp-visor-btn" aria-label={t('Cerrar la foto')}>
             <Cruz />
-            <span style={{ fontFamily: 'Archivo, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.16em' }}>Cerrar</span>
+            <span style={{ fontFamily: 'Archivo, sans-serif', fontSize: '10px', fontWeight: 700, letterSpacing: '0.16em' }}>{t('Cerrar')}</span>
           </button>
         </div>
 
@@ -94,7 +96,7 @@ export default function VisorObra({
           <img
             key={foto.src}
             src={foto.src}
-            alt={foto.alt}
+            alt={t(foto.alt)}
             className="lgp-visor-img"
             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', display: 'block' }}
           />
@@ -105,7 +107,7 @@ export default function VisorObra({
               onClick={() => onIr(indice - 1)}
               className="lgp-visor-btn lgp-visor-flecha"
               style={{ left: 'clamp(8px, 2vw, 20px)' }}
-              aria-label="Foto anterior"
+              aria-label={t('Foto anterior')}
             >
               <Chevron dir="izq" />
             </button>
@@ -117,7 +119,7 @@ export default function VisorObra({
               onClick={() => onIr(indice + 1)}
               className="lgp-visor-btn lgp-visor-flecha"
               style={{ right: 'clamp(8px, 2vw, 20px)' }}
-              aria-label="Foto siguiente"
+              aria-label={t('Foto siguiente')}
             >
               <Chevron dir="der" />
             </button>
@@ -125,7 +127,7 @@ export default function VisorObra({
         </div>
 
         <p style={{ flex: 'none', margin: 0, padding: '12px 18px calc(14px + env(safe-area-inset-bottom))', maxWidth: '70ch', fontSize: '13px', lineHeight: 1.5, color: 'rgba(255,255,255,0.72)' }}>
-          {foto.alt}
+          {t(foto.alt)}
         </p>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { Lupa } from './IconosTira';
 import VisorObra from './VisorObra';
+import { useT } from '@/components/ProveedorIdioma';
 
 const MS_TURNO = 5000;
 
@@ -31,6 +32,7 @@ export default function CarruselSubdivision({
   className?: string;
   style?: React.CSSProperties;
 }) {
+  const t = useT();
   const [i, setI] = useState(0);
   const [pausadoPorUsuario, setPausadoPorUsuario] = useState(false);
   const [pausadoPorRoce, setPausadoPorRoce] = useState(false);
@@ -88,7 +90,7 @@ export default function CarruselSubdivision({
          está oyendo otra cosa es hostil. */
       role="group"
       aria-roledescription="carrusel"
-      aria-label="Imágenes de la subdivisión"
+      aria-label={t('Imágenes de la subdivisión')}
     >
       {vivas.map((img, n) => (
         <img
@@ -142,7 +144,7 @@ export default function CarruselSubdivision({
             textTransform: 'uppercase',
           }}
         >
-          Render &mdash; no es foto de obra
+          {t('Render — no es foto de obra')}
         </span>
       ) : null}
 
@@ -153,7 +155,7 @@ export default function CarruselSubdivision({
               key={img.src}
               type="button"
               onClick={() => irA(n)}
-              aria-label={`Ver imagen ${n + 1} de ${total}`}
+              aria-label={t('Ver imagen {n} de {total}').replace('{n}', String(n + 1)).replace('{total}', String(total))}
               aria-current={n === actual ? 'true' : undefined}
               className="lgp-carrusel-punto"
               data-on={n === actual ? '1' : '0'}
@@ -164,7 +166,7 @@ export default function CarruselSubdivision({
           <button
             type="button"
             onClick={() => setPausadoPorUsuario((p) => !p)}
-            aria-label={pausadoPorUsuario ? 'Reanudar el cambio automático de imagen' : 'Detener el cambio automático de imagen'}
+            aria-label={pausadoPorUsuario ? t('Reanudar el cambio automático de imagen') : t('Detener el cambio automático de imagen')}
             className="lgp-carrusel-punto lgp-carrusel-pausa"
           >
             {pausadoPorUsuario ? (

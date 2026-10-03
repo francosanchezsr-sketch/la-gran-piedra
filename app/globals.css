@@ -710,8 +710,20 @@ textarea {
   text-transform: uppercase;
   white-space: nowrap;
   cursor: pointer;
-  /* 180ms: cambio de estado rutinario. Más lento se siente como latencia. */
-  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  /* 180ms: cambio de estado rutinario. Más lento se siente como latencia.
+     `transform` y `box-shadow` van en la lista aunque esta clase no los mueva,
+     y por una razón: casi todos estos botones llevan además `.lgp-hover-zoom`,
+     que sí los mueve. Las dos clases pesan igual y esta va después en la hoja,
+     así que su `transition` ganaba y se llevaba por delante la del zoom — el
+     botón crecía y soltaba su sombra de golpe, sin transición, mientras el
+     color sí entraba suave. Se veía como un tirón en mitad del gesto. Los
+     valores son los que declara `.lgp-hover-zoom`, no unos nuevos. */
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.35s cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 0.35s ease;
 }
 
 /* Carmín — la acción que avanza. Una sola por región. */
@@ -753,6 +765,13 @@ textarea {
   background: #fbfbfa;
   color: #1c1e1f;
 }
+
+/* Aquí vivió `.lgp-btn-papel`: hoja blanca con filo de tinta que se llenaba de
+   negro al tocarla. Fue el registro del recorrido durante una sesión y se
+   retiró por decisión del cliente — los tres botones del tutorial ("Listo",
+   "Atrás" y "Siguiente") pasaron al carmín de arriba, que hace el mismo gesto
+   al revés: nacen llenos y se vacían a papel. Un solo registro para "magenta
+   que se vuelve blanco" en vez de dos que hacen casi lo mismo. */
 
 /* Fantasma — explorar, no avanzar. Su figura es el filete y el texto, así que
    invertir aquí es rellenarse. */
@@ -1008,6 +1027,56 @@ textarea {
   50% { opacity: 0.45; }
 }
 
+/* ---------------------------------------------------------------------------
+   Explicación plegada.
+
+   Mismo control que el "Por qué" del trazador (`.guia-porque` en
+   `public/trazador/index.html`), a propósito: abrir una explicación tiene que
+   sentirse igual dentro del marco que fuera de él. Cerrado por default — un
+   tablero de tres cifras con cuatro párrafos debajo deja de ser un tablero.
+
+   No borra nada: lo que hay adentro son supuestos declarados (de qué ordenanza
+   salen los retiros, con qué porcentaje de ocupación se cuenta, qué cede si se
+   aprieta al techo), y esos no se pueden esconder — se pueden plegar.
+   --------------------------------------------------------------------------- */
+.lgp-plegable > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+  cursor: pointer;
+  padding: 11px 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6e7375;
+}
+
+.lgp-plegable > summary::-webkit-details-marker {
+  display: none;
+}
+
+.lgp-plegable > summary:hover {
+  color: #1c1e1f;
+}
+
+.lgp-plegable > summary::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 160ms ease;
+}
+
+.lgp-plegable[open] > summary::before {
+  transform: rotate(-135deg) translate(-2px, -2px);
+}
+
 /* El control que toca ahora. */
 .lgp-guia-activa {
   position: relative;
@@ -1020,6 +1089,242 @@ textarea {
 .lgp-guia-entra {
   animation: lgpRebote 0.75s cubic-bezier(0.22, 0.61, 0.36, 1) 1;
 }
+
+/* El golpe: el botón entero rebota cuando la luz dobla por un costado.
+
+   Los dos instantes son el 25% y el 75% del ciclo, y eso NO depende de la
+   forma del botón. El barrido es cónico, medido desde el centro, así que el
+   punto medio del costado derecho cae siempre en 90° y el del izquierdo en
+   270° — un botón ancho y uno angosto golpean en el mismo cuadro. Lo que sí
+   cambia con la forma es dónde quedan las esquinas, y por eso el golpe se
+   ancla al costado y no a la esquina.
+
+   Va en el MISMO ciclo de 2s que la luz y las dos animaciones arrancan juntas
+   (el pseudoelemento nace con su elemento), así que no hace falta sincronizar
+   nada a mano: mientras las dos duren 2s, no se despegan.
+
+   `animation-composition: add` es lo que deja vivo el `scale` del hover: sin
+   él esta animación gana sobre `transform` y el botón se queda sordo al
+   cursor mientras late. Los fotogramas de reposo son la identidad justamente
+   para eso — suman cero sobre lo que ya traiga el botón. */
+@keyframes lgpGolpeLuz {
+  0%, 21%, 34%, 71%, 84%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  25% {
+    transform: translateY(-3.5px) scale(1.018);
+  }
+  28.5% {
+    transform: translateY(1.5px) scale(0.993);
+  }
+  31% {
+    transform: translateY(-1px) scale(1.004);
+  }
+  75% {
+    transform: translateY(-3.5px) scale(1.018);
+  }
+  78.5% {
+    transform: translateY(1.5px) scale(0.993);
+  }
+  81% {
+    transform: translateY(-1px) scale(1.004);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   La luz que da la vuelta — el "parpadeo" de los botones.
+
+   Un resplandor recorre el perímetro por DENTRO del botón, como una luz
+   siguiendo un riel. Sustituye al latido en todo lo que sea botón: un halo que
+   crece y encoge dice "algo pasa aquí", pero una luz que corre dice además
+   "esto es un control y se aprieta". El latido se queda solo en los bloques
+   grandes del paso 4, donde no hay un borde que recorrer.
+
+   Velocidad medida contra la referencia que dio el cliente, cuadro por cuadro:
+   la luz tarda 59 cuadros a 30 fps en dar la vuelta completa — 1.97 s. Se deja
+   en 2 s exactos.
+
+   No es un parpadeo de opacidad: apagar y prender el rótulo lo vuelve ilegible
+   justo cuando se pide leerlo, y por encima de tres destellos por segundo sería
+   además un riesgo de fotosensibilidad (WCAG 2.3.1). Aquí nada se apaga: lo que
+   se mueve es la luz, y el texto no se toca nunca.
+
+   El giro necesita `@property` porque un custom property sin registrar es un
+   valor discreto y saltaría en vez de correr. Donde no exista, `var(…, 0deg)`
+   deja el gradiente quieto: se ve un destello fijo en una esquina en lugar de
+   nada, que es la degradación que sí conserva la señal. */
+@property --lgp-giro {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* La gota. Cada vez que la luz que da vueltas se estrella contra un costado,
+   el botón suelta un anillo que se abre hacia afuera y se apaga — como la onda
+   que deja una gota al caer en el agua.
+
+   Va en el MISMO compás que `lgpGolpeLuz` y en sus mismos instantes: 25 % y
+   75 % del giro, que es cuando la luz cruza el costado derecho y el izquierdo.
+   El golpe ya sacudía el botón en esos dos puntos; esto es la onda que faltaba,
+   y por eso los dos comparten los 2s en vez de llevar cada uno su reloj: si se
+   despegaran aunque fuera un cuadro, se vería un rebote sin causa y una onda
+   sin choque.
+
+   Va en `box-shadow` y no en una capa nueva porque `.lgp-guia-luz` ya tiene sus
+   dos pseudo-elementos ocupados por la luz, y porque `overflow: hidden` —que es
+   lo que mantiene el resplandor por dentro del filo— recortaría cualquier hijo
+   que quisiera salirse. La sombra propia del elemento no la recorta ese
+   `overflow`, así que el anillo sí puede abrirse fuera del botón. De paso sigue
+   el `border-radius` solo, sea el botón que sea.
+
+   Carmín y no gris: la onda es la misma luz que venía girando, salpicada. */
+@keyframes lgpGota {
+  /* Antes del primer choque no hay nada: radio cero y transparente. */
+  0%, 24.9% { box-shadow: 0 0 0 0 rgba(242, 0, 75, 0); }
+  /* Cae en el costado derecho. */
+  25% { box-shadow: 0 0 0 0 rgba(242, 0, 75, 0.45); }
+  45% { box-shadow: 0 0 0 13px rgba(242, 0, 75, 0); }
+  45.1%, 74.9% { box-shadow: 0 0 0 0 rgba(242, 0, 75, 0); }
+  /* Y en el izquierdo, media vuelta después. */
+  75% { box-shadow: 0 0 0 0 rgba(242, 0, 75, 0.45); }
+  95% { box-shadow: 0 0 0 13px rgba(242, 0, 75, 0); }
+  95.1%, 100% { box-shadow: 0 0 0 0 rgba(242, 0, 75, 0); }
+}
+
+@keyframes lgpGiroLuz {
+  to {
+    --lgp-giro: 360deg;
+  }
+}
+
+.lgp-guia-luz {
+  position: relative;
+  z-index: 2;
+  /* El resplandor va borroso y se saldría del botón. Recortarlo aquí es lo que
+     lo mantiene "por dentro del borde" y no como un aura alrededor. */
+  overflow: hidden;
+  animation: lgpGolpeLuz 2s linear infinite, lgpGota 2s linear infinite;
+  animation-composition: add;
+}
+
+.lgp-guia-luz::before,
+.lgp-guia-luz::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  animation: lgpGiroLuz 2s linear infinite;
+  /* El truco del anillo: se pintan las dos capas y se restan, así que solo
+     sobrevive la franja del `padding` — el relleno del botón queda limpio y el
+     rótulo nunca se tapa. El `padding` ES el grosor de la luz. */
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+/* HAY UN SOLO RIEL, y las dos capas van sobre él.
+
+   Antes el resplandor iba en un anillo de 9px y el núcleo en uno de 4px: dos
+   rectángulos concéntricos, así que al pasar la luz se encendían dos rieles
+   paralelos y se veía el camino en vez de solo el destello. Ahora las dos
+   capas comparten EXACTAMENTE el mismo grosor; lo único que las distingue es
+   que una va desenfocada. El desenfoque florece sobre la misma línea, no al
+   lado de ella.
+
+   Si se cambia el grosor hay que cambiarlo en las dos: si se despegan, vuelve
+   el riel doble. */
+.lgp-guia-luz::before,
+.lgp-guia-luz::after {
+  padding: 6px;
+}
+
+/* El resplandor: la misma línea, difuminada. Es lo que se ve de reojo. */
+.lgp-guia-luz::before {
+  filter: blur(6px);
+  opacity: 0.6;
+  background: conic-gradient(
+    from var(--lgp-giro, 0deg),
+    transparent 0deg,
+    transparent 175deg,
+    rgba(255, 255, 255, 0.08) 230deg,
+    rgba(255, 255, 255, 0.22) 290deg,
+    rgba(255, 255, 255, 0.45) 335deg,
+    rgba(255, 255, 255, 0.75) 356deg,
+    rgba(255, 255, 255, 0.8) 360deg
+  );
+}
+
+/* El núcleo: la cabeza de la luz y la estela que va dejando atrás.
+
+   La estela ocupa media vuelta larga, pero casi toda en opacidades de 0.06 a
+   0.3: lo que se lee no es un arco encendido sino el rastro de una exposición
+   que se va apagando. La distinción importa porque ya se probó el arco largo
+   Y opaco, y sobre un botón de 44px de alto eso deja de parecer una luz que
+   corre — es una mancha rosa que además le baja el contraste al rótulo.
+   Lo que hace legible el movimiento es la RAMPA, no cuánto riel se enciende.
+
+   La estela va en BLANCO. Nació en carmín cuando estos botones eran de tinta,
+   y ahí un carmín sobre negro se leía; desde que el recorrido entero pasó al
+   magenta, un carmín sobre magenta es lo mismo sobre lo mismo y la luz
+   desaparecía. El blanco es lo que contrasta contra el relleno que hay hoy.
+
+   Que la cabeza sea blanco puro tampoco quema el rótulo: la máscara de estos
+   dos pseudo-elementos deja viva solo la franja del `padding`, así que la luz
+   corre por el filo y nunca cruza el texto. */
+.lgp-guia-luz::after {
+  background: conic-gradient(
+    from var(--lgp-giro, 0deg),
+    transparent 0deg,
+    transparent 170deg,
+    rgba(255, 255, 255, 0.07) 225deg,
+    rgba(255, 255, 255, 0.18) 285deg,
+    rgba(255, 255, 255, 0.38) 325deg,
+    rgba(255, 255, 255, 0.65) 345deg,
+    rgba(255, 255, 255, 0.95) 357deg,
+    #fff 360deg
+  );
+}
+
+/* Con el cursor encima el botón se vacía a papel, y una estela blanca sobre
+   blanco no existe. Ahí —y solo ahí— la luz vuelve al carmín, que es lo que
+   contrasta contra ese fondo. No es un capricho de color: es la misma luz
+   buscando el único tono que se ve sobre lo que tiene debajo en cada momento. */
+.lgp-guia-luz:hover::after,
+.lgp-guia-luz:focus-visible::after {
+  background: conic-gradient(
+    from var(--lgp-giro, 0deg),
+    transparent 0deg,
+    transparent 170deg,
+    rgba(242, 0, 75, 0.09) 225deg,
+    rgba(242, 0, 75, 0.24) 285deg,
+    rgba(242, 0, 75, 0.5) 325deg,
+    rgba(242, 0, 75, 0.8) 345deg,
+    #f2004b 357deg,
+    #f2004b 360deg
+  );
+}
+
+.lgp-guia-luz:hover::before,
+.lgp-guia-luz:focus-visible::before {
+  background: conic-gradient(
+    from var(--lgp-giro, 0deg),
+    transparent 0deg,
+    transparent 175deg,
+    rgba(242, 0, 75, 0.1) 230deg,
+    rgba(242, 0, 75, 0.28) 290deg,
+    rgba(242, 0, 75, 0.55) 335deg,
+    rgba(242, 0, 75, 0.85) 356deg,
+    rgba(242, 0, 75, 0.9) 360deg
+  );
+}
+
+/* Aquí vivió `.lgp-guia-luz-claro`, la variante para botones de fondo claro:
+   sobre negro la cabeza se leía por ser más clara que el fondo, y sobre blanco
+   había que pasarla a carmín pleno. Se fue porque esa distinción dejó de
+   existir — hoy los seis botones del recorrido son magenta, y el único fondo
+   claro que se les ve es el del hover, que ya tiene su propia regla arriba. */
 
 /* Todavía no le toca: se ve, pero no se puede usar. */
 .lgp-guia-bloqueada {
@@ -1052,8 +1357,19 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .lgp-guia-activa,
   .lgp-guia-entra,
+  .lgp-guia-luz,
+  .lgp-guia-luz::before,
+  .lgp-guia-luz::after,
   .lgp-guia-punto {
     animation: none;
+  }
+  /* La luz se detiene, pero la señal no se pierde: queda el filo carmín fijo
+     por dentro del botón, que es lo mismo que dice la luz sin moverse. */
+  .lgp-guia-luz::before {
+    display: none;
+  }
+  .lgp-guia-luz::after {
+    background: #f2004b;
   }
   .lgp-guia-activa {
     box-shadow: 0 0 0 3px rgba(242, 0, 75, 0.3);
@@ -1479,6 +1795,12 @@ body:has(input:focus, textarea:focus) .lgp-bottom-nav-wrap {
 @media (max-width: 640px) {
   .lgp-header-social {
     display: none !important;
+  }
+  /* El botón de idioma se aprieta igual que el CTA: en un teléfono la
+     cabecera la pelean el logo y esos dos controles. */
+  .lgp-idioma-btn {
+    padding: 0 12px !important;
+    font-size: 9px !important;
   }
   .lgp-header-cta {
     padding: 0 14px !important;
@@ -2394,4 +2716,377 @@ body:has(input:focus, textarea:focus) .lgp-bottom-nav-wrap {
 .lgp-wa-burbuja-pendiente:hover,
 .lgp-wa-burbuja-pendiente:focus-visible {
   background: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   "No cabe" — el rechazo por presupuesto.
+
+   El control que recibió el clic timbra y se pone rojo, y encima le sale una
+   burbuja que dura 2s. Es la respuesta a un clic que el cliente SÍ pudo dar:
+   estos controles ya no van con `disabled` cuando el motivo es presupuesto,
+   porque un botón apagado no emite clic y en el teléfono se quedaba mudo.
+
+   El rojo es #E00016 y no el carmín de la marca. Tuvo que ser otro: el botón
+   "+" ya es carmín en su estado normal, así que teñirlo de carmín para avisar
+   de un error no habría cambiado nada en pantalla. Este rojo es el único de la
+   paleta que significa "no se pudo" — no se use para nada más.
+   --------------------------------------------------------------------------- */
+
+@keyframes lgpTimbre {
+  0%, 100% { transform: translateX(0); }
+  12% { transform: translateX(-3px); }
+  28% { transform: translateX(3px); }
+  44% { transform: translateX(-2px); }
+  60% { transform: translateX(2px); }
+  78% { transform: translateX(-1px); }
+}
+
+.lgp-no-cabe {
+  position: relative;
+  animation: lgpTimbre 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) 1;
+  border-color: #e00016 !important;
+  background: #e00016 !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 3px rgba(224, 0, 22, 0.16);
+}
+
+/* La burbuja sale, se sostiene y se va, todo dentro de los 2s que dura el
+   aviso en el estado de React. Si se cambia una duración hay que cambiar la
+   otra: si la animación termina antes, el rótulo se queda pegado en blanco. */
+@keyframes lgpBurbujaNoCabe {
+  0% { opacity: 0; transform: translate(-50%, 4px) scale(0.9); }
+  9% { opacity: 1; transform: translate(-50%, -2px) scale(1.04); }
+  16% { transform: translate(-50%, 0) scale(1); }
+  80% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -5px) scale(0.97); }
+}
+
+.lgp-burbuja-no-cabe {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  z-index: 6;
+  padding: 5px 10px;
+  background: #fff;
+  border: 1px solid #e00016;
+  color: #e00016;
+  font-family: 'Archivo', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: lgpBurbujaNoCabe 2s ease-out 1 both;
+}
+
+/* La puntita, para que la burbuja señale al control y no flote suelta. */
+.lgp-burbuja-no-cabe::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin-left: -4px;
+  margin-top: -4px;
+  background: #fff;
+  border-right: 1px solid #e00016;
+  border-bottom: 1px solid #e00016;
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lgp-no-cabe {
+    animation: none;
+  }
+  /* La burbuja no se mueve, pero sigue apareciendo y desapareciendo: es la
+     única manera de saber que el clic fue rechazado. */
+  .lgp-burbuja-no-cabe {
+    animation: lgpBurbujaNoCabe 2s steps(1, end) 1 both;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* El acuse de "no cabe" NO se usa en la lista de zonas, a propósito. Ahí la
+   zona que rebasa el presupuesto se apaga y punto: sin timbre, sin burbuja y
+   sin la franja carmín que se desliza en hover (`[data-zone-strip]` la gatea
+   con `data-toggle`, que sale de `disabled`). El motivo es que en esa lista el
+   camino no es insistir sino QUITAR una zona puesta y volver a elegir, y una
+   fila que responde al clic sugiere lo contrario. En los contadores de cuartos
+   y baños sí se usa: ahí no hay lista de la cual quitar nada. */
+
+/* ---------------------------------------------------------------------------
+   Tarjeta que se llena de tinta.
+
+   Blanca con filo negro en reposo; al pasar el cursor, al apretar o al recibir
+   el foco de teclado, el fondo se va a negro y el contenido se invierte. Los
+   200 ms y la curva salen de la referencia del cliente, medida cuadro por
+   cuadro: el relleno tarda 6 cuadros a 30 fps y va igual de rápido a la ida
+   que a la vuelta. Ahí no hay barrido ni escala — el fondo cambia parejo, y
+   copiarlo con un degradado que corre sería inventarle algo que no tiene.
+
+   `:active` es lo que cubre el tap: en un teléfono no hay cursor, y sin él la
+   tarjeta cambiaría de golpe al quedar elegida sin que se vea el gesto.
+
+   La elegida SE QUEDA en tinta. El estado final es el mismo al que llega el
+   hover, así que al soltar el clic no hay un segundo salto: la tarjeta ya está
+   negra y simplemente no vuelve. Se cuelga de `aria-pressed`, que es el
+   atributo que ya declara cuál está tomada — así el estilo no puede desfasarse
+   de lo que anuncia un lector de pantalla.
+   --------------------------------------------------------------------------- */
+/* El relleno de tinta es el GESTO, no el estado.
+   `[aria-pressed='true']` estaba en las tres reglas de abajo, y por eso al abrir
+   la ventana la tarjeta ya elegida nacía negra y la otra blanca: dos tarjetas
+   que hay que comparar, presentadas distinto antes de que el cliente toque
+   nada. Quien dice cuál está tomada es el punto carmín; la tinta llega cuando
+   pasas el cursor o aprietas, y se va cuando sueltas. */
+.lgp-tarjeta-tinta {
+  background: #fff;
+  border: 1px solid #1c1e1f;
+  color: #1c1e1f;
+  transition: background-color 0.2s ease-out, color 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.lgp-tarjeta-tinta:hover,
+.lgp-tarjeta-tinta:active,
+.lgp-tarjeta-tinta:focus-visible,
+/* El disparador del selector de ciudad se queda lleno mientras la lista está
+   abierta: es la misma idea de "apretado" que el resto de la familia, y así el
+   disparador y el panel negro de abajo se leen como una sola pieza en vez de
+   dos cajas sueltas. Solo lo cumple él — las tarjetas del lote no llevan
+   `aria-expanded`, y el relleno por ESTADO fue justo lo que se quitó de ellas. */
+.lgp-tarjeta-tinta[aria-expanded='true'] {
+  background: #1c1e1f;
+  color: #fbfbfa;
+  /* La sombra suave que aparece en la referencia al levantarse el botón. */
+  box-shadow: 0 6px 16px rgba(28, 30, 31, 0.18);
+}
+
+/* La descripción baja de intensidad sin fijar un color: sobre papel va al gris
+   del sistema y sobre tinta a uno propio, porque el gris tenue de papel da
+   2.6:1 contra negro y sería ilegible. */
+.lgp-tarjeta-tinta [data-desc] {
+  color: #5c6163;
+  transition: color 0.2s ease-out;
+}
+
+.lgp-tarjeta-tinta:hover [data-desc],
+.lgp-tarjeta-tinta:active [data-desc],
+.lgp-tarjeta-tinta:focus-visible [data-desc] {
+  color: #c9cccd;
+}
+
+/* El punto de la elegida lleva un anillo del color del fondo, y ese fondo
+   cambia: se lo pide a `currentColor` invertido en vez de quedarse clavado en
+   negro, que sobre la tarjeta en tinta lo partiría en dos. */
+.lgp-tarjeta-tinta [data-punto='1'] {
+  box-shadow: inset 0 0 0 2px #fff;
+  transition: box-shadow 0.2s ease-out;
+}
+
+.lgp-tarjeta-tinta:hover [data-punto='1'],
+.lgp-tarjeta-tinta:active [data-punto='1'],
+.lgp-tarjeta-tinta:focus-visible [data-punto='1'] {
+  box-shadow: inset 0 0 0 2px #1c1e1f;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lgp-tarjeta-tinta,
+  .lgp-tarjeta-tinta [data-desc],
+  .lgp-tarjeta-tinta [data-punto='1'] {
+    transition: none;
+  }
+}
+
+/* --- Vetas de la barra de presupuesto -------------------------------------
+   Las tres barras llevan vetas diagonales en el relleno, y esas vetas solo se
+   ponen a viajar cuando el presupuesto espacial cambia: el cliente agregó un
+   cuarto, quitó una zona, cambió de plano. En reposo la veta está ahí pero
+   quieta — es textura, no un cargador. Una barra que se mueve sola todo el
+   tiempo dice "estoy trabajando" cuando no está pasando nada, y entonces el
+   día que sí pasa algo ya nadie la mira.
+
+   Dos nombres por animación porque repetir el mismo nombre no la vuelve a
+   disparar (ver `useAnimacionAlterna`). El recorrido es exactamente un ladrillo
+   del patrón (24px), así que empieza y acaba en la misma figura y no se ve el
+   salto al terminar.
+   --------------------------------------------------------------------------- */
+@keyframes lgpVetaA {
+  from { background-position-x: 24px; }
+  to   { background-position-x: 0; }
+}
+
+@keyframes lgpVetaB {
+  from { background-position-x: 24px; }
+  to   { background-position-x: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-veta] { animation: none !important; }
+}
+
+/* --- Acuse de recibo del presupuesto espacial ------------------------------
+   Cada vez que una decisión mueve un riel, sale de él la cifra que lo movió:
+   "+531" en carmín si costó, "−531" en tinta si devolvió. Brinca al aparecer y
+   se va flotando hacia arriba mientras se apaga, todo en un segundo.
+
+   Un segundo no es poco tiempo para esto: la cifra no es algo que haya que
+   leer con calma —el número definitivo se queda en el globo del riel, que no
+   se va nunca— sino el acuse de que la barra reaccionó a lo que el cliente
+   acaba de tocar. Antes duraba tres y se quedaba suspendida esperando; ahora
+   nunca se detiene: brinca, sube y desaparece de un solo movimiento.
+
+   El brinco no es adorno: la barra ya crece con su propia transición de 280ms,
+   pero crecer 15px en un riel de 12px de alto es un cambio que se pierde si el
+   cliente estaba mirando el botón que acaba de tocar. La cifra sale hacia
+   arriba, fuera del riel, y ahí sí la ve sin buscarla.
+
+   El desplazamiento va DENTRO de los keyframes y el sitio va en `left`: el
+   elemento se ancla por su canto izquierdo justo a la derecha del globo de
+   ft², y de ahí para arriba manda la animación. Antes iba centrado en la punta
+   de lo lleno —o sea, encima del globo— y por eso el centrado tenía que viajar
+   en cada fotograma; ya no hay nada que centrar.
+
+   No hace falta el truco de los dos nombres que usan las vetas: este elemento
+   se vuelve a montar en cada acuse (lleva `key`), y un elemento nuevo arranca
+   su animación desde cero.
+   --------------------------------------------------------------------------- */
+/* SALIDA EN CURVA, SIN REBOTE. La cifra sale HACIA LA DERECHA, como si el riel
+   la escupiera por su extremo, y a mitad de camino el viaje gira y se vuelve
+   vertical.
+
+   La curva no está dibujada con una trayectoria: sale de repartir el
+   movimiento entre los dos ejes al revés el uno del otro. La x avanza de golpe
+   y se va frenando (18, 12, 5, 1 píxeles por tramo) mientras la y arranca
+   quieta y acelera (5, 13, 16, 24). Cruzar una que frena con una que acelera
+   es lo que dobla el recorrido.
+
+   Sin rebote de ninguna clase, y eso son tres cosas que se quitaron: la cifra
+   ya no se pasa de largo a la derecha para regresar, ya no se pasa de tamaño
+   al abrir, y ya no encoge al final. Los tres ejes van en una sola dirección
+   de principio a fin — x siempre a la derecha, y siempre hacia arriba, la
+   escala solo crece hasta su tamaño y ahí se queda. Lo único que la retira es
+   la opacidad.
+
+   Solo hay dos cambios de dirección en todo el recorrido, y ahí está el
+   rebote único: el pico del 16 % y el valle del 34 %. De ahí al final la
+   cifra ya no vuelve a bajar. Llevaba un vaivén de más —caía, subía otra vez
+   y luego se asentaba— y esos dos rebotes dentro de un segundo se leían como
+   un tembleque en vez de como un golpe.
+
+   La opacidad no empieza a bajar hasta que el golpe terminó, así que la cifra
+   se lee entera antes de irse. */
+/* Y SE ABRE EN EL ANCLA, NO DE CAMINO. El 8 % —80ms— es donde la cifra llega a
+   opacidad 1, y en ese instante todavía está en su punto: 1px de desvío. Antes
+   no alcanzaba a verse hasta el 16 %, y para entonces ya había subido 19px, o
+   sea que aparecía flotando encima de la barra y nadie la veía salir de la
+   orilla. El ancla estaba bien; lo que llegaba tarde era el ojo. */
+@keyframes lgpAcuse {
+  0%   { transform: translate(0,     0)    scale(0.4); opacity: 0; }
+  9%   { transform: translate(12px,  0)    scale(1);   opacity: 1; }
+  36%  { transform: translate(30px, -5px)  scale(1);   opacity: 1; }
+  58%  { transform: translate(42px, -18px) scale(1);   opacity: 1; }
+  78%  { transform: translate(47px, -34px) scale(1);   opacity: 0.7; }
+  100% { transform: translate(48px, -58px) scale(1);   opacity: 0; }
+}
+
+/* `linear`, y no la curva suave del resto del sistema, porque aquí la forma del
+   movimiento ya está escrita en los fotogramas clave.
+
+   Un `cubic-bezier` de salida suave se aplica DENTRO DE CADA TRAMO, no al viaje
+   completo: la cifra frenaba al final de cada uno de los cinco y, sobre todo,
+   al final del último. Medido, el tramo de 800 a 900ms ganaba 15.7px de altura
+   y el de 900 a 1000 solo 2.4 — la cifra llegaba arriba y se quedaba clavada un
+   décimo de segundo antes de apagarse, que es exactamente el frenón que se ve.
+
+   Con interpolación lineal manda el reparto: los tramos de la y son cada vez
+   más largos en el mismo tiempo, así que la subida acelera de principio a fin y
+   no frena nunca.
+
+   La clase es `.lgp-riel-acuse` y no `.lgp-acuse`: ese nombre ya lo usa la
+   tarjeta de "se envió" del paso 5, y compartirlo le colgaba a esa tarjeta este
+   vuelo de un segundo que la hacía desaparecer. */
+.lgp-riel-acuse {
+  animation: lgpAcuse 1s linear forwards;
+}
+
+/* Sin brinco, pero la cifra se sigue leyendo: el acuse dice CUÁNTO costó la
+   decisión, y eso es información, no movimiento decorativo. Se queda quieta y
+   se desvanece en el mismo segundo. */
+@keyframes lgpAcuseQuieto {
+  0%, 55% { transform: translateY(-10px); opacity: 1; }
+  100%    { transform: translateY(-10px); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lgp-riel-acuse { animation: lgpAcuseQuieto 1s linear forwards; }
+}
+
+/* --- Selector de ciudad ----------------------------------------------------
+   El menú del paso del lote. Se despliega hacia abajo, encima de lo que
+   sigue: si empujara el contenido, los campos de frente y fondo saltarían de
+   sitio cada vez que alguien abre la lista para comparar.
+
+   No se anima `display` ni `height` —ninguna de las dos transiciona— sino
+   opacidad y un desplazamiento corto, y se sale del tabulador con
+   `visibility` para que un panel invisible no atrape el foco. Los 180ms son
+   los mismos del resto de los controles del sistema.
+   --------------------------------------------------------------------------- */
+.lgp-selector-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  padding: 5px;
+  border: 1px solid #1c1e1f;
+  box-shadow: 0 12px 26px rgba(28, 30, 31, 0.22);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1), visibility 0.18s;
+}
+
+.lgp-selector-abierto {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.lgp-selector-opcion {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  background: transparent;
+  border: 0;
+  font-family: Archivo, sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: left;
+  cursor: pointer;
+  /* El aclarado de la fila es el mismo relleno con blanco a baja alfa, no un
+     color nuevo: en este sistema el único color que habla es el carmín. */
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+.lgp-selector-opcion:hover,
+.lgp-selector-opcion:focus-visible {
+  background: rgba(251, 251, 250, 0.1);
+  color: #fbfbfa !important;
+}
+
+.lgp-selector-opcion:focus-visible {
+  outline: 2px solid #f2004b;
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lgp-selector-panel {
+    transition: none;
+  }
 }

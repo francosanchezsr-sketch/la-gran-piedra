@@ -1,13 +1,22 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { FilaOpcion, useAnimacionAlterna } from '@/components/DecisionUI';
+import { useT } from '@/components/ProveedorIdioma';
 
 export type OpcionDecision = {
   key: string;
   nombre: string;
   descripcion?: string;
   meta?: string;
+  /**
+   * Lo que la opción trae puesto, en piezas. Cuando viene, la tarjeta deja de
+   * explicar la idea con un párrafo y solo enumera lo que incluye: un rótulo
+   * "Incluye:" y una ficha por pieza, con su icono. Es para lo que la
+   * subdivisión ya decidió — ahí el cliente no elige nada, así que convencerlo
+   * con una descripción sobra; lo único que necesita es saber qué le tocó.
+   */
+  incluye?: { icono: ReactNode; texto: string }[];
   /** Imagen del render; si no hay, se usa `visual`. */
   imagen?: string;
   /** Alternativa a `imagen`: un SVG o cualquier nodo. */
@@ -30,6 +39,12 @@ export type OpcionDecision = {
   texturaFondo?: boolean;
   on: boolean;
   fija?: boolean;
+  /** No se puede tomar por una regla dura —hoy: el plano no cabe en el lote—.
+   *  Distinto de `fija`, que es "ya viene puesta y no se cambia". */
+  bloqueada?: boolean;
+  /** Por qué no se puede. Sale impreso, no solo en el `title`: la regla de la
+   *  casa es que nada se apaga sin decir por qué. */
+  motivoBloqueo?: string;
   etiqueta?: string;
   onSelect: () => void;
 };
@@ -58,6 +73,7 @@ export default function PasoDecision({
   visualAncho,
   visualAlto,
   acuseEscuadras,
+  onVista,
 }: {
   opciones: OpcionDecision[];
   etiquetaOtras: string;
@@ -86,6 +102,16 @@ export default function PasoDecision({
    * el acuse en estado — al volver a pasar por tu plano, están puestas.
    */
   acuseEscuadras?: boolean;
+  /**
+   * Qué opción está a la vista, cada vez que cambia.
+   *
+   * El índice del carrusel es asunto interno de este componente, pero el paso
+   * del floorplan necesita saberlo: la barra de presupuesto proyecta en vivo lo
+   * que daría el plano que el cliente está mirando, sin haberlo elegido. Va
+   * como aviso hacia afuera y no como estado controlado desde arriba, para no
+   * volver a quien lo usa responsable de mover el carrusel.
+   */
+  onVista?: (key: string) => void;
   /** Texto del botón de elegir; solo se usa en modo carrusel. */
   accionPrimaria?: string;
   /**
@@ -131,6 +157,7 @@ export default function PasoDecision({
   exclusivo?: boolean;
   nota?: ReactNode;
 }) {
+  const t = useT();
   const [hover, setHover] = useState<string | null>(null);
   const [idx, setIdx] = useState(0);
   // Sentido del último viaje de la cinta (1 hacia adelante, -1 hacia atrás) y
@@ -206,6 +233,14 @@ export default function PasoDecision({
   // del acuse de elección, y dos animaciones sobre el mismo nodo se pisan.
   const entra = useAnimacionAlterna(lateral ? foco?.key ?? null : null, 'lgpSpriteEntraA', 'lgpSpriteEntraB');
 
+  // Se avisa en efecto y no durante el render: `onVista` sube estado al padre, y
+  // hacerlo mientras React dibuja es lo que produce el "cannot update a
+  // component while rendering another".
+  const claveVista = foco?.key ?? null;
+  useEffect(() => {
+    if (claveVista && onVista) onVista(claveVista);
+  }, [claveVista, onVista]);
+
   if (!opciones.length) return null;
 
   const mover = (paso: 1 | -1) => {
@@ -246,7 +281,7 @@ export default function PasoDecision({
       onClick={() => { if (!carruselCerrado) mover(dir); }}
       aria-label={etiqueta}
       aria-disabled={carruselCerrado || undefined}
-      title={carruselCerrado && elegida ? `Primero quita ${elegida.nombre}` : undefined}
+      title={carruselCerrado && elegida ? t('Primero quita {zona}').replace('{zona}', t(elegida.nombre)) : undefined}
       className="lgp-flecha"
       style={{ width: '44px', height: '44px', flex: 'none', borderRadius: '50%', border: '1px solid #DDD9D4', background: '#fff', cursor: carruselCerrado ? 'not-allowed' : 'pointer', opacity: carruselCerrado ? 0.38 : 1, fontSize: '17px', color: '#505759', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity .18s ease' }}
     >
@@ -419,7 +454,7 @@ export default function PasoDecision({
                       que no se podía llegar. */}
                   <button
                     onClick={foco.onSelect}
-                    aria-label={`Quitar ${foco.nombre}`}
+                    aria-label={`${t('Quitar')} ${foco.nombre}`}
                     className="lgp-hover-zoom lgp-btn lgp-btn-fantasma"
                     style={{ gap: '8px', padding: '0 16px' }}
                   >
@@ -428,9 +463,22 @@ export default function PasoDecision({
                   </button>
                 </>
               ) : (
+                foco.bloqueada ? (
+                  /* Apagado y explicado en el mismo lugar donde estaría el
+                     botón: el cliente no tiene que ir a buscar el motivo. */
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '9px', flexWrap: 'wrap' }}>
+                    <span className="lgp-btn" aria-disabled="true" style={{ padding: '0 18px', background: '#F4F1ED', color: '#8A8F91', cursor: 'not-allowed' }}>
+                      No cabe en tu lote
+                    </span>
+                    {foco.motivoBloqueo ? (
+                      <span style={{ fontSize: '11.5px', lineHeight: 1.5, color: '#5C6163', maxWidth: '320px' }}>{foco.motivoBloqueo}</span>
+                    ) : null}
+                  </span>
+                ) : (
                 <button onClick={foco.onSelect} className="lgp-hover-zoom lgp-btn lgp-btn-carmin" style={{ padding: '0 18px' }}>
                   {accionPrimaria ?? 'Elegir'}
                 </button>
+                )
               )
             ) : null}
             {accionSecundaria && onSecundaria ? (
@@ -460,12 +508,32 @@ export default function PasoDecision({
             <span style={{ padding: '3px 7px', background: '#1C1E1F', color: '#FBFBFA', fontFamily: "'IBM Plex Mono', monospace", fontSize: '8px', letterSpacing: '0.1em' }}>{foco.etiqueta}</span>
           ) : null}
         </div>
-        {foco.descripcion ? (
-          <p style={{ margin: lateral ? 0 : '0 0 12px', maxWidth: '46ch', fontSize: '13px', lineHeight: 1.6, color: '#505759' }}>{foco.descripcion}</p>
-        ) : null}
-        {foco.meta ? (
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.08em', color: '#5C6163', textTransform: 'uppercase' }}>{foco.meta}</div>
-        ) : null}
+        {foco.incluye?.length ? (
+          <div>
+            <p style={{ margin: '0 0 9px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.1em', color: '#5C6163', textTransform: 'uppercase' }}>{t('Incluye:')}</p>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: '14px 26px' }}>
+              {foco.incluye.map((i) => (
+                /* Sin recuadro ni fondo: el icono y su nombre, sueltos sobre
+                   el panel. Lo que separa una pieza de otra es el aire, no una
+                   caja. El `gap` de la lista sube para que sin marco los
+                   grupos sigan leyéndose como grupos. */
+                <li key={i.texto} style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  {i.icono}
+                  <span style={{ fontSize: '12.5px', lineHeight: 1.3, color: '#1C1E1F' }}>{i.texto}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <Fragment>
+            {foco.descripcion ? (
+              <p style={{ margin: lateral ? 0 : '0 0 12px', maxWidth: '46ch', fontSize: '13px', lineHeight: 1.6, color: '#505759' }}>{foco.descripcion}</p>
+            ) : null}
+            {foco.meta ? (
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10px', letterSpacing: '0.08em', color: '#5C6163', textTransform: 'uppercase' }}>{foco.meta}</div>
+            ) : null}
+          </Fragment>
+        )}
         {carrusel || lateral ? null : acciones}
       </div>
 
@@ -482,7 +550,7 @@ export default function PasoDecision({
           renglón apagado sin explicación se lee como que la página falla. */}
       {exclusivo && elegida ? (
         <p style={{ margin: '0 0 8px', maxWidth: '520px', fontSize: '12.5px', lineHeight: 1.55, color: '#5C6163' }}>
-          Solo puedes llevar una. Para cambiarla, quita <strong style={{ fontWeight: 600, color: '#1C1E1F' }}>{elegida.nombre}</strong> con su ✕ y elige otra.
+          {t('Solo puedes llevar una. Para cambiarla, quita')} <strong style={{ fontWeight: 600, color: '#1C1E1F' }}>{elegida.nombre}</strong> {t('con su')} ✕ {t('y elige otra.')}
         </p>
       ) : null}
       <div className="lgp-decision-lista" style={{ border: '1px solid #EAE7E3', maxWidth: lateral ? undefined : '520px' }}>
@@ -497,11 +565,11 @@ export default function PasoDecision({
             icono={mini(o)}
             tipoVisual={o.visualTipo ?? 'muestra'}
             nombre={o.nombre}
-            estado={o.on ? (o.fija ? 'Incluido' : 'Elegido') : o.fija ? 'Incluido' : ''}
+            estado={o.on ? (o.fija ? t('Incluido') : t('Elegido')) : o.bloqueada ? t('No cabe') : o.fija ? t('Incluido') : ''}
             on={o.on}
-            disabled={o.fija || bloqueadaPorOtra}
-            atenuada={bloqueadaPorOtra}
-            title={bloqueadaPorOtra && elegida ? `Primero quita ${elegida.nombre} con su ✕` : undefined}
+            disabled={o.fija || o.bloqueada || bloqueadaPorOtra}
+            atenuada={o.bloqueada || bloqueadaPorOtra}
+            title={o.bloqueada ? o.motivoBloqueo : bloqueadaPorOtra && elegida ? t('Primero quita {zona} con su ✕').replace('{zona}', t(elegida.nombre)) : undefined}
             onClick={o.onSelect}
             onEnter={() => setHover(o.key)}
             onLeave={() => setHover(null)}
@@ -550,8 +618,8 @@ export default function PasoDecision({
           salida, que es el botón que tiene justo encima. */}
       {carruselCerrado && elegida ? (
         <p style={{ margin: '-8px 0 20px', maxWidth: '520px', fontSize: '12.5px', lineHeight: 1.55, color: '#5C6163' }}>
-          Solo puedes llevar una. Para ver las demás, quita{' '}
-          <strong style={{ fontWeight: 600, color: '#1C1E1F' }}>{elegida.nombre}</strong> con su ✕.
+          {t('Solo puedes llevar una. Para ver las demás, quita')}{' '}
+          <strong style={{ fontWeight: 600, color: '#1C1E1F' }}>{elegida.nombre}</strong> {t('con su')} ✕.
         </p>
       ) : null}
 
