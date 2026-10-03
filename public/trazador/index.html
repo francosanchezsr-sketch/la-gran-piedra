@@ -409,17 +409,40 @@
   }
   .btn-texto:hover { color: var(--tinta); }
 
-  /* Botón "Regresar", en todos lados: un círculo con una flecha negra hacia
-     la izquierda, nunca texto — mismo lugar en todas las filas de botones,
+  /* Botón "Regresar", en todos lados: un círculo con una flecha hacia la
+     izquierda, nunca texto — mismo lugar en todas las filas de botones,
      siempre primero (a la izquierda), que es donde un botón de regreso se
-     espera encontrar. */
+     espera encontrar.
+
+     Era un círculo transparente con filo gris, y al lado de un "Continuar"
+     carmín se leía como decoración: el cliente no lo reconocía como botón.
+     Ahora viste lo mismo que los demás —relleno carmín, inversión al tocarlo,
+     el zoom y el hundido de `.btn`— y lo único que conserva propio es la
+     forma, que es lo que lo distingue de un botón con texto. */
   .btn-atras {
     display: inline-flex; align-items: center; justify-content: center;
     width: 42px; height: 42px; min-height: 42px; padding: 0; flex: none;
-    background: transparent; border: 1px solid var(--borde-fuerte); border-radius: 50%;
-    color: var(--tinta); cursor: pointer;
+    border-radius: 50%; cursor: pointer;
+    background: var(--carmin); border: 1px solid var(--carmin-fuerte); color: #fff;
+    /* Los mismos tiempos de `.btn`: este botón no vive dentro de esa clase
+       —es un icono, no una etiqueta— y sin esto el color saltaba de golpe
+       mientras el de al lado entraba suave. */
+    transition: background-color .18s ease, color .18s ease, border-color .18s ease,
+                transform .35s cubic-bezier(.22,.61,.36,1), box-shadow .35s ease;
   }
-  .btn-atras:hover { border-color: var(--tinta); background: var(--papel-alt); }
+  .btn-atras:not(:disabled):hover,
+  .btn-atras:not(:disabled):focus-visible {
+    background: var(--papel); color: var(--carmin-oscuro);
+    transform: scale(1.018); box-shadow: 0 10px 22px rgba(28,30,31,0.10);
+  }
+  .btn-atras:not(:disabled):active { transform: scale(0.985); transition: transform .11s ease; }
+  .btn-atras:disabled { background: var(--borde); border-color: var(--borde); color: var(--tinta-tenue); cursor: not-allowed; }
+  .btn-atras:focus-visible { outline: 2px solid var(--carmin-fuerte); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) {
+    .btn-atras:not(:disabled):hover,
+    .btn-atras:not(:disabled):focus-visible,
+    .btn-atras:not(:disabled):active { transform: none; }
+  }
   .btn-atras svg { width: 18px; height: 18px; display: block; }
 
   .campo-inline {
@@ -4989,6 +5012,7 @@ if (EMPOTRADO) {
     'y tiene el pórtico por debajo de la mediana': 'and its porch is below the median',
     'contra': 'against',
     'rango real': 'real range',
+    'Regresar': 'Back',
     'Nada de esto te detiene: así trabaja un arquitecto en el primer boceto. Nosotros lo confirmamos contra tu plano antes de construir.': 'None of this stops you: this is how an architect works on a first sketch. We confirm it against your plat before building.',
   };
 

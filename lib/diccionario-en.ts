@@ -529,4 +529,5 @@ export const EN: Record<string, string> = {
   'dos plantas': 'two stories',
   'McAllen norte · corredor S.H. 107': 'North McAllen · S.H. 107 corridor',
   'El lote {lote} se entrega con la casa ya diseñada y aprobada por la subdivisión, así que ni el floorplan ni la fachada se cambian. Lo que sí personalizas es el interior y las áreas que quepan en el presupuesto — por eso tu recorrido son {pasos} pasos y no {total}.': 'Lot {lote} comes with the home already designed and approved by the subdivision, so neither the floorplan nor the facade changes. What you do personalize is the interior and whatever areas fit in the budget — that is why your path is {pasos} steps and not {total}.',
+  'Termina de trazar tu lote, o usa el regreso del trazador': "Finish tracing your lot, or use the tracer's own back button",
 };

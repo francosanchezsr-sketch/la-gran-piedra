@@ -1323,6 +1323,13 @@ export default function HomeConfigurator() {
   // La puerta es `lote`, no `lotePropio`: quien llega a la previa con un lote
   // de Enclave ya elegido sí tiene lote, y frenarlo sería mentirle.
   const loteSinConfirmar = esPrevia && !lote;
+  // Mientras el cliente está trazando su lote irregular, "Atrás" se apaga.
+  // No es por capricho: en la previa ese botón CIERRA el configurador, y
+  // cerrarlo a media figura tira el trazo sin avisar. El trazador tiene su
+  // propio regreso paso a paso —el círculo carmín de su fila de botones— y
+  // ese es el que corresponde ahí dentro. Se vuelve a encender en cuanto el
+  // trazo se confirma y hay lote.
+  const trazandoLote = esPrevia && loteModo === 'trazar' && !loteTrazado;
   const siguiente = () => setPaso((p) => {
     // La misma condición revalidada aquí y no solo en `disabled`: entre el
     // clic y el repaint no debe colarse un avance sin lote.
@@ -3545,7 +3552,10 @@ export default function HomeConfigurator() {
     ) : null}
 
           <div className="lgp-step-actions" style={{display: "flex", alignItems: "center", gap: "10px", marginTop: "40px", paddingTop: "22px", borderTop: "1px solid #F0EDE9"}}>
-            <button onClick={atras} className="lgp-hover-zoom lgp-btn lgp-btn-carmin" style={{minHeight: "44px", padding: "0 17px", letterSpacing: "0.16em"}}>{t('← Atrás')}</button>
+            {/* Apagado mientras se traza: mismo gris y mismo trato que el
+                "Siguiente" bloqueado de al lado, con el motivo en el título.
+                Nada apagado sin decir por qué. */}
+            <button onClick={atras} disabled={trazandoLote} title={trazandoLote ? t('Termina de trazar tu lote, o usa el regreso del trazador') : undefined} className={'lgp-hover-zoom lgp-btn' + (trazandoLote ? '' : ' lgp-btn-carmin')} style={{minHeight: "44px", padding: "0 17px", letterSpacing: "0.16em", ...(trazandoLote ? {background: "#F4F1ED", borderColor: "#F4F1ED", color: "#6E7375", cursor: "not-allowed"} : {})}}>{t('← Atrás')}</button>
             {/* En el último paso este botón se veía activo pero tocarlo no
                 llevaba a ningún lado — `siguiente()` recalculaba el mismo
                 paso en el que ya estabas.
