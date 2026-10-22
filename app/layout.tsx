@@ -92,9 +92,12 @@ export default function RootLayout({
       className={`${archivo.variable} ${ibmPlexMono.variable} ${workSans.variable}`}
     >
       <body>
-        {/* Solo en producción: así el tráfico de `npm run dev` y de este
-            mismo entorno de pruebas no ensucia las métricas reales. */}
-        {process.env.NODE_ENV === 'production' && (
+        {/* Solo en el deploy de producción de Vercel. `NODE_ENV` no sirve
+            aquí: Next.js lo marca "production" en CUALQUIER build
+            optimizado, incluidos los previews de cada PR — con eso el
+            snippet mandaría tráfico de pruebas al GA4 real. `VERCEL_ENV`
+            sí distingue producción de preview. */}
+        {process.env.VERCEL_ENV === 'production' && (
           <>
             <Script
               src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
