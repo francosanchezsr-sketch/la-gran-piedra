@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { ProveedorIdioma } from '@/components/ProveedorIdioma';
+import { GA_MEASUREMENT_ID } from '@/lib/data';
 import { Archivo, IBM_Plex_Mono, Work_Sans } from "next/font/google";
 import "./globals.css";
 
@@ -90,6 +92,27 @@ export default function RootLayout({
       className={`${archivo.variable} ${ibmPlexMono.variable} ${workSans.variable}`}
     >
       <body>
+        {/* Solo en el deploy de producción de Vercel. `NODE_ENV` no sirve
+            aquí: Next.js lo marca "production" en CUALQUIER build
+            optimizado, incluidos los previews de cada PR — con eso el
+            snippet mandaría tráfico de pruebas al GA4 real. `VERCEL_ENV`
+            sí distingue producción de preview. */}
+        {process.env.VERCEL_ENV === 'production' && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="google-analytics" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA_MEASUREMENT_ID}');
+              `}
+            </Script>
+          </>
+        )}
         {/* El idioma envuelve TODA la página: el selector está en la cabecera
             pero el texto a traducir vive en veinte componentes. Ver
             `components/ProveedorIdioma.tsx`. */}

@@ -1054,6 +1054,13 @@ export function whatsappHref(mensaje: string = WHATSAPP_MENSAJE): string | null 
   return `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
 }
 
+// ID de medición del flujo de datos de lagranpiedrallc.com en Google
+// Analytics (GA4). No es un secreto —viaja en el HTML público de cualquier
+// sitio con GA— así que vive en el código como el teléfono, no en una
+// variable de entorno que puede faltar en Vercel y dejar la recolección
+// apagada sin que nadie lo note.
+export const GA_MEASUREMENT_ID = 'G-0BY77HTVLQ';
+
 export const NAV = [
   { label: 'Índice', id: 'index' },
   { label: 'Lugares', id: 'lugares' },
